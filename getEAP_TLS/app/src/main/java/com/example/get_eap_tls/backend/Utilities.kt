@@ -3,7 +3,8 @@ package com.example.get_eap_tls.backend
 import java.net.HttpURLConnection 
 import java.net.URL
 
-suspend fun peticionHTTP(url: URL): String {
+suspend fun peticionHTTP(url_string: String): String {
+    val url = URL(url_string)
     val urlConnection = url.openConnection() as HttpURLConnection
     return try {
         urlConnection.inputStream.bufferedReader().use { it.readText() }

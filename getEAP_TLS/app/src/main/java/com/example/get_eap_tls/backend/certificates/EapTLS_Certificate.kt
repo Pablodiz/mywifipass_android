@@ -40,3 +40,10 @@ class EapTLSCertificate(caInputStream: InputStream,
         return Base64.getDecoder().decode(base64Content)
     }
 }
+
+
+fun procesarPeticionCertificados(json: String){
+
+
+
+}

@@ -1,37 +1,21 @@
 package com.example.get_eap_tls.ui.components
 
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
-import android.util.Log
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import java.net.HttpURLConnection 
-import java.net.URL
-import java.io.BufferedInputStream
-import java.io.InputStream
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
+import com.example.get_eap_tls.backend.peticionHTTP
+import com.example.get_eap_tls.backend.certificates.procesarPeticionCertificados
+import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
+import com.example.get_eap_tls.ui.theme.getEAP_TLSTheme
+
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -80,15 +64,81 @@ fun MyTextField(
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        TextField(
-            value = text,
-            onValueChange = { 
-                text = it 
-                onTextChange(it)
-            },
-            label = { Text(label) },
-            placeholder = { Text(placeholder) }
-        )
+    TextField(
+        value = text,
+        onValueChange = { 
+            text = it 
+            onTextChange(it)
+        },
+        label = { Text(label) },
+        placeholder = { Text(placeholder) }
+    )
+    
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEventButton(
+    onFabClick : () -> Unit,
+    content: @Composable () -> Unit
+
+) {
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {onFabClick()}
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add event"
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ){
+        content()
     }
+}
+
+@Composable
+fun MainScreen(){
+    // Create scope for the coroutine (for async tasks)
+    val scope = rememberCoroutineScope()
+    // Get the context
+    val context = LocalContext.current
+
+    // Variables de la interfaz
+    var reply by remember { mutableStateOf("") }
+    var showDialog by  remember { mutableStateOf(false) }
+    var enteredText by remember { mutableStateOf("") }
+
+
+    AddEventButton(onFabClick = { showDialog = true }, content = { Text(reply) })
+
+    MyDialog(
+        showDialog = showDialog, 
+        onDismiss = { 
+            showDialog = false
+        }, 
+        onAccept = { 
+            showDialog = false 
+            // En un hilo secundario, hacer la petición HTTP y mostrar un mensaje de que está ocurriendo
+            scope.launch{
+                Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show()
+                reply = withContext(Dispatchers.IO) {
+                    try{
+                        peticionHTTP(enteredText)
+                    }catch (e:Exception){
+                        e.message.toString()
+                    }
+                }
+                procesarPeticionCertificados(reply)
+            }
+        },
+        content = {
+            MyTextField( 
+                onTextChange = { enteredText = it }
+            )
+        }
+    )   
 }
