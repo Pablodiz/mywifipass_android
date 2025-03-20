@@ -48,6 +48,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 
 import com.example.get_eap_tls.ui.components.*
 import com.example.get_eap_tls.backend.peticionHTTP
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(34)
@@ -60,73 +63,63 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // // Obtengo los ficheros (que ahora están en getEAP_TLS\app\src\main\res\raw)  
-                    // val caInputStream = resources.openRawResource(R.raw.ca)
-                    // val clientInputStream = resources.openRawResource(R.raw.client)
-                    // val privateKeyPassword = "whatever"
-                    
-                    // val eapTLSCertificate = EapTLSCertificate(caInputStream, clientInputStream, privateKeyPassword)
+                    // Obtengo los ficheros (que ahora están en getEAP_TLS\app\src\main\res\raw)  
+                    val caInputStream = resources.openRawResource(R.raw.server_ca)
+                    val clientCertInputStream = resources.openRawResource(R.raw.user)
+                    val clientKeyInputStream = resources.openRawResource(R.raw.user_key)
 
-                    // val eapTLSConnection = EapTLSConnection("OpenWrt_TLS", eapTLSCertificate)
+                    val eapTLSCertificate = EapTLSCertificate(caInputStream, clientCertInputStream, clientKeyInputStream)
+                    val eapTLSConnection = EapTLSConnection("OpenWrt_TLS", eapTLSCertificate)
+                    val wifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-                    // val wifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-
-                    // Column {
-                    //     Button(onClick = { eapTLSConnection.connect(wifiManager) }) {
-                    //         Text(text = "Conectar a red")
-                    //     }
-                    //     Button(onClick = { eapTLSConnection.disconnect(wifiManager) }) {
-                    //         Text(text = "Olvidar red")
-                    //     }
-                    // }
-                    // Crear un estado mutable para almacenar la reply
                     var reply by remember { mutableStateOf("") }
-                    var makePetition by remember { mutableStateOf(false) }
                     var showDialog by  remember { mutableStateOf(false) }
-                    var textIngresado by remember { mutableStateOf("") }
+                    var enteredText by remember { mutableStateOf("") }
 
-                    // Ejecutar la petición cuando `makePetition` cambie a `true`
-                    if (makePetition) {
-                        LaunchedEffect(Unit) {
-                            reply = withContext(Dispatchers.IO) {
-                                peticionHTTP( URL("http://192.168.100.102:8080/prueba.txt"))
-                            }
-                            makePetition = false // Reiniciar el estado
-                        }
-                    }
+
 
                     Column {
+                        Button(onClick = { eapTLSConnection.connect(wifiManager) }) {
+                            Text(text = "Conectar a red")
+                        }
+                        Button(onClick = { eapTLSConnection.disconnect(wifiManager) }) {
+                            Text(text = "Olvidar red")
+                        }
                         Button(onClick = {
                             showDialog = true    
-                            //makePetition.value = true // Activar la petición
                         }) {
-                            Text(text = "Abrir diálogo")
-
+                            Text(text = "Add event")
                         }
-
                         // Mostrar la reply en la interfaz
                         Text(text = reply)
                     }
                     
+                    // Create scope for the coroutine (for async tasks)
+                    val scope = rememberCoroutineScope()
+                    // Get the context
+                    val context = LocalContext.current
+
                     MyDialog(
                         showDialog = showDialog, 
                         onDismiss = { 
-                            makePetition = false 
                             showDialog = false
                         }, 
                         onAccept = { 
-                            makePetition = false
-                            Toast.makeText(this, "text ingresado: $textIngresado", Toast.LENGTH_SHORT).show()
                             showDialog = false 
-
+                            // En un hilo secundario, hacer la petición HTTP y mostrar un mensaje de que está ocurriendo
+                            scope.launch{
+                                Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show()
+                                reply = withContext(Dispatchers.IO) {
+                                    peticionHTTP(URL(enteredText))
+                                }
+                            }
                         },
                         content = {
                             MyTextField( 
-                                onTextChange = { textIngresado = it }
+                                onTextChange = { enteredText = it }
                             )
                         }
-                    )
+                    )   
                 }
             }
         }
