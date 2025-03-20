@@ -9,3 +9,7 @@
 .cxx
 local.properties
 run.sh
+*.key
+*.der
+*.pem
+*.p12
