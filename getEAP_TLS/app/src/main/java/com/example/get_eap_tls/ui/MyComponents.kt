@@ -12,9 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import com.example.get_eap_tls.backend.peticionHTTP
-import com.example.get_eap_tls.backend.certificates.procesarPeticionCertificados
+import com.example.get_eap_tls.backend.certificates.processReply
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.getEAP_TLSTheme
+import android.content.Context
+import android.net.wifi.WifiManager
 
 
 @Composable
@@ -111,7 +113,7 @@ fun MainScreen(){
     var reply by remember { mutableStateOf("") }
     var showDialog by  remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
-
+    val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
 
     AddEventButton(onFabClick = { showDialog = true }, content = { Text(reply) })
 
@@ -132,13 +134,22 @@ fun MainScreen(){
                         e.message.toString()
                     }
                 }
-                procesarPeticionCertificados(reply)
+                try{
+                    val processedReply = processReply(reply)
+                    val eapTLSConnection = EapTLSConnection(processedReply.ssid, processedReply.certificates) 
+                    eapTLSConnection.connect(wifiManager)                
+                }catch (e:Exception){
+                    reply = e.message.toString()
+                }
             }
         },
         content = {
-            MyTextField( 
-                onTextChange = { enteredText = it }
-            )
+            Column{
+
+                MyTextField( 
+                    onTextChange = { enteredText = it }
+                )
+            }
         }
     )   
 }
