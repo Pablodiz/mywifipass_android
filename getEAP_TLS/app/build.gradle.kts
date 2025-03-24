@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application")
+    id("com.android.application") 
     id("org.jetbrains.kotlin.android")
     kotlin("plugin.serialization") version "1.5.0"
 }
@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.get_eap_tls"
-        minSdk = 24
+        minSdk = 34
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"

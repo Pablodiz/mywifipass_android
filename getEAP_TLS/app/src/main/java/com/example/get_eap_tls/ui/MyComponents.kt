@@ -5,6 +5,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,7 @@ import kotlinx.coroutines.launch
 import com.example.get_eap_tls.backend.peticionHTTP
 import com.example.get_eap_tls.backend.certificates.processReply
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
-import com.example.get_eap_tls.ui.theme.getEAP_TLSTheme
+import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import android.content.Context
 import android.net.wifi.WifiManager
 
@@ -64,7 +66,6 @@ fun MyTextField(
 
 ) {
     var text by remember { mutableStateOf("") }
-    val context = LocalContext.current
 
     TextField(
         value = text,
@@ -82,7 +83,7 @@ fun MyTextField(
 @Composable
 fun AddEventButton(
     onFabClick : () -> Unit,
-    content: @Composable () -> Unit
+    content: @Composable (PaddingValues) -> Unit
 
 ) {
     Scaffold(
@@ -97,8 +98,8 @@ fun AddEventButton(
             }
         },
         floatingActionButtonPosition = FabPosition.End
-    ){
-        content()
+    ){ paddingValues -> 
+        content(paddingValues)
     }
 }
 
@@ -115,7 +116,14 @@ fun MainScreen(){
     var enteredText by remember { mutableStateOf("") }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
 
-    AddEventButton(onFabClick = { showDialog = true }, content = { Text(reply) })
+    AddEventButton(
+        onFabClick = { showDialog = true },
+        content = { paddingValues ->
+            Column(modifier = Modifier.padding(paddingValues)) {
+                Text(reply)
+            }
+        }
+    )
 
     MyDialog(
         showDialog = showDialog, 
