@@ -21,12 +21,15 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 import com.example.get_eap_tls.backend.api_petitions.WifiNetworkLocation
-import com.example.get_eap_tls.backend.api_petitions.DataSource
+import com.example.get_eap_tls.backend.api_petitions.toDatabaseModel
+import com.example.get_eap_tls.backend.api_petitions.ParsedReply
+import com.example.get_eap_tls.backend.api_petitions.parseReply
+import com.example.get_eap_tls.backend.database.DatabaseParsedReply
+import com.example.get_eap_tls.backend.database.DataSource
 import com.example.get_eap_tls.backend.peticionHTTP
 import com.example.get_eap_tls.backend.api_petitions.processReply
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
-
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -114,27 +117,35 @@ fun MainScreen(){
     val scope = rememberCoroutineScope()
     // Get the context
     val context = LocalContext.current
-
-    // Variables de la interfaz
+    // Get the database
+    val dataSource = DataSource(context)
+    
+    // Variables for the UI
     var reply by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-    
-    var selectedNetwork by remember { mutableStateOf<WifiNetworkLocation?>(null) }
+    var selectedNetwork by remember { mutableStateOf<DatabaseParsedReply?>(null)}
     var showNetworkDialog by remember { mutableStateOf(false) }
-    
+    var connections by remember { mutableStateOf<List<DatabaseParsedReply>>(emptyList()) }
+
+    // Get data from the database
+    LaunchedEffect(Unit) {
+        connections = withContext(Dispatchers.IO) {
+            dataSource.loadConnections()
+        }
+    }
+
     AddEventButton(
         onFabClick = { showDialog = true },
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-                //Text(reply),
-                MyCardList(DataSource().loadConnections()
+                MyCardList(dataList = connections 
                 ,onItemClick = { network -> 
                     selectedNetwork = network
                     showNetworkDialog = true       
                     }
-                )
+                )                
             }
         }
     )
@@ -153,12 +164,44 @@ fun MainScreen(){
             },
             content = {
                 Column{
-                    Text("User Name: ${selectedNetwork!!.fullParsedReply.user_name}")
-                    Text("User Email: ${selectedNetwork!!.fullParsedReply.user_email}")
-                    Text("User ID Document: ${selectedNetwork!!.fullParsedReply.user_id_document}")
+                    Text("User Name: ${selectedNetwork!!.user_name}")
+                    Text("User Email: ${selectedNetwork!!.user_email}")
+                    Text("User ID Document: ${selectedNetwork!!.user_id_document}")
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val wifiNetworkLocation = processReply(reply)
+                                val eapTLSConnection = EapTLSConnection(
+                                    wifiNetworkLocation.fullParsedReply.ssid, 
+                                    wifiNetworkLocation.certificates, 
+                                    wifiNetworkLocation.fullParsedReply.user_email, //The identity musn't have blank spaces 
+                                    wifiNetworkLocation.fullParsedReply.network_common_name
+                                ) 
+                                eapTLSConnection.connect(wifiManager)                
+                            }
+                        }
+                    ) {
+                        Text("Connect")
+                    }
+                    // Button that the deletes this from the database
+                    Button(
+                        onClick = {
+                            val networkToDelete = selectedNetwork
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    dataSource.deleteParsedReply(networkToDelete!!)
+                                    connections = dataSource.loadConnections()
+                                }
+                            }
+                            showDialog = false
+                            selectedNetwork = null
+                        }
+                    ) {
+                        Text("Delete")
+                    }
                 }
             },
-            dialogTitle = "${selectedNetwork!!.fullParsedReply.network_common_name}",
+            dialogTitle = "${selectedNetwork!!.network_common_name}",
         )      
     }
 
@@ -181,21 +224,19 @@ fun MainScreen(){
                     }
                 }
                 try{
-                    val wifiNetworkLocation = processReply(reply)
-                    val eapTLSConnection = EapTLSConnection(wifiNetworkLocation.fullParsedReply.ssid, 
-                        wifiNetworkLocation.certificates, 
-                        wifiNetworkLocation.fullParsedReply.user_email, //The identity musn't have blank spaces 
-                        wifiNetworkLocation.fullParsedReply.network_common_name
-                    ) 
-                    eapTLSConnection.connect(wifiManager)                
-                }catch (e:Exception){
+                    val parsed_reply = parseReply(reply)
+                    // Save the parsed reply to the database
+                    withContext(Dispatchers.IO) {
+                        dataSource.insertParsedReply(parsed_reply.toDatabaseModel())
+                        connections = dataSource.loadConnections()
+                    }             
+                } catch (e:Exception){
                     reply = e.message.toString()
                 }
             }
         },
         content = {
             Column{
-
                 MyTextField( 
                     onTextChange = { enteredText = it }
                 )
@@ -206,8 +247,8 @@ fun MainScreen(){
 
 @Composable
 fun MyCard(
-    data: WifiNetworkLocation,
-    onItemClick: (WifiNetworkLocation) -> Unit
+    data: DatabaseParsedReply,
+    onItemClick: (DatabaseParsedReply) -> Unit
 ){
     Card(
         modifier = Modifier
@@ -217,8 +258,8 @@ fun MyCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Network name: ${data.fullParsedReply.network_common_name}")
-            Text("User Name: ${data.fullParsedReply.user_name}")
+            Text("Network name: ${data.network_common_name}")
+            Text("User Name: ${data.user_name}")
         }
     }
 }
@@ -226,8 +267,8 @@ fun MyCard(
 
 @Composable
 fun MyCardList(
-    dataList: List<WifiNetworkLocation>,
-    onItemClick: (WifiNetworkLocation) -> Unit
+    dataList: List<DatabaseParsedReply>,
+    onItemClick: (DatabaseParsedReply) -> Unit
 ){
     LazyColumn {
         items(dataList) { data ->

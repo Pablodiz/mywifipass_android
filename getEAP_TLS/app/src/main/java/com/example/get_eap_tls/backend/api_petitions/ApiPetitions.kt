@@ -4,6 +4,8 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
+import com.example.get_eap_tls.backend.database.DatabaseParsedReply
+
 @Serializable
 data class ParsedReply(
     val user_name: String,
@@ -15,6 +17,19 @@ data class ParsedReply(
     val ssid: String, 
     val network_common_name: String,
 )
+
+fun ParsedReply.toDatabaseModel(): DatabaseParsedReply {
+    return DatabaseParsedReply(
+        user_name = user_name,
+        user_email = user_email,
+        user_id_document = user_id_document,
+        ca_certificate = ca_certificate,
+        certificate = certificate,
+        private_key = private_key,
+        ssid = ssid,
+        network_common_name = network_common_name
+    )
+}
 
 data class WifiNetworkLocation(
     val certificates: EapTLSCertificate,
@@ -45,99 +60,4 @@ fun processReply(string: String): WifiNetworkLocation{
     } catch (e: Exception){
         throw Exception("Error al procesar el : ${e.message}")
     }
-}
-
-
-
-class DataSource(){
-    fun loadConnections(): List<WifiNetworkLocation>{
-        // Values removed for security reasons
-        val CA_CERTIFICATE = ""
-        val PRIVATE_KEY = ""
-        val CLIENT_CERTIFICATE = "" 
-        return listOf<WifiNetworkLocation>(
-            WifiNetworkLocation(
-                certificates = EapTLSCertificate(
-                    caInputStream = CA_CERTIFICATE.byteInputStream(),
-                    clientCertInputStream = CLIENT_CERTIFICATE.byteInputStream(),
-                    clientKeyInputStream = PRIVATE_KEY.byteInputStream()
-                ),
-                fullParsedReply = ParsedReply(
-                    user_name = "user_name",
-                    user_email = "user_email",
-                    user_id_document = "user_id_document",
-                    ca_certificate = "ca_certificate", 
-                    certificate = "certificate", 
-                    private_key = "private_key",
-                    ssid = "ssid1", 
-                    network_common_name = "Evento 1"
-                )
-            ),WifiNetworkLocation(
-                certificates = EapTLSCertificate(
-                    caInputStream = CA_CERTIFICATE.byteInputStream(),
-                    clientCertInputStream = CLIENT_CERTIFICATE.byteInputStream(),
-                    clientKeyInputStream = PRIVATE_KEY.byteInputStream()
-                ),
-                fullParsedReply = ParsedReply(
-                    user_name = "user_name",
-                    user_email = "user_email",
-                    user_id_document = "user_id_document",
-                    ca_certificate = "ca_certificate", 
-                    certificate = "certificate", 
-                    private_key = "private_key",
-                    ssid = "ssid2", 
-                    network_common_name = "Evento 2"
-                )
-            ),WifiNetworkLocation(
-                certificates = EapTLSCertificate(
-                    caInputStream = CA_CERTIFICATE.byteInputStream(),
-                    clientCertInputStream = CLIENT_CERTIFICATE.byteInputStream(),
-                    clientKeyInputStream = PRIVATE_KEY.byteInputStream()
-                ),
-                fullParsedReply = ParsedReply(
-                    user_name = "user_name",
-                    user_email = "user_email",
-                    user_id_document = "user_id_document",
-                    ca_certificate = "ca_certificate", 
-                    certificate = "certificate", 
-                    private_key = "private_key",
-                    ssid = "ssid3", 
-                    network_common_name = "Evento 3"
-                )
-            ),WifiNetworkLocation(
-                certificates = EapTLSCertificate(
-                    caInputStream = CA_CERTIFICATE.byteInputStream(),
-                    clientCertInputStream = CLIENT_CERTIFICATE.byteInputStream(),
-                    clientKeyInputStream = PRIVATE_KEY.byteInputStream()
-                ),
-                fullParsedReply = ParsedReply(
-                    user_name = "user_name",
-                    user_email = "user_email",
-                    user_id_document = "user_id_document",
-                    ca_certificate = "ca_certificate", 
-                    certificate = "certificate", 
-                    private_key = "private_key",
-                    ssid = "ssid4", 
-                    network_common_name = "Evento 4"
-                )
-            ),WifiNetworkLocation(
-                certificates = EapTLSCertificate(
-                    caInputStream = CA_CERTIFICATE.byteInputStream(),
-                    clientCertInputStream = CLIENT_CERTIFICATE.byteInputStream(),
-                    clientKeyInputStream = PRIVATE_KEY.byteInputStream()
-                ),
-                fullParsedReply = ParsedReply(
-                    user_name = "user_name",
-                    user_email = "user_email",
-                    user_id_document = "user_id_document",
-                    ca_certificate = "ca_certificate", 
-                    certificate = "certificate", 
-                    private_key = "private_key",
-                    ssid = "ssid5", 
-                    network_common_name = "Evento 5"
-                )
-            )
-        )
-    }
-    
 }

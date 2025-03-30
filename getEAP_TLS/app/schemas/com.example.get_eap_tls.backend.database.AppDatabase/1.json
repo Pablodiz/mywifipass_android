@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "da0bbb6a7590a55f9f9ce17bb977e7c8",
+    "entities": [
+      {
+        "tableName": "parsed_reply",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "user_name",
+            "columnName": "user_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "user_email",
+            "columnName": "user_email",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "user_id_document",
+            "columnName": "user_id_document",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ca_certificate",
+            "columnName": "ca_certificate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certificate",
+            "columnName": "certificate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "private_key",
+            "columnName": "private_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ssid",
+            "columnName": "ssid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "network_common_name",
+            "columnName": "network_common_name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'da0bbb6a7590a55f9f9ce17bb977e7c8')"
+    ]
+  }
+}
