@@ -8,13 +8,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material.Card
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.widget.Toast
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -70,7 +70,6 @@ fun MyTextField(
     label: String = "Write your text here:",
     placeholder: String = "Your text...",
     onTextChange: (String) -> Unit
-
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -91,7 +90,6 @@ fun MyTextField(
 fun AddEventButton(
     onFabClick : () -> Unit,
     content: @Composable (PaddingValues) -> Unit
-
 ) {
     Scaffold(
         floatingActionButton = {
@@ -119,24 +117,52 @@ fun MainScreen(){
 
     // Variables de la interfaz
     var reply by remember { mutableStateOf("") }
-    var showDialog by  remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-
+    
+    var selectedNetwork by remember { mutableStateOf<WifiNetworkLocation?>(null) }
+    var showNetworkDialog by remember { mutableStateOf(false) }
+    
     AddEventButton(
         onFabClick = { showDialog = true },
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
                 //Text(reply),
-                MyCardList(DataSource().loadConnections())
-                    // Do something with the item click
-                    // For example, show a Toast or navigate to another screen
-                    //Toast.makeText(context, "Clicked on ${it.fullParsedReply.ssid}", Toast.LENGTH_SHORT).show()
-                
+                MyCardList(DataSource().loadConnections()
+                ,onItemClick = { network -> 
+                    selectedNetwork = network
+                    showNetworkDialog = true       
+                    }
+                )
             }
         }
     )
+    
+    // Dialog for showing the information of the selected network
+    if (showNetworkDialog && selectedNetwork != null) {
+        MyDialog(
+            showDialog = showNetworkDialog, 
+            onDismiss = { 
+                showDialog = false
+                selectedNetwork = null
+            }, 
+            onAccept = { 
+                showDialog = false    
+                selectedNetwork = null                             
+            },
+            content = {
+                Column{
+                    Text("User Name: ${selectedNetwork!!.fullParsedReply.user_name}")
+                    Text("User Email: ${selectedNetwork!!.fullParsedReply.user_email}")
+                    Text("User ID Document: ${selectedNetwork!!.fullParsedReply.user_id_document}")
+                }
+            },
+            dialogTitle = "${selectedNetwork!!.fullParsedReply.network_common_name}",
+        )      
+    }
 
+    // Dialog for adding a new network
     MyDialog(
         showDialog = showDialog, 
         onDismiss = { 
@@ -177,21 +203,22 @@ fun MainScreen(){
         }
     )   
 }
+
 @Composable
 fun MyCard(
     data: WifiNetworkLocation,
+    onItemClick: (WifiNetworkLocation) -> Unit
 ){
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(8.dp)
+            .clickable { onItemClick(data) },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "SSID: ${data.fullParsedReply.ssid}")
-            Text(text = "User Name: ${data.fullParsedReply.user_name}")
-            Text(text = "User Email: ${data.fullParsedReply.user_email}")
-            Text(text = "User ID Document: ${data.fullParsedReply.user_id_document}")
+            Text("Network name: ${data.fullParsedReply.network_common_name}")
+            Text("User Name: ${data.fullParsedReply.user_name}")
         }
     }
 }
@@ -200,11 +227,11 @@ fun MyCard(
 @Composable
 fun MyCardList(
     dataList: List<WifiNetworkLocation>,
-    ///onItemClick: (WifiNetworkLocation) -> Unit
+    onItemClick: (WifiNetworkLocation) -> Unit
 ){
     LazyColumn {
         items(dataList) { data ->
-            MyCard(data = data)
+            MyCard(data = data, onItemClick = onItemClick)
         }
     }
 }
