@@ -20,11 +20,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
-import com.example.get_eap_tls.backend.api_petitions.WifiNetworkLocation
-import com.example.get_eap_tls.backend.api_petitions.toDatabaseModel
-import com.example.get_eap_tls.backend.api_petitions.ParsedReply
 import com.example.get_eap_tls.backend.api_petitions.parseReply
-import com.example.get_eap_tls.backend.database.DatabaseParsedReply
+import com.example.get_eap_tls.backend.database.Network
 import com.example.get_eap_tls.backend.database.DataSource
 import com.example.get_eap_tls.backend.peticionHTTP
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
@@ -125,9 +122,9 @@ fun MainScreen(){
     var showDialog by remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-    var selectedNetwork by remember { mutableStateOf<DatabaseParsedReply?>(null)}
+    var selectedNetwork by remember { mutableStateOf<Network?>(null)}
     var showNetworkDialog by remember { mutableStateOf(false) }
-    var connections by remember { mutableStateOf<List<DatabaseParsedReply>>(emptyList()) }
+    var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
 
     // Get data from the database
     LaunchedEffect(Unit) {
@@ -194,7 +191,7 @@ fun MainScreen(){
                             val networkToDelete = selectedNetwork
                             scope.launch {
                                 withContext(Dispatchers.IO) {
-                                    dataSource.deleteParsedReply(networkToDelete!!)
+                                    dataSource.deleteNetwork(networkToDelete!!)
                                     connections = dataSource.loadConnections()
                                 }
                             }
@@ -229,10 +226,10 @@ fun MainScreen(){
                     }
                 }
                 try{
-                    val parsed_reply = parseReply(reply)
+                    val network = parseReply(reply)
                     // Save the parsed reply to the database
                     withContext(Dispatchers.IO) {
-                        dataSource.insertParsedReply(parsed_reply.toDatabaseModel())
+                        dataSource.insertNetwork(network)//.toDatabaseModel())
                         connections = dataSource.loadConnections()
                     }             
                 } catch (e:Exception){
@@ -252,8 +249,8 @@ fun MainScreen(){
 
 @Composable
 fun MyCard(
-    data: DatabaseParsedReply,
-    onItemClick: (DatabaseParsedReply) -> Unit
+    data: Network,
+    onItemClick: (Network) -> Unit
 ){
     Card(
         modifier = Modifier
@@ -272,8 +269,8 @@ fun MyCard(
 
 @Composable
 fun MyCardList(
-    dataList: List<DatabaseParsedReply>,
-    onItemClick: (DatabaseParsedReply) -> Unit
+    dataList: List<Network>,
+    onItemClick: (Network) -> Unit
 ){
     LazyColumn {
         items(dataList) { data ->

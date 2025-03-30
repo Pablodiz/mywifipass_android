@@ -1,5 +1,7 @@
 package com.example.get_eap_tls.backend.database
 
+import kotlinx.serialization.*
+import kotlinx.serialization.json.Json
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Delete
@@ -13,13 +15,14 @@ import androidx.room.PrimaryKey
 import android.util.Log
 import java.util.concurrent.Executors
 
-import com.example.get_eap_tls.backend.api_petitions.WifiNetworkLocation
-import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
-import com.example.get_eap_tls.backend.api_petitions.ParsedReply
 
-@Entity(tableName = "parsed_reply")
-data class DatabaseParsedReply(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+@Serializable
+@Entity(tableName = "networks")
+data class Network(
+    @PrimaryKey(autoGenerate = true) 
+    @Transient
+    val id: Int = 0,
+    
     val user_name: String,
     val user_email: String,
     val user_id_document: String,
@@ -30,25 +33,25 @@ data class DatabaseParsedReply(
     val network_common_name: String
 )
 
-@Database(entities = [DatabaseParsedReply::class], version = 1)
+@Database(entities = [Network::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun parsedReplyDao(): ParsedReplyDao
+    abstract fun networkDao(): NetworkDao
 }
 
 
 @Dao
-interface ParsedReplyDao {
-    @Query("SELECT * FROM parsed_reply")
-    fun getAllParsedReplies(): List<DatabaseParsedReply>
+interface NetworkDao {
+    @Query("SELECT * FROM networks")
+    fun getAllNetworks(): List<Network>
     
     @Insert
-    fun insertParsedReply(parsedReply: DatabaseParsedReply)
+    fun insertNetwork(network: Network)
 
     @Insert
-    fun insertParsedReplies(parsedReplies: List<DatabaseParsedReply>)
+    fun insertNetworks(networkList: List<Network>)
 
     @Delete 
-    fun deleteParsedReply(parsedReply: DatabaseParsedReply)
+    fun deleteNetwork(network: Network)
 }
 
 
@@ -60,26 +63,26 @@ class DataSource(context: Context) {
         "app-database"
     ).build()
 
-    private val parsedReplyDao = db.parsedReplyDao()
+    private val NetworkDao = db.networkDao()
 
-    fun loadConnections(): List<DatabaseParsedReply> {
+    fun loadConnections(): List<Network> {
         return try {
-            val parsedReplies = parsedReplyDao.getAllParsedReplies()
-            parsedReplies
+            val Networks = NetworkDao.getAllNetworks()
+            Networks
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    fun insertParsedReplies(parsedReplies: List<DatabaseParsedReply>) {
-        parsedReplyDao.insertParsedReplies(parsedReplies)
+    fun insertNetworks(Networks: List<Network>) {
+        NetworkDao.insertNetworks(Networks)
     }
 
-    fun insertParsedReply(parsedReply: DatabaseParsedReply) {
-        parsedReplyDao.insertParsedReply(parsedReply)
+    fun insertNetwork(Network: Network) {
+        NetworkDao.insertNetwork(Network)
     }
 
-    fun deleteParsedReply(parsedReply: DatabaseParsedReply) {
-        parsedReplyDao.deleteParsedReply(parsedReply)
+    fun deleteNetwork(Network: Network) {
+        NetworkDao.deleteNetwork(Network)
     }
 }
