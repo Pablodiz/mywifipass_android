@@ -31,33 +31,11 @@ fun ParsedReply.toDatabaseModel(): DatabaseParsedReply {
     )
 }
 
-data class WifiNetworkLocation(
-    val certificates: EapTLSCertificate,
-    val fullParsedReply: ParsedReply,
-)
-
-
 fun parseReply(string: String): ParsedReply{
     return try{
         val constructor_json = Json { ignoreUnknownKeys = true }
         constructor_json.decodeFromString<ParsedReply>(string)
     } catch (e: Exception){
         throw Exception("Error al procesar la respuesta: ${e.message}")
-    }
-}
-
-
-fun processReply(string: String): WifiNetworkLocation{
-    return try{
-        val parsedReply = parseReply(string)
-        val certificates = EapTLSCertificate(
-            parsedReply.ca_certificate.byteInputStream(),
-            parsedReply.certificate.byteInputStream(),
-            parsedReply.private_key.byteInputStream()
-        )
-        WifiNetworkLocation(certificates = certificates, fullParsedReply = parsedReply)
-
-    } catch (e: Exception){
-        throw Exception("Error al procesar el : ${e.message}")
     }
 }

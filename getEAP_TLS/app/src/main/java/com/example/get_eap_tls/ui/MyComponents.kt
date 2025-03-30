@@ -27,9 +27,9 @@ import com.example.get_eap_tls.backend.api_petitions.parseReply
 import com.example.get_eap_tls.backend.database.DatabaseParsedReply
 import com.example.get_eap_tls.backend.database.DataSource
 import com.example.get_eap_tls.backend.peticionHTTP
-import com.example.get_eap_tls.backend.api_petitions.processReply
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
+import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -167,15 +167,20 @@ fun MainScreen(){
                     Text("User Name: ${selectedNetwork!!.user_name}")
                     Text("User Email: ${selectedNetwork!!.user_email}")
                     Text("User ID Document: ${selectedNetwork!!.user_id_document}")
+                    // Button that connects to the network
                     Button(
                         onClick = {
                             scope.launch {
-                                val wifiNetworkLocation = processReply(reply)
+                                val certificates = EapTLSCertificate(
+                                    selectedNetwork!!.ca_certificate.byteInputStream(),
+                                    selectedNetwork!!.certificate.byteInputStream(),
+                                    selectedNetwork!!.private_key.byteInputStream()
+                                )
                                 val eapTLSConnection = EapTLSConnection(
-                                    wifiNetworkLocation.fullParsedReply.ssid, 
-                                    wifiNetworkLocation.certificates, 
-                                    wifiNetworkLocation.fullParsedReply.user_email, //The identity musn't have blank spaces 
-                                    wifiNetworkLocation.fullParsedReply.network_common_name
+                                    selectedNetwork!!.ssid, 
+                                    certificates, 
+                                    selectedNetwork!!.user_email, //The identity musn't have blank spaces 
+                                    selectedNetwork!!.network_common_name
                                 ) 
                                 eapTLSConnection.connect(wifiManager)                
                             }
