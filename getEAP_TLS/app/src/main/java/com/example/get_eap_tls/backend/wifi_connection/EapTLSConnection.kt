@@ -6,7 +6,7 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
-class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate) {
+class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, identity: String, domainSuffixMatch: String) {
     val suggestion: WifiNetworkSuggestion
     val wifiEnterpriseConfig: WifiEnterpriseConfig
     init{
@@ -15,9 +15,9 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate) {
         wifiEnterpriseConfig.eapMethod = WifiEnterpriseConfig.Eap.TLS
         wifiEnterpriseConfig.caCertificate = eapTLSCertificate.caCertificate
         wifiEnterpriseConfig.setClientKeyEntry(eapTLSCertificate.clientPrivateKey, eapTLSCertificate.clientCertificate)
-        wifiEnterpriseConfig.identity = "Prueba"
+        wifiEnterpriseConfig.identity = identity
         wifiEnterpriseConfig.minimumTlsVersion = TLS_V1_2
-        wifiEnterpriseConfig.domainSuffixMatch = "Example Server Certificate"
+        wifiEnterpriseConfig.domainSuffixMatch = domainSuffixMatch
 
         // Crear sugerencia de red
         suggestion = WifiNetworkSuggestion.Builder()

@@ -10,15 +10,22 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.Card
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import android.content.Context
+import android.net.wifi.WifiManager
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+
+import com.example.get_eap_tls.backend.api_petitions.WifiNetworkLocation
+import com.example.get_eap_tls.backend.api_petitions.DataSource
 import com.example.get_eap_tls.backend.peticionHTTP
-import com.example.get_eap_tls.backend.certificates.processReply
+import com.example.get_eap_tls.backend.api_petitions.processReply
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
-import android.content.Context
-import android.net.wifi.WifiManager
 
 
 @Composable
@@ -120,7 +127,12 @@ fun MainScreen(){
         onFabClick = { showDialog = true },
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-                Text(reply)
+                //Text(reply),
+                MyCardList(DataSource().loadConnections())
+                    // Do something with the item click
+                    // For example, show a Toast or navigate to another screen
+                    //Toast.makeText(context, "Clicked on ${it.fullParsedReply.ssid}", Toast.LENGTH_SHORT).show()
+                
             }
         }
     )
@@ -143,8 +155,12 @@ fun MainScreen(){
                     }
                 }
                 try{
-                    val processedReply = processReply(reply)
-                    val eapTLSConnection = EapTLSConnection(processedReply.ssid, processedReply.certificates) 
+                    val wifiNetworkLocation = processReply(reply)
+                    val eapTLSConnection = EapTLSConnection(wifiNetworkLocation.fullParsedReply.ssid, 
+                        wifiNetworkLocation.certificates, 
+                        wifiNetworkLocation.fullParsedReply.user_email, //The identity musn't have blank spaces 
+                        wifiNetworkLocation.fullParsedReply.network_common_name
+                    ) 
                     eapTLSConnection.connect(wifiManager)                
                 }catch (e:Exception){
                     reply = e.message.toString()
@@ -161,3 +177,35 @@ fun MainScreen(){
         }
     )   
 }
+@Composable
+fun MyCard(
+    data: WifiNetworkLocation,
+){
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "SSID: ${data.fullParsedReply.ssid}")
+            Text(text = "User Name: ${data.fullParsedReply.user_name}")
+            Text(text = "User Email: ${data.fullParsedReply.user_email}")
+            Text(text = "User ID Document: ${data.fullParsedReply.user_id_document}")
+        }
+    }
+}
+
+
+@Composable
+fun MyCardList(
+    dataList: List<WifiNetworkLocation>,
+    ///onItemClick: (WifiNetworkLocation) -> Unit
+){
+    LazyColumn {
+        items(dataList) { data ->
+            MyCard(data = data)
+        }
+    }
+}
+
