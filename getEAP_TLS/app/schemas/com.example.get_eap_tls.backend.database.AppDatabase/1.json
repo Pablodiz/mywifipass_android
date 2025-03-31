@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "713a7634ac457f541e27e348fb02ea9d",
+    "identityHash": "1064debbff8ed0b2467b2238b1447d2b",
     "entities": [
       {
         "tableName": "networks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL, `is_connection_configured` INTEGER NOT NULL, `are_certificiates_decrypted` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -61,6 +61,18 @@
             "columnName": "network_common_name",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "is_connection_configured",
+            "columnName": "is_connection_configured",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "are_certificiates_decrypted",
+            "columnName": "are_certificiates_decrypted",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -76,7 +88,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '713a7634ac457f541e27e348fb02ea9d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1064debbff8ed0b2467b2238b1447d2b')"
     ]
   }
 }

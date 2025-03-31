@@ -30,7 +30,13 @@ data class Network(
     val certificate: String,
     val private_key: String,
     val ssid: String,
-    val network_common_name: String
+    val network_common_name: String,
+
+    @Transient
+    val is_connection_configured: Boolean = false,
+    @Transient
+    val are_certificiates_decrypted: Boolean = false,
+
 )
 
 @Database(entities = [Network::class], version = 1)
