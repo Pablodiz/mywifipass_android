@@ -31,7 +31,13 @@ data class Network(
     val private_key: String,
     val ssid: String,
     val network_common_name: String,
-
+    val user_uuid: String,
+    val location: String,
+    val start_date: String,
+    val end_date: String,
+    val description: String,
+    val location_name: String,
+    
     @Transient
     val is_connection_configured: Boolean = false,
     @Transient

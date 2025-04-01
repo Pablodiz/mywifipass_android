@@ -109,6 +109,37 @@ fun AddEventButton(
 }
 
 @Composable
+fun InfoText(label: String, value: String) {
+    if (value.isNotEmpty()) {
+        Text("$label: $value")
+    }
+}
+
+@Composable
+fun NetworkDialogInfo(network: Network) {
+    Column {
+        InfoText("User Name", network.user_name)
+        InfoText("User Email", network.user_email)
+        InfoText("User ID Document", network.user_id_document)
+        InfoText("Event's name", network.location_name)
+        InfoText("Location", network.location)
+        InfoText("Start date", network.start_date)
+        InfoText("End date", network.end_date)
+        InfoText("Description", network.description)
+    }
+}
+
+@Composable
+fun NetworkCardInfo(network: Network) {
+    Column {
+        InfoText("Location", network.location)
+        InfoText("Start date", network.start_date)
+        InfoText("End date", network.end_date)
+    }
+}
+
+
+@Composable
 fun MainScreen(){
     // Create scope for the coroutine (for async tasks)
     val scope = rememberCoroutineScope()
@@ -137,6 +168,7 @@ fun MainScreen(){
         onFabClick = { showDialog = true },
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
+                //Text(reply)
                 MyCardList(dataList = connections 
                 ,onItemClick = { network -> 
                     selectedNetwork = network
@@ -161,9 +193,7 @@ fun MainScreen(){
             },
             content = {
                 Column{
-                    Text("User Name: ${selectedNetwork!!.user_name}")
-                    Text("User Email: ${selectedNetwork!!.user_email}")
-                    Text("User ID Document: ${selectedNetwork!!.user_id_document}")
+                    NetworkDialogInfo(network = selectedNetwork!!)
                     // Button that connects to the network
                     Button(
                         onClick = {
@@ -203,7 +233,7 @@ fun MainScreen(){
                     }
                 }
             },
-            dialogTitle = "${selectedNetwork!!.network_common_name}",
+            dialogTitle = "${selectedNetwork!!.location_name}",
         )      
     }
 
@@ -229,7 +259,7 @@ fun MainScreen(){
                     val network = parseReply(reply)
                     // Save the parsed reply to the database
                     withContext(Dispatchers.IO) {
-                        dataSource.insertNetwork(network)//.toDatabaseModel())
+                        dataSource.insertNetwork(network)
                         connections = dataSource.loadConnections()
                     }             
                 } catch (e:Exception){
@@ -260,8 +290,7 @@ fun MyCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Network name: ${data.network_common_name}")
-            Text("User Name: ${data.user_name}")
+            NetworkCardInfo(network = data)
         }
     }
 }

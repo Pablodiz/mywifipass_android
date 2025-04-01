@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "1064debbff8ed0b2467b2238b1447d2b",
+    "identityHash": "1bb600a7f1688a05c4170b00e927e076",
     "entities": [
       {
         "tableName": "networks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL, `is_connection_configured` INTEGER NOT NULL, `are_certificiates_decrypted` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL, `user_uuid` TEXT NOT NULL, `location` TEXT NOT NULL, `start_date` TEXT NOT NULL, `end_date` TEXT NOT NULL, `description` TEXT NOT NULL, `location_name` TEXT NOT NULL, `is_connection_configured` INTEGER NOT NULL, `are_certificiates_decrypted` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -63,6 +63,42 @@
             "notNull": true
           },
           {
+            "fieldPath": "user_uuid",
+            "columnName": "user_uuid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "location",
+            "columnName": "location",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "start_date",
+            "columnName": "start_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "end_date",
+            "columnName": "end_date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "location_name",
+            "columnName": "location_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "is_connection_configured",
             "columnName": "is_connection_configured",
             "affinity": "INTEGER",
@@ -88,7 +124,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1064debbff8ed0b2467b2238b1447d2b')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1bb600a7f1688a05c4170b00e927e076')"
     ]
   }
 }
