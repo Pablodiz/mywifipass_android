@@ -7,8 +7,6 @@ import java.security.cert.CertificateFactory
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.Base64
-import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
 
 class EapTLSCertificate(caInputStream: InputStream,  
                         clientCertInputStream: InputStream, 
@@ -39,49 +37,5 @@ class EapTLSCertificate(caInputStream: InputStream,
             .replace("-----END PRIVATE KEY-----", "")
             .replace("\\s".toRegex(), "")
         return Base64.getDecoder().decode(base64Content)
-    }
-}
-
-
-@Serializable
-data class ParsedReply(
-    val name: String,
-    val ca_certificate: String, 
-    val certificate: String, 
-    val private_key: String,
-    val ssid: String, 
-)
-
-
-
-
-fun parseReply(string: String): ParsedReply{
-    return try{
-        val constructor_json = Json { ignoreUnknownKeys = true }
-        constructor_json.decodeFromString<ParsedReply>(string)
-    } catch (e: Exception){
-        throw Exception("Error al procesar la respuesta: ${e.message}")
-    }
-}
-
-
-data class ProcessedReply(
-    val ssid: String,
-    val certificates: EapTLSCertificate,
-    val fullParsedReply: ParsedReply
-)
-
-fun processReply(string: String): ProcessedReply{
-    return try{
-        val parsedReply = parseReply(string)
-        val certificates = EapTLSCertificate(
-            parsedReply.ca_certificate.byteInputStream(),
-            parsedReply.certificate.byteInputStream(),
-            parsedReply.private_key.byteInputStream()
-        )
-        ProcessedReply(ssid = parsedReply.ssid, certificates = certificates, fullParsedReply = parsedReply)
-
-    } catch (e: Exception){
-        throw Exception("Error al procesar el : ${e.message}")
     }
 }
