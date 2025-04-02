@@ -15,6 +15,8 @@ import androidx.compose.foundation.clickable
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.widget.Toast
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -270,10 +272,13 @@ fun MainScreen(){
         content = {
             Column{
                 MyTextField( 
-                    onTextChange = { enteredText = it }
+                    onTextChange = { enteredText = it },
+                    label = "Enter URL",
+                    placeholder = "https://example.com"
                 )
             }
-        }
+        },
+        dialogTitle = "Add new network",
     )   
 }
 
@@ -289,7 +294,16 @@ fun MyCard(
             .clickable { onItemClick(data) },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
+        
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = data.location_name,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             NetworkCardInfo(network = data)
         }
     }
