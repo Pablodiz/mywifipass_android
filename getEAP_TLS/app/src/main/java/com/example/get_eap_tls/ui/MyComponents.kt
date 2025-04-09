@@ -30,6 +30,19 @@ import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import androidx.compose.ui.viewinterop.AndroidView
+import com.journeyapps.barcodescanner.BarcodeCallback
+import com.journeyapps.barcodescanner.BarcodeResult
+import com.journeyapps.barcodescanner.DecoratedBarcodeView
+import com.journeyapps.barcodescanner.DefaultDecoderFactory
+import android.content.Intent
+import com.google.zxing.ResultPoint
+import com.google.zxing.BarcodeFormat
+
 @Composable
 // Funcion que muestra un dialogo emergente
 fun MyDialog(
@@ -140,6 +153,83 @@ fun NetworkCardInfo(network: Network) {
     }
 }
 
+@Composable
+fun QRScannerDialog(
+    onResult: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            AndroidView(
+                factory = { context ->
+                    // Create the barcode scanner view
+                    val barcodeView = DecoratedBarcodeView(context)
+                    // Set the decoder factory to only recognize QR codes
+                    barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
+                    // Set the help text
+                    barcodeView.setStatusText("Scan a QR code")
+                    // Start the camera decode (the user doesnt have to click another button)                
+                    barcodeView.decodeSingle(object : BarcodeCallback {
+                        override fun barcodeResult(result: BarcodeResult?) {
+                            result?.text?.let {
+                                onResult(it)
+                                onDismiss()
+                            }
+                        }
+                        // List of the points that are analyzed by the scanner
+                        override fun possibleResultPoints(resultPoints: MutableList<ResultPoint>?) {}
+                    })
+                    barcodeView.resume()
+                    barcodeView
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            )
+        },
+        confirmButton = {},
+        dismissButton = {}
+    )
+}
+
+suspend fun performPetitionAndUpdateDatabase(
+    context: Context,
+    enteredText: String,
+    dataSource: DataSource
+): List<Network> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val reply = peticionHTTP(enteredText)
+            val network = parseReply(reply)
+            dataSource.insertNetwork(network)
+            dataSource.loadConnections() 
+        } catch (e: Exception) {
+            Log.e("performPetition", e.message ?: "Unknown error")
+            dataSource.loadConnections() 
+        }
+    }
+}
+
+suspend fun makePetitionAndAddToDatabase(
+    context: Context,
+    enteredText: String,
+    dataSource: DataSource, 
+    onSuccess: (String) -> Unit = {},
+    onError: (String) -> Unit = {}
+):List<Network> {
+    withContext(Dispatchers.IO) {
+        try{
+            val reply = peticionHTTP(enteredText)
+            val network = parseReply(reply)
+            dataSource.insertNetwork(network)
+            onSuccess(reply) 
+        } catch (e:Exception){
+            onError(e.message.toString())
+        }
+    }
+    return dataSource.loadConnections()
+}
 
 @Composable
 fun MainScreen(){
@@ -158,6 +248,7 @@ fun MainScreen(){
     var selectedNetwork by remember { mutableStateOf<Network?>(null)}
     var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
+    var showQrScanner by remember { mutableStateOf(false) }
 
     // Get data from the database
     LaunchedEffect(Unit) {
@@ -170,6 +261,9 @@ fun MainScreen(){
         onFabClick = { showDialog = true },
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
+                Button(onClick = { showQrScanner = true }) {
+                    Text("Scan QR")
+                }
                 //Text(reply)
                 MyCardList(dataList = connections 
                 ,onItemClick = { network -> 
@@ -181,6 +275,25 @@ fun MainScreen(){
         }
     )
     
+    if (showQrScanner) {
+        QRScannerDialog(
+            onResult = { enteredText ->
+                scope.launch{
+                    connections = withContext(Dispatchers.IO) {
+                        makePetitionAndAddToDatabase(
+                            context = context, 
+                            enteredText = enteredText, 
+                            dataSource = dataSource,
+                            onSuccess = { reply = it },
+                            onError = { reply = it }
+                        )
+                    }
+                }  
+                showQrScanner = false
+            },
+            onDismiss = { showQrScanner = false }
+        )
+    }
     // Dialog for showing the information of the selected network
     if (showNetworkDialog && selectedNetwork != null) {
         MyDialog(
@@ -249,24 +362,17 @@ fun MainScreen(){
             showDialog = false 
             // En un hilo secundario, hacer la petición HTTP y mostrar un mensaje de que está ocurriendo
             scope.launch{
-                Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show()
-                reply = withContext(Dispatchers.IO) {
-                    try{
-                        peticionHTTP(enteredText)
-                    }catch (e:Exception){
-                        e.message.toString()
+                scope.launch{
+                    connections = withContext(Dispatchers.IO) {
+                        makePetitionAndAddToDatabase(
+                            context = context, 
+                            enteredText = enteredText, 
+                            dataSource = dataSource,
+                            onSuccess = { reply = it },
+                            onError = { reply = it }
+                        )
                     }
-                }
-                try{
-                    val network = parseReply(reply)
-                    // Save the parsed reply to the database
-                    withContext(Dispatchers.IO) {
-                        dataSource.insertNetwork(network)
-                        connections = dataSource.loadConnections()
-                    }             
-                } catch (e:Exception){
-                    reply = e.message.toString()
-                }
+                }   
             }
         },
         content = {
