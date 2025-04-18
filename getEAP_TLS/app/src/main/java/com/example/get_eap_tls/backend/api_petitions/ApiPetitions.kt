@@ -5,6 +5,11 @@ import kotlinx.serialization.json.Json
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
 import com.example.get_eap_tls.backend.database.Network
+import com.example.get_eap_tls.backend.database.DataSource
+import com.example.get_eap_tls.backend.httpPetition
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import android.content.Context
 
 fun parseReply(string: String): Network{
     return try{
@@ -13,4 +18,23 @@ fun parseReply(string: String): Network{
     } catch (e: Exception){
         throw Exception("Error al procesar la respuesta: ${e.message}")
     }
+}
+
+suspend fun makePetitionAndAddToDatabase(
+    enteredText: String,
+    dataSource: DataSource, 
+    onSuccess: (String) -> Unit = {},
+    onError: (String) -> Unit = {}
+):List<Network> {
+    withContext(Dispatchers.IO) {
+        try{
+            val reply = httpPetition(enteredText)
+            val network = parseReply(reply)
+            dataSource.insertNetwork(network)
+            onSuccess(reply) 
+        } catch (e:Exception){
+            onError(e.message.toString())
+        }
+    }
+    return dataSource.loadConnections()
 }
