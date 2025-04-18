@@ -2,7 +2,9 @@ package com.example.get_eap_tls.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
@@ -15,6 +17,8 @@ import androidx.compose.foundation.clickable
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.widget.Toast
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +31,22 @@ import com.example.get_eap_tls.backend.peticionHTTP
 import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
+
+// Imports for the QR code scanner
+import android.util.Log
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.*
+import com.google.zxing.*
+
+// Imports for the SpeedDial
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.leinardi.android.speeddial.compose.*
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.animation.ExperimentalAnimationApi
+
+
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -85,25 +105,45 @@ fun MyTextField(
     
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+data class SpeedDialItem(
+    val label: String,
+    val icon: @Composable () -> Unit,
+    val onClick: () -> Unit
+)
+
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun AddEventButton(
-    onFabClick : () -> Unit,
+    speedDialItems: List<SpeedDialItem>,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    var speedDialState by remember { mutableStateOf(SpeedDialState.Collapsed) }
+
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {onFabClick()}
+            SpeedDial(
+                state = speedDialState,
+                onFabClick = { expanded ->
+                    speedDialState = if (expanded) SpeedDialState.Collapsed else SpeedDialState.Expanded
+                },
+                fabClosedBackgroundColor = MaterialTheme.colorScheme.primary, 
+                fabClosedContentColor = MaterialTheme.colorScheme.onPrimary, 
+                fabOpenedBackgroundColor = MaterialTheme.colorScheme.secondary,
+                fabOpenedContentColor = MaterialTheme.colorScheme.onSecondary
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add event"
-                )
+                speedDialItems.forEach { item ->
+                    item {
+                        ExtendedFloatingActionButton(
+                            onClick = item.onClick,
+                            text = { Text(item.label) },
+                            icon = { item.icon() }
+                        )
+                    }
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End
-    ){ paddingValues -> 
+    ) { paddingValues ->
         content(paddingValues)
     }
 }
@@ -138,6 +178,82 @@ fun NetworkCardInfo(network: Network) {
     }
 }
 
+@Composable
+fun QRScannerDialog(
+    onResult: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            AndroidView(
+                factory = { context ->
+                    // Create the barcode scanner view
+                    val barcodeView = DecoratedBarcodeView(context)
+                    // Set the decoder factory to only recognize QR codes
+                    barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
+                    // Set the help text
+                    barcodeView.setStatusText("Scan a QR code")
+                    // Start the camera decode (the user doesnt have to click another button)                
+                    barcodeView.decodeSingle(object : BarcodeCallback {
+                        override fun barcodeResult(result: BarcodeResult?) {
+                            result?.text?.let {
+                                onResult(it)
+                                onDismiss()
+                            }
+                        }
+                        // List of the points that are analyzed by the scanner
+                        override fun possibleResultPoints(resultPoints: MutableList<ResultPoint>?) {}
+                    })
+                    barcodeView.resume()
+                    barcodeView
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            )
+        },
+        confirmButton = {},
+        dismissButton = {}
+    )
+}
+
+suspend fun performPetitionAndUpdateDatabase(
+    context: Context,
+    enteredText: String,
+    dataSource: DataSource
+): List<Network> {
+    return withContext(Dispatchers.IO) {
+        try {
+            val reply = peticionHTTP(enteredText)
+            val network = parseReply(reply)
+            dataSource.insertNetwork(network)
+            dataSource.loadConnections() 
+        } catch (e: Exception) {
+            dataSource.loadConnections() 
+        }
+    }
+}
+
+suspend fun makePetitionAndAddToDatabase(
+    context: Context,
+    enteredText: String,
+    dataSource: DataSource, 
+    onSuccess: (String) -> Unit = {},
+    onError: (String) -> Unit = {}
+):List<Network> {
+    withContext(Dispatchers.IO) {
+        try{
+            val reply = peticionHTTP(enteredText)
+            val network = parseReply(reply)
+            dataSource.insertNetwork(network)
+            onSuccess(reply) 
+        } catch (e:Exception){
+            onError(e.message.toString())
+        }
+    }
+    return dataSource.loadConnections()
+}
 
 @Composable
 fun MainScreen(){
@@ -156,6 +272,8 @@ fun MainScreen(){
     var selectedNetwork by remember { mutableStateOf<Network?>(null)}
     var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var speedDialState by remember { mutableStateOf(SpeedDialState.Collapsed) }    
 
     // Get data from the database
     LaunchedEffect(Unit) {
@@ -165,20 +283,50 @@ fun MainScreen(){
     }
 
     AddEventButton(
-        onFabClick = { showDialog = true },
+        speedDialItems = listOf(
+            SpeedDialItem(
+                label = "Scan QR",
+                icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
+                onClick = { showQrScanner = true }
+            ),
+            SpeedDialItem(
+                label = "Enter URL",
+                icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
+                onClick = { showDialog = true }
+            )
+        ),
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-                //Text(reply)
-                MyCardList(dataList = connections 
-                ,onItemClick = { network -> 
-                    selectedNetwork = network
-                    showNetworkDialog = true       
+                MyCardList(
+                    dataList = connections,
+                    onItemClick = { network ->
+                        selectedNetwork = network
+                        showNetworkDialog = true
                     }
-                )                
+                )
             }
         }
-    )
-    
+    )   
+
+    if (showQrScanner) {
+        QRScannerDialog(
+            onResult = { enteredText ->
+                scope.launch{
+                    connections = withContext(Dispatchers.IO) {
+                        makePetitionAndAddToDatabase(
+                            context = context, 
+                            enteredText = enteredText, 
+                            dataSource = dataSource,
+                            onSuccess = { reply = it },
+                            onError = { reply = it }
+                        )
+                    }
+                }  
+                showQrScanner = false
+            },
+            onDismiss = { showQrScanner = false }
+        )
+    }
     // Dialog for showing the information of the selected network
     if (showNetworkDialog && selectedNetwork != null) {
         MyDialog(
@@ -247,33 +395,29 @@ fun MainScreen(){
             showDialog = false 
             // En un hilo secundario, hacer la petición HTTP y mostrar un mensaje de que está ocurriendo
             scope.launch{
-                Toast.makeText(context, "Loading...", Toast.LENGTH_SHORT).show()
-                reply = withContext(Dispatchers.IO) {
-                    try{
-                        peticionHTTP(enteredText)
-                    }catch (e:Exception){
-                        e.message.toString()
+                scope.launch{
+                    connections = withContext(Dispatchers.IO) {
+                        makePetitionAndAddToDatabase(
+                            context = context, 
+                            enteredText = enteredText, 
+                            dataSource = dataSource,
+                            onSuccess = { reply = it },
+                            onError = { reply = it }
+                        )
                     }
-                }
-                try{
-                    val network = parseReply(reply)
-                    // Save the parsed reply to the database
-                    withContext(Dispatchers.IO) {
-                        dataSource.insertNetwork(network)
-                        connections = dataSource.loadConnections()
-                    }             
-                } catch (e:Exception){
-                    reply = e.message.toString()
-                }
+                }   
             }
         },
         content = {
             Column{
                 MyTextField( 
-                    onTextChange = { enteredText = it }
+                    onTextChange = { enteredText = it },
+                    label = "Enter URL",
+                    placeholder = "https://example.com"
                 )
             }
-        }
+        },
+        dialogTitle = "Add new network",
     )   
 }
 
@@ -289,7 +433,16 @@ fun MyCard(
             .clickable { onItemClick(data) },
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
+        
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = data.location_name,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
             NetworkCardInfo(network = data)
         }
     }
