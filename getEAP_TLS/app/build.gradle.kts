@@ -68,6 +68,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.google.zxing:core:3.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
@@ -78,4 +79,5 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("com.leinardi.android:speed-dial.compose:1.0.0-alpha04")
 }
