@@ -2,7 +2,9 @@ package com.example.get_eap_tls.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
@@ -30,18 +32,21 @@ import com.example.get_eap_tls.backend.wifi_connection.EapTLSConnection
 import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
+// Imports for the QR code scanner
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import com.journeyapps.barcodescanner.ScanContract
-import com.journeyapps.barcodescanner.ScanOptions
 import androidx.compose.ui.viewinterop.AndroidView
-import com.journeyapps.barcodescanner.BarcodeCallback
-import com.journeyapps.barcodescanner.BarcodeResult
-import com.journeyapps.barcodescanner.DecoratedBarcodeView
-import com.journeyapps.barcodescanner.DefaultDecoderFactory
-import android.content.Intent
-import com.google.zxing.ResultPoint
-import com.google.zxing.BarcodeFormat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.journeyapps.barcodescanner.*
+import com.google.zxing.*
+
+// Imports for the SpeedDial
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.leinardi.android.speeddial.compose.*
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.animation.ExperimentalAnimationApi
+
+
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -100,25 +105,45 @@ fun MyTextField(
     
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+data class SpeedDialItem(
+    val label: String,
+    val icon: @Composable () -> Unit,
+    val onClick: () -> Unit
+)
+
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun AddEventButton(
-    onFabClick : () -> Unit,
+    speedDialItems: List<SpeedDialItem>,
     content: @Composable (PaddingValues) -> Unit
 ) {
+    var speedDialState by remember { mutableStateOf(SpeedDialState.Collapsed) }
+
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {onFabClick()}
+            SpeedDial(
+                state = speedDialState,
+                onFabClick = { expanded ->
+                    speedDialState = if (expanded) SpeedDialState.Collapsed else SpeedDialState.Expanded
+                },
+                fabClosedBackgroundColor = MaterialTheme.colorScheme.primary, 
+                fabClosedContentColor = MaterialTheme.colorScheme.onPrimary, 
+                fabOpenedBackgroundColor = MaterialTheme.colorScheme.secondary,
+                fabOpenedContentColor = MaterialTheme.colorScheme.onSecondary
             ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add event"
-                )
+                speedDialItems.forEach { item ->
+                    item {
+                        ExtendedFloatingActionButton(
+                            onClick = item.onClick,
+                            text = { Text(item.label) },
+                            icon = { item.icon() }
+                        )
+                    }
+                }
             }
         },
         floatingActionButtonPosition = FabPosition.End
-    ){ paddingValues -> 
+    ) { paddingValues ->
         content(paddingValues)
     }
 }
@@ -205,7 +230,6 @@ suspend fun performPetitionAndUpdateDatabase(
             dataSource.insertNetwork(network)
             dataSource.loadConnections() 
         } catch (e: Exception) {
-            Log.e("performPetition", e.message ?: "Unknown error")
             dataSource.loadConnections() 
         }
     }
@@ -249,6 +273,7 @@ fun MainScreen(){
     var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
+    var speedDialState by remember { mutableStateOf(SpeedDialState.Collapsed) }    
 
     // Get data from the database
     LaunchedEffect(Unit) {
@@ -258,23 +283,31 @@ fun MainScreen(){
     }
 
     AddEventButton(
-        onFabClick = { showDialog = true },
+        speedDialItems = listOf(
+            SpeedDialItem(
+                label = "Scan QR",
+                icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
+                onClick = { showQrScanner = true }
+            ),
+            SpeedDialItem(
+                label = "Enter URL",
+                icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
+                onClick = { showDialog = true }
+            )
+        ),
         content = { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-                Button(onClick = { showQrScanner = true }) {
-                    Text("Scan QR")
-                }
-                //Text(reply)
-                MyCardList(dataList = connections 
-                ,onItemClick = { network -> 
-                    selectedNetwork = network
-                    showNetworkDialog = true       
+                MyCardList(
+                    dataList = connections,
+                    onItemClick = { network ->
+                        selectedNetwork = network
+                        showNetworkDialog = true
                     }
-                )                
+                )
             }
         }
-    )
-    
+    )   
+
     if (showQrScanner) {
         QRScannerDialog(
             onResult = { enteredText ->
