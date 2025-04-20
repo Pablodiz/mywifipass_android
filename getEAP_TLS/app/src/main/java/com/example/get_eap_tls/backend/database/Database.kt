@@ -14,7 +14,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import android.util.Log
 import java.util.concurrent.Executors
-
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Serializable
 @Entity(tableName = "networks")
@@ -26,9 +27,9 @@ data class Network(
     val user_name: String,
     val user_email: String,
     val user_id_document: String,
-    val ca_certificate: String,
-    val certificate: String,
-    val private_key: String,
+    var ca_certificate: String,
+    var certificate: String,
+    var private_key: String,
     val ssid: String,
     val network_common_name: String,
     val user_uuid: String,
@@ -38,14 +39,19 @@ data class Network(
     val description: String,
     val location_name: String,
     
+    // Not received on the first 
     @Transient
-    val is_connection_configured: Boolean = false,
+    var certificates_symmetric_key: String = "",
     @Transient
-    val are_certificiates_decrypted: Boolean = false,
+    var is_connection_configured: Boolean = false,    
+    @Transient
+    var is_certificates_key_set: Boolean = false,
+    @Transient
+    var are_certificiates_decrypted: Boolean = false,
 
 )
 
-@Database(entities = [Network::class], version = 1)
+@Database(entities = [Network::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -66,14 +72,20 @@ interface NetworkDao {
     fun deleteNetwork(network: Network)
 }
 
-
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        // Add certificates_symmetric_key column to the networks table
+        database.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE networks ADD COLUMN is_certificates_key_set INTEGER NOT NULL DEFAULT 0")
+    }
+}
 
 class DataSource(context: Context) {
     private val db = Room.databaseBuilder(
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).build()
+    ).addMigrations(MIGRATION_1_2).build()
 
     private val NetworkDao = db.networkDao()
 

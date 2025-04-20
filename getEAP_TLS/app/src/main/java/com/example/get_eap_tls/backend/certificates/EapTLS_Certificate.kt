@@ -6,7 +6,12 @@ import java.io.InputStream
 import java.security.cert.CertificateFactory
 import java.security.KeyFactory
 import java.security.spec.PKCS8EncodedKeySpec
-import java.util.Base64
+
+// Imports for the AES decryption
+import javax.crypto.Cipher
+import javax.crypto.SecretKey
+import android.util.Base64
+import javax.crypto.spec.SecretKeySpec
 
 class EapTLSCertificate(caInputStream: InputStream,  
                         clientCertInputStream: InputStream, 
@@ -36,6 +41,23 @@ class EapTLSCertificate(caInputStream: InputStream,
             .replace("-----BEGIN PRIVATE KEY-----", "")
             .replace("-----END PRIVATE KEY-----", "")
             .replace("\\s".toRegex(), "")
-        return Base64.getDecoder().decode(base64Content)
+        return Base64.decode(base64Content, Base64.DEFAULT)
     }
+}
+
+fun hexToSecretKey(hex: String): SecretKey {
+    val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    return SecretKeySpec(bytes, "AES")
+}
+
+fun decryptAES256(
+    encryptedText: String,
+    secretKey: SecretKey,
+): String {
+    val textToDecrypt = Base64.decode(encryptedText, Base64.DEFAULT)
+    val cipher = Cipher.getInstance("AES/ECB/PKCS7PADDING")
+    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+
+    val decrypt = cipher.doFinal(textToDecrypt)
+    return String(decrypt)
 }

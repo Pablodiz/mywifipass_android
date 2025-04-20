@@ -89,20 +89,6 @@ fun AddEventButton(
 }
 
 @Composable
-fun NetworkDialogInfo(network: Network) {
-    Column {
-        InfoText("User Name", network.user_name)
-        InfoText("User Email", network.user_email)
-        InfoText("User ID Document", network.user_id_document)
-        InfoText("Event's name", network.location_name)
-        InfoText("Location", network.location)
-        InfoText("Start date", network.start_date)
-        InfoText("End date", network.end_date)
-        InfoText("Description", network.description)
-    }
-}
-
-@Composable
 fun MainScreen(){
     // Create scope for the coroutine (for async tasks)
     val scope = rememberCoroutineScope()
@@ -205,59 +191,24 @@ fun MainScreen(){
 
     // Dialog for showing the information of the selected network
     if (showNetworkDialog && selectedNetwork != null) {
-        MyDialog(
-            showDialog = showNetworkDialog, 
+        NetworkDialog(
+            showDialog = showNetworkDialog,
             onDismiss = { 
-                showDialog = false
+                showNetworkDialog = false
                 selectedNetwork = null
-            }, 
+            },
             onAccept = { 
-                showDialog = false    
+                showNetworkDialog = false    
                 selectedNetwork = null                             
             },
-            content = {
-                Column{
-                    NetworkDialogInfo(network = selectedNetwork!!)
-                    // Button that connects to the network
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                val certificates = EapTLSCertificate(
-                                    selectedNetwork!!.ca_certificate.byteInputStream(),
-                                    selectedNetwork!!.certificate.byteInputStream(),
-                                    selectedNetwork!!.private_key.byteInputStream()
-                                )
-                                val eapTLSConnection = EapTLSConnection(
-                                    selectedNetwork!!.ssid, 
-                                    certificates, 
-                                    selectedNetwork!!.user_email, //The identity musn't have blank spaces 
-                                    selectedNetwork!!.network_common_name
-                                ) 
-                                eapTLSConnection.connect(wifiManager)                
-                            }
-                        }
-                    ) {
-                        Text("Connect")
-                    }
-                    // Button that the deletes this from the database
-                    Button(
-                        onClick = {
-                            val networkToDelete = selectedNetwork
-                            scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    dataSource.deleteNetwork(networkToDelete!!)
-                                    connections = dataSource.loadConnections()
-                                }
-                            }
-                            showDialog = false
-                            selectedNetwork = null
-                        }
-                    ) {
-                        Text("Delete")
-                    }
-                }
-            },
-            dialogTitle = "${selectedNetwork!!.location_name}",
-        )      
+            selectedNetwork = selectedNetwork!!,
+            wifiManager = wifiManager,
+            dataSource = dataSource,
+            connections = connections,
+            scope = scope,
+            onConnectionsUpdated = { updatedConnections ->
+                connections = updatedConnections
+            }
+        )
     }
 }
