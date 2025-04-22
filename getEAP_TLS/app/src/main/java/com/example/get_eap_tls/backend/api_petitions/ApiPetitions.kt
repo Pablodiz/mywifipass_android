@@ -38,3 +38,25 @@ suspend fun makePetitionAndAddToDatabase(
     }
     return dataSource.loadConnections()
 }
+
+@Serializable
+data class CertificatesSymmetricKey(
+    val certificates_symmetric_key: String
+)
+
+suspend fun getCertificatesSymmetricKey(
+    endpoint: String
+):String {
+    var response = ""
+    withContext(Dispatchers.IO) {
+        try {
+            val reply = httpPetition(endpoint)
+            val constructor_json = Json { ignoreUnknownKeys = true }
+            val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
+            response = symmetricKeyJSON.certificates_symmetric_key
+        } catch (e: Exception) {
+            response = e.message.toString()
+        }
+    }
+    return response
+}
