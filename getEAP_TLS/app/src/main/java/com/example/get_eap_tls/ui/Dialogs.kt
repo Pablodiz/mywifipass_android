@@ -28,6 +28,11 @@ import android.widget.ImageView
 import com.google.zxing.qrcode.QRCodeWriter
 // import androidx.compose.ui.viewinterop.AndroidView
 
+// Imports for setting the symmetric key 
+import com.example.get_eap_tls.backend.api_petitions.getCertificatesSymmetricKey
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+
 @Composable
 // Funcion que muestra un dialogo emergente
 fun MyDialog(
@@ -137,10 +142,10 @@ fun NetworkDialogInfo(network: Network) {
 fun QrInfo(network: Network) : String {
     return """
         {
-            "user_name: ${network?.user_name}"
-            "user_email: ${network?.user_email}"
-            "user_id_document: ${network?.user_id_document}"
-            "user_uuid: ${network?.user_uuid}"
+            "user_name: ${network.user_name}"
+            "user_email: ${network.user_email}"
+            "user_id_document: ${network.user_id_document}"
+            "user_uuid: ${network.user_uuid}"
         }
     """.trimIndent() 
 }
@@ -177,67 +182,89 @@ fun NetworkDialog(
     showDialog: Boolean,   
     selectedNetwork: Network?,
     onDismiss: () -> Unit,
-    onAccept: () -> Unit = {},
+    onAccept: (Network) -> Unit = {},
     wifiManager: android.net.wifi.WifiManager,
     dataSource: DataSource,
     connections: List<Network>,
     scope: CoroutineScope,
     onConnectionsUpdated: (List<Network>) -> Unit = {}
 ){
-    MyDialog(
-        showDialog = showDialog, 
-        onDismiss = {onDismiss()},
-        onAccept = { onAccept() },
-        dialogTitle = "${selectedNetwork!!.location_name}",
-        content = {
-            Column{
-                // QR Code with the information of the user                    
-                QrCode(
-                    data = QrInfo(network = selectedNetwork), 
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                // Text with the information of the event
-                NetworkDialogEventInfo(network = selectedNetwork)                
-                // Button that connects to the network
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val certificates = EapTLSCertificate(
-                                selectedNetwork!!.ca_certificate.byteInputStream(),
-                                selectedNetwork!!.certificate.byteInputStream(),
-                                selectedNetwork!!.private_key.byteInputStream()
-                            )
-                            val eapTLSConnection = EapTLSConnection(
-                                selectedNetwork!!.ssid, 
-                                certificates, 
-                                selectedNetwork!!.user_email, //The identity musn't have blank spaces 
-                                selectedNetwork!!.network_common_name
-                            ) 
-                            eapTLSConnection.connect(wifiManager)                
-                        }
-                    }
-                ) {
-                    Text("Configure connection")
-                }
-                // Button that the deletes this from the database
-                Button(
-                    onClick = {
-                        val networkToDelete = selectedNetwork
-                        scope.launch {
-                            withContext(Dispatchers.IO) {
-                                dataSource.deleteNetwork(networkToDelete!!)
-                                onConnectionsUpdated(dataSource.loadConnections())
+    selectedNetwork?.let {network ->
+        MyDialog(
+            showDialog = showDialog, 
+            onDismiss = { onDismiss() },
+            onAccept = { onAccept(network) },
+            dialogTitle = "${network.location_name}",
+            content = {
+                Column{
+                    // QR Code with the information of the user                    
+                    QrCode(
+                        data = QrInfo(network = network), 
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    // Text with the information of the event
+                    NetworkDialogEventInfo(network = network)                
+                    // Button that configures the connection to the network
+                    if (network.is_certificates_key_set){
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val certificates = EapTLSCertificate(
+                                        network.ca_certificate.byteInputStream(),
+                                        network.certificate.byteInputStream(),
+                                        network.private_key.byteInputStream()
+                                    )
+                                    val eapTLSConnection = EapTLSConnection(
+                                        network.ssid, 
+                                        certificates, 
+                                        network.user_email, //The identity musn't have blank spaces 
+                                        network.network_common_name
+                                    ) 
+                                    eapTLSConnection.connect(wifiManager)                
+                                }
                             }
+                        ) {
+                            Text("Configure connection")
                         }
-                        onDismiss()
+                    }else{
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        withContext(Dispatchers.IO) {
+                                            val symmetricKey = getCertificatesSymmetricKey(network.certificates_symmetric_key_url)
+                                            network.certificates_symmetric_key = symmetricKey
+                                            network.is_certificates_key_set = true
+                                            onConnectionsUpdated(dataSource.loadConnections())
+                                        }
+                                    } catch (e: Exception) {
+                                    }
+                                }
+                            }
+                        ) {    
+                            Text("Get key")
+                        }
                     }
-                ) {
-                    Text("Delete")
+                    // Button that the deletes this from the database
+                    Button(
+                        onClick = {
+                            val networkToDelete = network
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    dataSource.deleteNetwork(networkToDelete)
+                                    onConnectionsUpdated(dataSource.loadConnections())
+                                }
+                            }
+                            onDismiss()
+                        }
+                    ) {
+                        Text("Delete")
+                    }
                 }
-            }
-        },
-    )    
+            },
+        )    
+    }
 }

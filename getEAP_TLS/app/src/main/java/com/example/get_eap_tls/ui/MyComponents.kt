@@ -193,13 +193,19 @@ fun MainScreen(){
     if (showNetworkDialog && selectedNetwork != null) {
         NetworkDialog(
             showDialog = showNetworkDialog,
-            onDismiss = { 
+            onDismiss = {
                 showNetworkDialog = false
                 selectedNetwork = null
             },
-            onAccept = { 
+            onAccept = { network ->
                 showNetworkDialog = false    
-                selectedNetwork = null                             
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        dataSource.updateNetwork(network)   
+                        connections = dataSource.loadConnections()
+                    }
+                }
+                selectedNetwork = null                 
             },
             selectedNetwork = selectedNetwork!!,
             wifiManager = wifiManager,
