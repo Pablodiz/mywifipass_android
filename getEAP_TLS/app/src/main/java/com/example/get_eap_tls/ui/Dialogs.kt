@@ -299,6 +299,9 @@ fun NetworkDialog(
                             val networkToDelete = network
                             scope.launch {
                                 withContext(Dispatchers.IO) {
+                                    if (networkToDelete.is_connection_configured){
+                                        configureConnection(network).disconnect(wifiManager)
+                                    }
                                     dataSource.deleteNetwork(networkToDelete)
                                     onConnectionsUpdated(dataSource.loadConnections())
                                 }
