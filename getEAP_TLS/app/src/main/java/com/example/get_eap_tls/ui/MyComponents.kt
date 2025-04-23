@@ -214,6 +214,9 @@ fun MainScreen(){
             scope = scope,
             onConnectionsUpdated = { updatedConnections ->
                 connections = updatedConnections
+            }, 
+            showToast = { message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         )
     }

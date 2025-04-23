@@ -28,7 +28,7 @@ import android.widget.ImageView
 import com.google.zxing.qrcode.QRCodeWriter
 // import androidx.compose.ui.viewinterop.AndroidView
 
-// Imports for setting the symmetric key 
+// Imports for setting the symmetric key
 import com.example.get_eap_tls.backend.api_petitions.getCertificatesSymmetricKey
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 fun MyDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit, // Función que se ejecuta al cancelar, normalemente cerrar la ventana
-    onAccept: () -> Unit, 
+    onAccept: () -> Unit,
     dialogTitle: String = "Dialog's title",
     dialogContent: String = "This is the dialog's content",
     acceptButtonText: String = "Accept",
@@ -59,8 +59,8 @@ fun MyDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { 
-                    onDismiss() 
+                TextButton(onClick = {
+                    onDismiss()
                 }) {
                     Text(cancelButtonText)
                 }
@@ -86,7 +86,7 @@ fun QRScannerDialog(
                     barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
                     // Set the help text
                     barcodeView.setStatusText("Scan a QR code")
-                    // Start the camera decode (the user doesnt have to click another button)                
+                    // Start the camera decode (the user doesnt have to click another button)
                     barcodeView.decodeSingle(object : BarcodeCallback {
                         override fun barcodeResult(result: BarcodeResult?) {
                             result?.text?.let {
@@ -110,7 +110,7 @@ fun QRScannerDialog(
     )
 }
 
-@Composable 
+@Composable
 fun NetworkDialogUserInfo(network: Network){
     Column {
         InfoText("User Name", network.user_name)
@@ -119,7 +119,7 @@ fun NetworkDialogUserInfo(network: Network){
     }
 }
 
-@Composable 
+@Composable
 fun NetworkDialogEventInfo(network: Network) {
     Column {
         InfoText("Location", network.location)
@@ -127,7 +127,7 @@ fun NetworkDialogEventInfo(network: Network) {
         InfoText("End date", network.end_date)
         InfoText("Description", network.description)
     }
-}   
+}
 
 @Composable
 fun NetworkDialogInfo(network: Network) {
@@ -147,7 +147,7 @@ fun QrInfo(network: Network) : String {
             "user_id_document: ${network.user_id_document}"
             "user_uuid: ${network.user_uuid}"
         }
-    """.trimIndent() 
+    """.trimIndent()
 }
 
 @Composable
@@ -171,7 +171,42 @@ fun QrCode(
             }
         },
         modifier = modifier
-    ) 
+    )
+}
+
+fun configureConnection(network: Network): EapTLSConnection {
+    val certificates = EapTLSCertificate(
+        network.ca_certificate.byteInputStream(),
+        network.certificate.byteInputStream(),
+        network.private_key.byteInputStream()
+    )
+    val eapTLSConnection = EapTLSConnection(
+        network.ssid,
+        certificates,
+        network.user_email, //The identity musn't have blank spaces
+        network.network_common_name
+    )
+    return eapTLSConnection
+}
+
+suspend fun decryptCertificates(network: Network): String {
+    return try {
+        val key = hexToSecretKey(network.certificates_symmetric_key)
+        val caCertificate = decryptAES256(network.ca_certificate, key)
+        val certificate = decryptAES256(network.certificate, key)
+        val privateKey = decryptAES256(network.private_key, key)
+        if (checkCertificates(caCertificate, certificate, privateKey)) {
+            network.private_key = privateKey
+            network.certificate = certificate
+            network.ca_certificate = caCertificate
+            network.are_certificiates_decrypted = true
+            "Certificates decrypted"
+        } else {
+            "Certificates failed"
+        }
+    } catch (e: Exception) {
+        "Error decrypting certificates: ${e.message}"
+    }
 }
 
 // Dialog that shows some information of the selected network in a QR code
@@ -179,7 +214,7 @@ fun QrCode(
 // In text: information from the event@Composable
 @Composable
 fun NetworkDialog(
-    showDialog: Boolean,   
+    showDialog: Boolean,
     selectedNetwork: Network?,
     onDismiss: () -> Unit,
     onAccept: (Network) -> Unit = {},
@@ -187,43 +222,53 @@ fun NetworkDialog(
     dataSource: DataSource,
     connections: List<Network>,
     scope: CoroutineScope,
-    onConnectionsUpdated: (List<Network>) -> Unit = {}
+    onConnectionsUpdated: (List<Network>) -> Unit = {},
+    showToast: (String) -> Unit = {}
 ){
     selectedNetwork?.let {network ->
         MyDialog(
-            showDialog = showDialog, 
+            showDialog = showDialog,
             onDismiss = { onDismiss() },
             onAccept = { onAccept(network) },
             dialogTitle = "${network.location_name}",
             content = {
                 Column{
-                    // QR Code with the information of the user                    
+                    // QR Code with the information of the user
                     QrCode(
-                        data = QrInfo(network = network), 
+                        data = QrInfo(network = network),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     // Text with the information of the event
-                    NetworkDialogEventInfo(network = network)                
+                    NetworkDialogEventInfo(network = network)
                     // Button that configures the connection to the network
                     if (network.is_certificates_key_set){
                         Button(
                             onClick = {
+                                var message = ""
                                 scope.launch {
-                                    val certificates = EapTLSCertificate(
-                                        network.ca_certificate.byteInputStream(),
-                                        network.certificate.byteInputStream(),
-                                        network.private_key.byteInputStream()
-                                    )
-                                    val eapTLSConnection = EapTLSConnection(
-                                        network.ssid, 
-                                        certificates, 
-                                        network.user_email, //The identity musn't have blank spaces 
-                                        network.network_common_name
-                                    ) 
-                                    eapTLSConnection.connect(wifiManager)                
+                                    if (!network.are_certificiates_decrypted) {
+                                        val message = withContext(Dispatchers.IO) { 
+                                            decryptCertificates(network) 
+                                        }
+                                        showToast(message)
+                                    }
+                                    if (network.are_certificiates_decrypted && !network.is_connection_configured){
+                                        withContext(Dispatchers.IO) {
+                                            try{
+                                                val eapTLSConnection = configureConnection(network)
+                                                eapTLSConnection.connect(wifiManager)
+                                                network.is_connection_configured = true
+                                                message = "Connection ready"
+                                            } catch(e: Exception){
+                                                message = e.message.toString()
+                                            }
+                                        }
+                                        showToast(message)
+                                    }
+                                    onAccept(network)
                                 }
                             }
                         ) {
@@ -244,7 +289,7 @@ fun NetworkDialog(
                                     }
                                 }
                             }
-                        ) {    
+                        ) {
                             Text("Get key")
                         }
                     }
@@ -265,6 +310,6 @@ fun NetworkDialog(
                     }
                 }
             },
-        )    
+        )
     }
 }
