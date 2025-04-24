@@ -1,10 +1,10 @@
 package com.example.get_eap_tls.backend.database
 
 import kotlinx.serialization.*
-import kotlinx.serialization.json.Json
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Delete
+import androidx.room.Update
 import androidx.room.Query
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -38,7 +38,9 @@ data class Network(
     val end_date: String,
     val description: String,
     val location_name: String,
-    
+    val validation_url: String, 
+    val certificates_symmetric_key_url: String,
+
     // Not received on the first 
     @Transient
     var certificates_symmetric_key: String = "",
@@ -51,7 +53,7 @@ data class Network(
 
 )
 
-@Database(entities = [Network::class], version = 2)
+@Database(entities = [Network::class], version = 3)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -70,13 +72,22 @@ interface NetworkDao {
 
     @Delete 
     fun deleteNetwork(network: Network)
+
+    @Update
+    fun updateNetwork(network: Network)
 }
 
 private val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: SupportSQLiteDatabase) {
-        // Add certificates_symmetric_key column to the networks table
         database.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key TEXT NOT NULL DEFAULT ''")
         database.execSQL("ALTER TABLE networks ADD COLUMN is_certificates_key_set INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+private val MIGRATION_2_3 = object: Migration (2, 3) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE networks ADD COLUMN validation_url TEXT NOT NULL DEFAULT ''")
+        database.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key_url TEXT NOT NULL DEFAULT ''")
     }
 }
 
@@ -85,7 +96,7 @@ class DataSource(context: Context) {
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).addMigrations(MIGRATION_1_2).build()
+    ).addMigrations(MIGRATION_1_2).addMigrations(MIGRATION_2_3).build()
 
     private val NetworkDao = db.networkDao()
 
@@ -108,5 +119,9 @@ class DataSource(context: Context) {
 
     fun deleteNetwork(Network: Network) {
         NetworkDao.deleteNetwork(Network)
+    }
+
+    fun updateNetwork(Network: Network) {
+        NetworkDao.updateNetwork(Network)   
     }
 }

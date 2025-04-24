@@ -46,8 +46,21 @@ class EapTLSCertificate(caInputStream: InputStream,
 }
 
 fun hexToSecretKey(hex: String): SecretKey {
-    val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-    return SecretKeySpec(bytes, "AES")
+    if (hex.isEmpty()) {
+        throw IllegalArgumentException("Hex string cannot be empty")
+    }
+    if (!hex.matches(Regex("^[0-9a-fA-F]+$"))) {
+        throw IllegalArgumentException("Invalid hex string format: $hex")
+    }
+
+    return try {
+        val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+        SecretKeySpec(bytes, 0, bytes.size, "AES")
+    } catch (e: NumberFormatException) {
+        throw IllegalArgumentException("Failed to parse hex string: $hex", e)
+    } catch (e: Exception) {
+        throw RuntimeException("Unexpected error while converting hex to SecretKey", e)
+    }
 }
 
 fun decryptAES256(
@@ -60,4 +73,16 @@ fun decryptAES256(
 
     val decrypt = cipher.doFinal(textToDecrypt)
     return String(decrypt)
+}
+
+fun checkCertificate(certificate: String) : Boolean{
+    return (certificate.startsWith("-----BEGIN CERTIFICATE-----") && certificate.endsWith("-----END CERTIFICATE-----\n"))
+}
+
+fun checkPrivateKey(privateKey: String): Boolean{
+    return (privateKey.startsWith("-----BEGIN PRIVATE KEY-----") && privateKey.endsWith("-----END PRIVATE KEY-----\n"))
+}
+
+fun checkCertificates(ca_certificate: String, client_certificate: String, client_private_key: String) : Boolean{
+    return checkCertificate(ca_certificate) && checkCertificate(client_certificate) && checkPrivateKey(client_private_key)
 }
