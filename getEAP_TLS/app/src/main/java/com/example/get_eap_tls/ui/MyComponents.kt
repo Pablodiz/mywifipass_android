@@ -41,6 +41,13 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.animation.ExperimentalAnimationApi
 
+// Imports for asking for permissions
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.core.app.ActivityCompat
 
 data class SpeedDialItem(
     val label: String,
@@ -106,6 +113,24 @@ fun MainScreen(){
     var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
+    val cameraPermission = android.Manifest.permission.CAMERA
+    var hasCameraPermission by remember { mutableStateOf(false) }
+
+    // Check if the camera permission is granted
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasCameraPermission = isGranted
+            if (isGranted) {
+                // If its conceeded, open the QRDialog
+                showQrScanner = true
+            } else {
+                // Else, show a message for the user to know that the permission is required
+                Toast.makeText(context, "Camera permission is required to scan QR codes", Toast.LENGTH_SHORT).show()
+                showQrScanner = false
+            }
+        }
+)
 
     // Get data from the database
     LaunchedEffect(Unit) {
@@ -156,13 +181,33 @@ fun MainScreen(){
     }
     
     if (showQrScanner) {
-        QRScannerDialog(
-            onResult = { scannedText ->
-                handlePetition(scannedText)
+        hasCameraPermission = context.checkSelfPermission(cameraPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasCameraPermission) {
+            // If the permission was denied before, show the app configuration for the user to enable it 
+            if (ActivityCompat.shouldShowRequestPermissionRationale(context as Activity, cameraPermission)) {
+                // Request the permission
+                permissionLauncher.launch(cameraPermission)
+            } else {
+                // Redirect to app settings
+                Toast.makeText(context, "Camera permission is required. Please enable it in settings.", Toast.LENGTH_LONG).show()
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+                context.startActivity(intent)
                 showQrScanner = false
-            },
-            onDismiss = { showQrScanner = false }
-        )
+            }
+        } else {
+            // Mostrar el QRScannerDialog si ya tiene permisos
+            QRScannerDialog(
+                onResult = { scannedText ->
+                    handlePetition(scannedText)
+                    showQrScanner = false
+                },
+                onDismiss = { 
+                    showQrScanner = false 
+                }
+            )
+        }
     }
 
     // Dialog for adding a new network entering an URL
