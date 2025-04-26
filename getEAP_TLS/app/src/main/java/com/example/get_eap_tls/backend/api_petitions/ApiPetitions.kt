@@ -7,6 +7,7 @@ import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 import com.example.get_eap_tls.backend.database.Network
 import com.example.get_eap_tls.backend.database.DataSource
 import com.example.get_eap_tls.backend.httpPetition
+import com.example.get_eap_tls.backend.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.content.Context
@@ -28,7 +29,7 @@ suspend fun makePetitionAndAddToDatabase(
 ):List<Network> {
     withContext(Dispatchers.IO) {
         try{
-            val reply = httpPetition(enteredText)
+            val reply = httpPetition(enteredText).body
             val network = parseReply(reply)
             dataSource.insertNetwork(network)
             onSuccess(reply) 
@@ -50,7 +51,7 @@ suspend fun getCertificatesSymmetricKey(
     var response = ""
     withContext(Dispatchers.IO) {
         try {
-            val reply = httpPetition(endpoint)
+            val reply = httpPetition(endpoint).body
             val constructor_json = Json { ignoreUnknownKeys = true }
             val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
             response = symmetricKeyJSON.certificates_symmetric_key
@@ -59,4 +60,42 @@ suspend fun getCertificatesSymmetricKey(
         }
     }
     return response
+}
+
+
+suspend fun loginPetition(
+    url: String,
+    login: String,
+    pwd: String, 
+    onSuccess: (String) -> Unit = {},
+    onError: (String) -> Unit = {}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val endpoint = "$url/api/api-token-auth/"
+            val credentials = mapOf("username" to login, "password" to pwd)
+            val constructorJson = Json { ignoreUnknownKeys = true }
+            val jsonString = constructorJson.encodeToString(credentials)
+            val response = httpPetition(endpoint, jsonString)
+            val statusCode = response.statusCode
+            val responseBody = response.body
+
+            when (statusCode) {
+                200 -> {
+                    // Get the token 
+                    val jsonResponse = constructorJson.decodeFromString<Map<String, String>>(responseBody)
+                    val token = jsonResponse["token"] ?: throw Exception("Token not found in response")
+                    onSuccess(token)
+                }
+                400 -> {
+                    onError("Incorrect login credentials")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $statusCode")
+                }
+            }
+        } catch (e: Exception) {
+            onError("An error occurred: ${e.message}")
+        }
+    }
 }
