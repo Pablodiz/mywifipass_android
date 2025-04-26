@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import com.example.get_eap_tls.ui.components.BackButton 
+
 data class LoginCredentials(
     var url: String = "",
     var login: String = "",
@@ -136,7 +138,7 @@ fun LoginScreen() {
                         credentials,
                         context,
                         onSuccess = {
-                            context.startActivity(Intent(context, MainActivity::class.java))
+                            context.startActivity(Intent(context, AdminActivity::class.java))
                             (context as Activity).finish()
                         },
                         onError = { credentials = LoginCredentials() },
@@ -156,7 +158,7 @@ fun LoginScreen() {
                         credentials,
                         context,
                         onSuccess = {
-                            context.startActivity(Intent(context, MainActivity::class.java))
+                            context.startActivity(Intent(context, AdminActivity::class.java))
                             (context as Activity).finish()
                         },
                         onError = { credentials = LoginCredentials() }, 
@@ -179,10 +181,19 @@ class LoginActivity : ComponentActivity() {
         setContent {
             GetEAP_TLSTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    LoginScreen()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        BackButton(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(40.dp)
+                                .align(Alignment.TopStart), 
+                            onClick = { finish() }
+                        )
+                        LoginScreen()
+                    }
                 }
             }
         }

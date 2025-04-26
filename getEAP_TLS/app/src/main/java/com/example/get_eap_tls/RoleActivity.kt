@@ -13,6 +13,7 @@ import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 @Composable 
 fun RoleScreen(){
@@ -42,8 +43,17 @@ fun RoleScreen(){
         Button(
             onClick = { 
                 role = "Admin"
-                // Navigate to LoginActivity
-                val intent = Intent(context, LoginActivity::class.java)
+                // Check if there is a token in shared preferences
+                val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("auth_token", null)
+                val intent: Intent
+                if (token != null) {
+                    // Navigate to AdminActivity
+                    intent = Intent(context, AdminActivity::class.java)
+                } else {
+                    // Navigate to LoginActivity
+                    intent = Intent(context, LoginActivity::class.java)
+                }
                 context.startActivity(intent)
             },
             modifier = Modifier.fillMaxWidth()
