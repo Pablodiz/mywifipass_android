@@ -33,5 +33,7 @@
 
         <activity android:name=".LoginActivity" 
             android:exported="true" /> 
+        <activity android:name=".RoleActivity" 
+            android:exported="true" /> 
     </application>
 </manifest>
