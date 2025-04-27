@@ -49,6 +49,9 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.app.ActivityCompat
 
+// Imports for Back Button
+import androidx.compose.material.icons.filled.ArrowBack
+
 data class SpeedDialItem(
     val label: String,
     val icon: @Composable () -> Unit,
@@ -96,7 +99,21 @@ fun AddEventButton(
 }
 
 @Composable
-fun MainScreen(){
+fun BackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick, 
+        modifier = modifier 
+    ) {
+        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+    
+    }
+}
+
+@Composable
+fun MainScreen(modifier: Modifier = Modifier){
     // Create scope for the coroutine (for async tasks)
     val scope = rememberCoroutineScope()
     // Get the context
@@ -153,7 +170,7 @@ fun MainScreen(){
             )
         ),
         content = { paddingValues ->
-            Column(modifier = Modifier.padding(paddingValues)) {
+            Column(modifier = modifier.padding(paddingValues)) {
                 MyCardList(
                     dataList = connections,
                     onItemClick = { network ->
