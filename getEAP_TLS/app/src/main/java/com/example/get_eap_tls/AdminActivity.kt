@@ -17,10 +17,71 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 
 import com.example.get_eap_tls.ui.components.BackButton
+import com.example.get_eap_tls.ui.components.QRScannerDialog
+import com.example.get_eap_tls.ui.components.QrData
+import android.widget.Toast
+import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.example.get_eap_tls.backend.api_petitions.allowAccess
+import kotlinx.coroutines.withContext
 
 @Composable 
-fun AdminScreen(){
+fun AdminScreen(
+    context: Context = LocalContext.current
+){
+    var showScannerDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
+    if (showScannerDialog) {
+        QRScannerDialog(
+            onDismiss = { 
+                showScannerDialog = false 
+            },
+            onResult = { result ->
+                var response = ""
+                scope.launch {
+                    withContext(Dispatchers.IO){
+                        try {
+                            val qrData = Json.decodeFromString<QrData>(result)
+                            val endpoint = qrData.validation_url
+                            val body = qrData.toBodyPetition()
+                            val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
+                            val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
+                            allowAccess(
+                                endpoint = endpoint,
+                                body = body, 
+                                token = token,
+                                onSuccess = { message -> 
+                                    response = message
+                                },
+                                onError = { error -> 
+                                    response = error
+                                }
+                            )
+                        } catch (e: Exception) {
+                            response = "Error: ${e.message}"
+                        }
+                    }
+                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                }
+                showScannerDialog = false
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Button(onClick = { showScannerDialog = true }) {
+            Text("Open QR Scanner")
+        }
+    }
 }
 
 class AdminActivity : ComponentActivity() {
@@ -55,7 +116,7 @@ class AdminActivity : ComponentActivity() {
                                 .align(Alignment.TopStart),
                             onClick = { finish() }
                         )
-                        AdminScreen()
+                        AdminScreen(context)
                     }
                 }
             }
