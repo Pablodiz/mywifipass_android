@@ -279,13 +279,24 @@ fun NetworkDialog(
                             onClick = {
                                 scope.launch {
                                     try {
+                                        var message = ""
                                         withContext(Dispatchers.IO) {
-                                            val symmetricKey = getCertificatesSymmetricKey(network.certificates_symmetric_key_url)
-                                            network.certificates_symmetric_key = symmetricKey
-                                            network.is_certificates_key_set = true
-                                            onConnectionsUpdated(dataSource.loadConnections())
+                                            val symmetricKey = getCertificatesSymmetricKey(
+                                                endpoint = network.certificates_symmetric_key_url, 
+                                                onError = { errorMessage ->
+                                                    message = errorMessage
+                                                },
+                                                onSuccess = { symmetricKey ->
+                                                    network.certificates_symmetric_key = symmetricKey
+                                                    network.is_certificates_key_set = true
+                                                    onConnectionsUpdated(dataSource.loadConnections())     
+                                                    message = "You can now configure the connection"
+                                                }
+                                            )
                                         }
+                                        showToast(message)
                                     } catch (e: Exception) {
+                                        showToast("Error: ${e.message}")
                                     }
                                 }
                             }

@@ -20,9 +20,13 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null): HttpRe
         }
 
         val statusCode = urlConnection.responseCode
-        val responseBody = urlConnection.inputStream.bufferedReader().use { it.readText() }
+        val responseBody = if (statusCode in 200..299) {
+            urlConnection.inputStream.bufferedReader().use { it.readText() }
+        } else {
+            urlConnection.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+        }
         HttpResponse(statusCode, responseBody)
     } catch (e: Exception) {
-        HttpResponse(500, e.message.toString() ?: "Unkown Error")
+        HttpResponse(500, e.message ?: "Unknown Error")
     }
 }

@@ -46,20 +46,32 @@ data class CertificatesSymmetricKey(
 )
 
 suspend fun getCertificatesSymmetricKey(
-    endpoint: String
-):String {
-    var response = ""
+    endpoint: String, 
+    onError: (String) -> Unit = {},
+    onSuccess: (String) -> Unit = {}
+) {
     withContext(Dispatchers.IO) {
         try {
-            val reply = httpPetition(endpoint).body
-            val constructor_json = Json { ignoreUnknownKeys = true }
-            val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
-            response = symmetricKeyJSON.certificates_symmetric_key
+            val httpResponse = httpPetition(endpoint)
+            val statusCode = httpResponse.statusCode
+            val reply = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    val constructor_json = Json { ignoreUnknownKeys = true }
+                    val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
+                    onSuccess(symmetricKeyJSON.certificates_symmetric_key)
+                }
+                403 -> {
+                    onError("Access denied")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $statusCode")
+                }
+            }
         } catch (e: Exception) {
-            response = e.message.toString()
+            onError(e.message.toString())
         }
     }
-    return response
 }
 
 
