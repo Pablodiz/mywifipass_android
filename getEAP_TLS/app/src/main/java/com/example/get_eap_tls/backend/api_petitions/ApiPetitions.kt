@@ -74,6 +74,44 @@ suspend fun getCertificatesSymmetricKey(
     }
 }
 
+suspend fun allowAccess(
+    endpoint: String,
+    body: String, 
+    token: String,
+    onError: (String) -> Unit = {},
+    onSuccess: (String) -> Unit = {}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val httpResponse = httpPetition(url_string = endpoint, jsonString = body,  token = token)
+            val statusCode = httpResponse.statusCode
+            val reply = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    onSuccess("The attendee has been granted access")
+                }
+                400 -> {
+                    onError("Bad request: $reply")
+                }
+                401 -> {
+                    onError("You are not authorized to access this resource")
+                }
+                403 -> {
+                    onError("Access denied for the attendee")
+                }
+                404 -> {
+                    onError("Attendee not found")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $reply")
+                }
+            }
+        } catch (e: Exception) {
+            onError("An error occurred: ${e.message}")
+        }
+    }
+}
+
 
 suspend fun loginPetition(
     url: String,
