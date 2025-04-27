@@ -26,6 +26,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.widget.ImageView
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.serialization.*
 // import androidx.compose.ui.viewinterop.AndroidView
 
 // Imports for setting the symmetric key
@@ -139,15 +140,46 @@ fun NetworkDialogInfo(network: Network) {
 
 
 
-fun QrInfo(network: Network) : String {
-    return """
-        {
-            "user_name: ${network.user_name}"
-            "user_email: ${network.user_email}"
-            "user_id_document: ${network.user_id_document}"
-            "user_uuid: ${network.user_uuid}"
-        }
-    """.trimIndent()
+@Serializable
+data class QrData(
+    val user_name: String,
+    val user_email: String,
+    val user_id_document: String,
+    val user_uuid: String,
+    val validation_url: String
+){
+    fun toJson(): String {
+        return """
+            {
+                "user_name": "$user_name",
+                "user_email": "$user_email",
+                "user_id_document": "$user_id_document",
+                "user_uuid": "$user_uuid",
+                "validation_url": "$validation_url"
+            }
+        """.trimIndent()
+    }
+    fun toBodyPetition(): String {
+        return """
+            {
+                "user_name": "$user_name",
+                "user_email": "$user_email",
+                "user_id_document": "$user_id_document",
+                "user_uuid": "$user_uuid"
+            }
+        """.trimIndent()
+    }
+}
+
+fun QrInfo(network: Network): String {
+    val qrData = QrData(
+        user_name = network.user_name,
+        user_email = network.user_email,
+        user_id_document = network.user_id_document,
+        user_uuid = network.user_uuid,
+        validation_url = network.validation_url
+    )
+    return qrData.toJson()
 }
 
 @Composable
