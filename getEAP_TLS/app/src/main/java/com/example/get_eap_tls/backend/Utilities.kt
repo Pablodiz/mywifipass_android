@@ -5,7 +5,7 @@ import java.net.URL
 
 data class HttpResponse(val statusCode: Int, val body: String)
 
-suspend fun httpPetition(url_string: String, jsonString: String? = null): HttpResponse {
+suspend fun httpPetition(url_string: String, jsonString: String? = null, token: String? = null): HttpResponse {
     return try {
         val url = URL(url_string)
         val urlConnection = url.openConnection() as HttpURLConnection
@@ -13,6 +13,10 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null): HttpRe
         urlConnection.setRequestProperty("Accept", "application/json")
         urlConnection.setRequestProperty("Content-type", "application/json")
         urlConnection.doInput = true 
+
+        if (token != null) {
+            urlConnection.setRequestProperty("Authorization", "Token $token")
+        }
 
         if (jsonString != null) {
             urlConnection.doOutput = true
