@@ -274,7 +274,7 @@ fun NetworkDialog(
     showDialog: Boolean,
     selectedNetwork: Network?,
     onDismiss: () -> Unit,
-    onAccept: (Network) -> Unit = {},
+    onAccept: () -> Unit,
     wifiManager: android.net.wifi.WifiManager,
     dataSource: DataSource,
     connections: List<Network>,
@@ -287,7 +287,55 @@ fun NetworkDialog(
         MyDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
-            onAccept = { onAccept(network) },
+            onAccept = { 
+                if (!network.is_connection_configured){
+                    //var message = ""
+                    scope.launch {
+                        try {
+                            withContext(Dispatchers.IO) {
+                                val symmetricKey = getCertificatesSymmetricKey(
+                                    endpoint = network.certificates_symmetric_key_url, 
+                                    onError = { errorMessage ->
+                                        //message = errorMessage
+                                    },
+                                    onSuccess = { symmetricKey ->
+                                        network.certificates_symmetric_key = symmetricKey
+                                        network.is_certificates_key_set = true
+                                        dataSource.updateNetwork(network)
+                                        onConnectionsUpdated(dataSource.loadConnections())     
+                                        //message = "You can now configure the connection"
+                                    }
+                                )
+                            }
+                            //showToast(message)
+                        } catch (e: Exception) {
+                            //showToast("Error: ${e.message}")
+                        }
+                        if (!network.are_certificiates_decrypted) {
+                            val message = withContext(Dispatchers.IO) { 
+                                decryptCertificates(network) 
+                            }
+                            //showToast(message)
+                        }
+                        if (network.are_certificiates_decrypted && !network.is_connection_configured){
+                            withContext(Dispatchers.IO) {
+                                try{
+                                    val eapTLSConnection = configureConnection(network)
+                                    eapTLSConnection.connect(wifiManager)
+                                    network.is_connection_configured = true
+                                    dataSource.updateNetwork(network)
+                                    onConnectionsUpdated(dataSource.loadConnections())
+                                    //message = "Connection ready"
+                                } catch(e: Exception){
+                                    //message = e.message.toString()
+                                }
+                            }
+                            showToast("Connection ready")
+                        }
+                    }
+                }
+                onAccept() 
+            },
             dialogTitle = "${network.location_name}",
             titleActions = {
                 IconButton(onClick = { menuExpanded = true }) {
@@ -333,7 +381,7 @@ fun NetworkDialog(
                 }
             },
             content = {
-                Column (modifier = Modifier.fillMaxWidth()){
+                Column (){
                     // QR Code with the information of the user
                     QrCode(
                         data = QrInfo(network = network),
@@ -348,71 +396,9 @@ fun NetworkDialog(
                             .verticalScroll(rememberScrollState())
                             .weight(1f, fill = false) // Use remaining space only if needed
 
-                    ) // Its scrollable
+                    ) // Its scrollable if needed
                     {
                         NetworkDialogEventInfo(network = network)
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    // Button that configures the connection to the network
-                    if (network.is_certificates_key_set){
-                        Button(
-                            onClick = {
-                                var message = ""
-                                scope.launch {
-                                    if (!network.are_certificiates_decrypted) {
-                                        val message = withContext(Dispatchers.IO) { 
-                                            decryptCertificates(network) 
-                                        }
-                                        showToast(message)
-                                    }
-                                    if (network.are_certificiates_decrypted && !network.is_connection_configured){
-                                        withContext(Dispatchers.IO) {
-                                            try{
-                                                val eapTLSConnection = configureConnection(network)
-                                                eapTLSConnection.connect(wifiManager)
-                                                network.is_connection_configured = true
-                                                message = "Connection ready"
-                                            } catch(e: Exception){
-                                                message = e.message.toString()
-                                            }
-                                        }
-                                        showToast(message)
-                                    }
-                                    onAccept(network)
-                                }
-                            }
-                        ) {
-                            Text("Configure connection")
-                        }
-                    }else{
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    try {
-                                        var message = ""
-                                        withContext(Dispatchers.IO) {
-                                            val symmetricKey = getCertificatesSymmetricKey(
-                                                endpoint = network.certificates_symmetric_key_url, 
-                                                onError = { errorMessage ->
-                                                    message = errorMessage
-                                                },
-                                                onSuccess = { symmetricKey ->
-                                                    network.certificates_symmetric_key = symmetricKey
-                                                    network.is_certificates_key_set = true
-                                                    onConnectionsUpdated(dataSource.loadConnections())     
-                                                    message = "You can now configure the connection"
-                                                }
-                                            )
-                                        }
-                                        showToast(message)
-                                    } catch (e: Exception) {
-                                        showToast("Error: ${e.message}")
-                                    }
-                                }
-                            }
-                        ) {
-                            Text("Get key")
-                        }
                     }
                 }
             },

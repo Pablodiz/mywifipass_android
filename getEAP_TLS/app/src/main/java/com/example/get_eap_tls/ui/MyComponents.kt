@@ -259,14 +259,7 @@ fun MainScreen(modifier: Modifier = Modifier){
                 showNetworkDialog = false
                 selectedNetwork = null
             },
-            onAccept = { network ->
-                showNetworkDialog = false    
-                scope.launch {
-                    withContext(Dispatchers.IO) {
-                        dataSource.updateNetwork(network)   
-                        connections = dataSource.loadConnections()
-                    }
-                }
+            onAccept = {
                 selectedNetwork = null                 
             },
             selectedNetwork = selectedNetwork!!,
