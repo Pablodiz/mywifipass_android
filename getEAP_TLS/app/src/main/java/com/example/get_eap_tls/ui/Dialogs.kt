@@ -6,6 +6,10 @@ import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.Icons
 
 // Imports for the QRScannerDialog
 import androidx.compose.ui.viewinterop.AndroidView
@@ -20,6 +24,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import com.example.get_eap_tls.backend.database.*
 import kotlinx.coroutines.CoroutineScope
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 
 // Imports for the QRCode
 import android.graphics.Bitmap
@@ -44,12 +50,28 @@ fun MyDialog(
     dialogContent: String = "This is the dialog's content",
     acceptButtonText: String = "Accept",
     cancelButtonText: String = "Cancel",
-    content: @Composable () -> Unit = {Text(dialogContent)} // Utilizamos una función para poder pasarle un composable y cambiar el content
+    content: @Composable () -> Unit = {Text(dialogContent)}, // Utilizamos una función para poder pasarle un composable y cambiar el content
+    titleActions: (@Composable () -> Unit)? = null 
 ) {
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { onDismiss() },
-            title = { Text(dialogTitle) },
+            title = {
+                Box(Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(dialogTitle)
+                        titleActions?.let {
+                            Box() {
+                                it()
+                            }
+                        }
+                    }
+                }
+            },
             text = { content() },
             confirmButton = {
                 TextButton(onClick = {
@@ -191,7 +213,10 @@ fun QrCode(
     AndroidView(
         factory = { context ->
             val qrCodeWriter = QRCodeWriter()
-            val bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200)
+            val hints = mapOf(
+                EncodeHintType.MARGIN to 0
+            )
+            val bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200, hints)
             val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)
             for (x in 0 until bitMatrix.width) {
                 for (y in 0 until bitMatrix.height) {
@@ -258,13 +283,57 @@ fun NetworkDialog(
     showToast: (String) -> Unit = {}
 ){
     selectedNetwork?.let {network ->
+        var menuExpanded by remember { mutableStateOf(false) }
         MyDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
             onAccept = { onAccept(network) },
             dialogTitle = "${network.location_name}",
+            titleActions = {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.wrapContentSize(Alignment.TopEnd)                
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = androidx.compose.ui.graphics.Color.Red
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Delete", color = androidx.compose.ui.graphics.Color.Red)
+                            }
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            // Tu acción de editar aquí
+                            val networkToDelete = network
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    if (networkToDelete.is_connection_configured){
+                                        configureConnection(network).disconnect(wifiManager)
+                                    }
+                                    dataSource.deleteNetwork(networkToDelete)
+                                    onConnectionsUpdated(dataSource.loadConnections())
+                                }
+                            }
+                            onDismiss()
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+            },
             content = {
-                Column{
+                Column (modifier = Modifier.fillMaxWidth()){
                     // QR Code with the information of the user
                     QrCode(
                         data = QrInfo(network = network),
@@ -274,7 +343,16 @@ fun NetworkDialog(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     // Text with the information of the event
-                    NetworkDialogEventInfo(network = network)
+                    Box(
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .weight(1f, fill = false) // Use remaining space only if needed
+
+                    ) // Its scrollable
+                    {
+                        NetworkDialogEventInfo(network = network)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                     // Button that configures the connection to the network
                     if (network.is_certificates_key_set){
                         Button(
@@ -335,24 +413,6 @@ fun NetworkDialog(
                         ) {
                             Text("Get key")
                         }
-                    }
-                    // Button that the deletes this from the database
-                    Button(
-                        onClick = {
-                            val networkToDelete = network
-                            scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    if (networkToDelete.is_connection_configured){
-                                        configureConnection(network).disconnect(wifiManager)
-                                    }
-                                    dataSource.deleteNetwork(networkToDelete)
-                                    onConnectionsUpdated(dataSource.loadConnections())
-                                }
-                            }
-                            onDismiss()
-                        }
-                    ) {
-                        Text("Delete")
                     }
                 }
             },
