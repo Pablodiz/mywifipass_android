@@ -40,6 +40,7 @@ data class Network(
     val location_name: String,
     val validation_url: String, 
     val certificates_symmetric_key_url: String,
+    val location_uuid: String,
 
     // Not received on the first 
     @Transient
@@ -53,7 +54,7 @@ data class Network(
 
 )
 
-@Database(entities = [Network::class], version = 3)
+@Database(entities = [Network::class], version = 4)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -88,6 +89,12 @@ private val MIGRATION_2_3 = object: Migration (2, 3) {
     override fun migrate(database: SupportSQLiteDatabase) {
         database.execSQL("ALTER TABLE networks ADD COLUMN validation_url TEXT NOT NULL DEFAULT ''")
         database.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key_url TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+private val MIGRATION_3_4 = object: Migration (3, 4) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE networks ADD COLUMN location_uuid TEXT NOT NULL DEFAULT ''")
     }
 }
 
