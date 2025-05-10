@@ -171,12 +171,21 @@ suspend fun loginPetition(
     login: String,
     pwd: String, 
     onSuccess: (String) -> Unit = {},
-    onError: (String) -> Unit = {}
+    onError: (String) -> Unit = {}, 
+    usePassword: Boolean = true
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val endpoint = buildUrl(url, "/api/login/password")
-            val credentials = mapOf("username" to login, "password" to pwd)
+            var endpoint : String
+            var credentials : Map<String, String>
+            if (usePassword){
+                endpoint = buildUrl(url, "/api/login/password")
+                credentials = mapOf("username" to login, "password" to pwd)
+
+            }else {
+                endpoint = url
+                credentials = mapOf("username" to login, "token" to pwd)
+            }
             val constructorJson = Json { ignoreUnknownKeys = true }
             val jsonString = constructorJson.encodeToString(credentials)
             val response = httpPetition(endpoint, jsonString)

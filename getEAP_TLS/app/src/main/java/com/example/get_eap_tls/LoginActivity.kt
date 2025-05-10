@@ -13,6 +13,7 @@ import com.example.get_eap_tls.ui.theme.GetEAP_TLSTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.QrCode
 import com.example.get_eap_tls.ui.components.LoginField
 import com.example.get_eap_tls.ui.components.PasswordField
 import android.content.Context
@@ -26,15 +27,29 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 import com.example.get_eap_tls.ui.components.BackButton 
+import com.example.get_eap_tls.ui.components.QRScannerDialog
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import androidx.lifecycle.lifecycleScope
 
 data class LoginCredentials(
     var url: String = "",
     var login: String = "",
     var pwd: String = "",
-    var remember: Boolean = false
 ) {
     fun isNotEmpty(): Boolean {
         return login.isNotEmpty() && pwd.isNotEmpty() && url.isNotEmpty()
+    }
+}
+
+@Serializable
+data class QrLoginCredentials(
+    var url: String = "",
+    var username: String = "",
+    var token: String = "",
+) {
+    fun isNotEmpty(): Boolean {
+        return username.isNotEmpty() && token.isNotEmpty() && url.isNotEmpty()
     }
 }
 
@@ -45,6 +60,7 @@ suspend fun checkCredentials(
     onSuccess: () -> Unit = {},
     onError: (String) -> Unit = {}, 
     showToast: (String) -> Unit = {}, 
+    usePassword: Boolean = true,
 ): Boolean {
     // Check credentials against the server
     return if (creds.isNotEmpty()) { 
@@ -66,7 +82,8 @@ suspend fun checkCredentials(
                     onError = { error ->
                         message = error
                         onError(error)
-                    }
+                    }, 
+                    usePassword = usePassword
                 )
             }
             showToast(message)
@@ -83,9 +100,6 @@ suspend fun checkCredentials(
     }
 }
     
-
-
-
 @Composable
 fun LoginScreen() {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
@@ -141,7 +155,7 @@ fun LoginScreen() {
                             context.startActivity(Intent(context, AdminActivity::class.java))
                             (context as Activity).finish()
                         },
-                        onError = { credentials = LoginCredentials() },
+                        onError = { },
                         showToast = {message -> 
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                         }
@@ -161,10 +175,11 @@ fun LoginScreen() {
                             context.startActivity(Intent(context, AdminActivity::class.java))
                             (context as Activity).finish()
                         },
-                        onError = { credentials = LoginCredentials() }, 
+                        onError = { }, 
                         showToast = {message -> 
                             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                        }                    )
+                        }                    
+                    )
                 }
             },
             enabled = credentials.isNotEmpty(),
@@ -184,7 +199,19 @@ class LoginActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize().padding(top = 20.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    var showQrScanner by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.fillMaxSize()) {
+                        IconButton(
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(40.dp)
+                                .align(Alignment.TopEnd), 
+                            onClick = { 
+                                showQrScanner = true
+                            }
+                        ){
+                            Icon(Icons.Filled.QrCode, contentDescription = "Scan a QR")   
+                        }
                         BackButton(
                             modifier = Modifier
                                 .padding(8.dp)
@@ -193,6 +220,46 @@ class LoginActivity : ComponentActivity() {
                             onClick = { finish() }
                         )
                         LoginScreen()
+                    }
+                    if (showQrScanner) {
+                        QRScannerDialog(
+                            onDismiss = { showQrScanner = false },
+                            onResult = { qrCode ->
+                                var qrCredentials = QrLoginCredentials()
+                                try {
+                                    qrCredentials = Json.decodeFromString<QrLoginCredentials>(qrCode)
+                                } catch (e: Exception) {
+                                    Toast.makeText(this, "${e.message}", Toast.LENGTH_SHORT).show()
+                                }                                
+                                var response = ""
+                                if (qrCredentials.isNotEmpty()) {
+                                    var credentials = LoginCredentials(
+                                        url = qrCredentials.url,
+                                        login = qrCredentials.username,
+                                        pwd = qrCredentials.token
+                                    )
+                                    lifecycleScope.launch{
+                                        checkCredentials(
+                                            creds = credentials,
+                                            context = this@LoginActivity,
+                                            onSuccess = {
+                                                startActivity(Intent(this@LoginActivity, AdminActivity::class.java))
+                                                finish()
+                                            },
+                                            onError = { },
+                                            showToast = {message -> 
+                                                response = message 
+                                            },
+                                            usePassword = false
+                                        )
+                                    }
+                                    //Toast.makeText(this, response, Toast.LENGTH_SHORT).show()
+                                    //showQrScanner = false
+                                } else {
+                                    Toast.makeText(this, "Invalid QR code", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
                     }
                 }
             }
