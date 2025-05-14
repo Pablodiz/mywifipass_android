@@ -164,19 +164,13 @@ fun NetworkDialogInfo(network: Network) {
 
 @Serializable
 data class QrData(
-    val user_name: String,
-    val user_email: String,
-    val user_id_document: String,
-    val user_uuid: String,
-    val validation_url: String
+    val validation_url: String,
+    val location_uuid: String 
 ){
     fun toJson(): String {
         return """
             {
-                "user_name": "$user_name",
-                "user_email": "$user_email",
-                "user_id_document": "$user_id_document",
-                "user_uuid": "$user_uuid",
+                "location_uuid": "$location_uuid",
                 "validation_url": "$validation_url"
             }
         """.trimIndent()
@@ -184,10 +178,7 @@ data class QrData(
     fun toBodyPetition(): String {
         return """
             {
-                "user_name": "$user_name",
-                "user_email": "$user_email",
-                "user_id_document": "$user_id_document",
-                "user_uuid": "$user_uuid"
+                "location_uuid": "$location_uuid"
             }
         """.trimIndent()
     }
@@ -195,10 +186,7 @@ data class QrData(
 
 fun QrInfo(network: Network): String {
     val qrData = QrData(
-        user_name = network.user_name,
-        user_email = network.user_email,
-        user_id_document = network.user_id_document,
-        user_uuid = network.user_uuid,
+        location_uuid = network.location_uuid,
         validation_url = network.validation_url
     )
     return qrData.toJson()
@@ -214,7 +202,7 @@ fun QrCode(
         factory = { context ->
             val qrCodeWriter = QRCodeWriter()
             val hints = mapOf(
-                EncodeHintType.MARGIN to 0
+                EncodeHintType.MARGIN to 1
             )
             val bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200, hints)
             val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)

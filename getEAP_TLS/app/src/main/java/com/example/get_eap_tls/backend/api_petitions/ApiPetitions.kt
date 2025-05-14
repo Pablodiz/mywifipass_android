@@ -74,24 +74,73 @@ suspend fun getCertificatesSymmetricKey(
     }
 }
 
-suspend fun allowAccess(
+@Serializable
+data class CheckAttendeeResponse(
+    val id_document: String,
+    val name: String,
+    val authorize_url: String
+)
+
+suspend fun authorizeAttendee(
     endpoint: String,
-    body: String, 
     token: String,
     onError: (String) -> Unit = {},
     onSuccess: (String) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(url_string = endpoint, jsonString = body,  token = token)
+            val httpResponse = httpPetition(url_string = endpoint, jsonString="", token = token)
             val statusCode = httpResponse.statusCode
-            val reply = httpResponse.body
+            val body = httpResponse.body
             when (statusCode) {
                 200 -> {
-                    onSuccess("The attendee has been granted access")
+                    onSuccess("Attendee authorized successfully")
                 }
                 400 -> {
-                    onError("Bad request: $reply")
+                    onError("Bad request: $body")
+                }
+                401 -> {
+                    onError("You are not authorized to access this resource")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $body")
+                }
+            }
+        } catch (e: Exception) {
+            onError("An error occurred: ${e.message}")
+        }
+    }
+}
+suspend fun checkAttendee(
+    endpoint: String,
+    body: String, 
+    token: String,
+    onError: (String) -> Unit = {},
+    onSuccess: (String, String) -> Unit = {_,_ ->}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val httpResponse = httpPetition(url_string = endpoint, jsonString = body,  token = token)
+            val statusCode = httpResponse.statusCode
+            val body = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    try{
+                        val constructor_json = Json { ignoreUnknownKeys = true }
+                        val parsed_reply = constructor_json.decodeFromString<CheckAttendeeResponse>(body)
+                        onSuccess("""
+                            Name: ${parsed_reply.name}
+                            ID Document: ${parsed_reply.id_document}
+                        """.trimIndent(), parsed_reply.authorize_url
+                        )
+
+                    } catch (e: Exception){
+                        onError("Error parsing the response: ${e.message}")
+                        return@withContext
+                    }
+                }
+                400 -> {
+                    onError("Bad request: $body")
                 }
                 401 -> {
                     onError("You are not authorized to access this resource")
@@ -100,10 +149,10 @@ suspend fun allowAccess(
                     onError("Access denied for the attendee")
                 }
                 404 -> {
-                    onError("Attendee not found")
+                    onError("No attendee found with the provided data")
                 }
                 else -> {
-                    onError("An unexpected error occurred: $reply")
+                    onError("An unexpected error occurred: $body")
                 }
             }
         } catch (e: Exception) {
@@ -112,18 +161,31 @@ suspend fun allowAccess(
     }
 }
 
+fun buildUrl(baseUrl: String, endpoint: String): String {
+    return baseUrl.trimEnd('/') + "/" + endpoint.trimStart('/')
+}
+
 
 suspend fun loginPetition(
     url: String,
     login: String,
     pwd: String, 
     onSuccess: (String) -> Unit = {},
-    onError: (String) -> Unit = {}
+    onError: (String) -> Unit = {}, 
+    usePassword: Boolean = true
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val endpoint = "$url/api/api-token-auth/"
-            val credentials = mapOf("username" to login, "password" to pwd)
+            var endpoint : String
+            var credentials : Map<String, String>
+            if (usePassword){
+                endpoint = buildUrl(url, "/api/login/password")
+                credentials = mapOf("username" to login, "password" to pwd)
+
+            }else {
+                endpoint = url
+                credentials = mapOf("username" to login, "token" to pwd)
+            }
             val constructorJson = Json { ignoreUnknownKeys = true }
             val jsonString = constructorJson.encodeToString(credentials)
             val response = httpPetition(endpoint, jsonString)

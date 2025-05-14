@@ -24,8 +24,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.example.get_eap_tls.backend.api_petitions.allowAccess
+import com.example.get_eap_tls.backend.api_petitions.checkAttendee
+import com.example.get_eap_tls.backend.api_petitions.authorizeAttendee
 import kotlinx.coroutines.withContext
+
+
+import androidx.compose.material.icons.filled.Check 
+import androidx.compose.material.icons.filled.Close
+
 
 @Composable 
 fun AdminScreen(
@@ -33,14 +39,17 @@ fun AdminScreen(
 ){
     var showScannerDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
+    var showValidatedUserDialog by remember { mutableStateOf(false) }
+    var lastAuthorizeUrl by remember { mutableStateOf("") }
+    var response by remember { mutableStateOf("") }
+    var failed by remember { mutableStateOf(false) }
+    
     if (showScannerDialog) {
         QRScannerDialog(
             onDismiss = { 
                 showScannerDialog = false 
             },
             onResult = { result ->
-                var response = ""
                 scope.launch {
                     withContext(Dispatchers.IO){
                         try {
@@ -49,24 +58,97 @@ fun AdminScreen(
                             val body = qrData.toBodyPetition()
                             val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
                             val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
-                            allowAccess(
+                            checkAttendee(
                                 endpoint = endpoint,
                                 body = body, 
                                 token = token,
-                                onSuccess = { message -> 
+                                onSuccess = { message, authorize_url -> 
                                     response = message
+                                    failed = false
+                                    lastAuthorizeUrl = authorize_url
+                                    showValidatedUserDialog = true
                                 },
                                 onError = { error -> 
                                     response = error
+                                    failed = true
+                                    showValidatedUserDialog = true
                                 }
                             )
                         } catch (e: Exception) {
                             response = "Error: ${e.message}"
                         }
                     }
-                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
                 }
                 showScannerDialog = false
+            }
+        )
+    }
+
+    if (showValidatedUserDialog) {
+        AlertDialog(
+            onDismissRequest = { showValidatedUserDialog = false },
+            title = { Text("Scanned ticket:") },
+            text = { 
+                Column (
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (failed) {
+                            Icon(
+                                Icons.Filled.Close, 
+                                contentDescription = "Error", 
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            Icon(
+                                Icons.Filled.Check, 
+                                contentDescription = "Success", 
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("$response")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        if(!failed){
+                            scope.launch {
+                                withContext(Dispatchers.IO){
+                                    try {
+                                        val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
+                                        val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
+                                        authorizeAttendee(
+                                            endpoint = lastAuthorizeUrl,
+                                            token = token,
+                                            onSuccess = { message -> 
+                                                response = message
+                                            },
+                                            onError = { error -> 
+                                                response = error
+                                            }
+                                        )
+                                    } catch (e: Exception) {
+                                        response = "Error: ${e.message}"
+                                    }
+                                }
+                                Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                            }
+                        } 
+                        showValidatedUserDialog = false
+
+                    }
+                ) {
+                    Text("OK")
+                }
             }
         )
     }
