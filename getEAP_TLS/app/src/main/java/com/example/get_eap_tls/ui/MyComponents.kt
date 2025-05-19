@@ -112,6 +112,7 @@ fun BackButton(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(modifier: Modifier = Modifier){
     // Create scope for the coroutine (for async tasks)
@@ -251,12 +252,11 @@ fun MainScreen(modifier: Modifier = Modifier){
         },
         content = {
             Column{
-                MyTextField(  
-                    onTextChange = { newText ->
-                        enteredText = newText 
-                    },
-                    label = "Enter URL",
-                    placeholder = "https://example.com"
+                TextField(
+                    value = enteredText,
+                    onValueChange = { enteredText = it },
+                    label = {Text("Enter URL")},
+                    placeholder = {Text("https://example.com")}
                 )
             }
         },

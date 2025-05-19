@@ -19,26 +19,6 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.text.input.VisualTransformation
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MyTextField(
-    label: String = "Write your text here:",
-    placeholder: String = "Your text...",
-    onTextChange: (String) -> Unit
-) {
-    var text by remember { mutableStateOf("") }
-
-    TextField(
-        value = text,
-        onValueChange = { 
-            text = it 
-            onTextChange(it)
-        },
-        label = { Text(label) },
-        placeholder = { Text(placeholder) },
-        singleLine = true
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
