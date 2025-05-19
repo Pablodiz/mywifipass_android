@@ -17,7 +17,7 @@ fun parseReply(string: String): Network{
         val constructor_json = Json { ignoreUnknownKeys = true }
         constructor_json.decodeFromString<Network>(string)
     } catch (e: Exception){
-        throw Exception("Error al procesar la respuesta: ${e.message}")
+        throw Exception("Unrecognized response format")
     }
 }
 
@@ -29,10 +29,32 @@ suspend fun makePetitionAndAddToDatabase(
 ):List<Network> {
     withContext(Dispatchers.IO) {
         try{
-            val reply = httpPetition(enteredText).body
-            val network = parseReply(reply)
-            dataSource.insertNetwork(network)
-            onSuccess(reply) 
+            val reply = httpPetition(enteredText)
+            val body = reply.body
+            val statusCode = reply.statusCode
+            when (statusCode) {
+                200 -> {
+                    val network = parseReply(body)
+                    dataSource.insertNetwork(network)
+                    onSuccess(body) 
+                }
+                400 -> {
+                    onError("Bad request")
+                }
+                401 -> {
+                    onError("You are not authorized to access this resource")
+                }
+                404 -> {
+                    onError("No user found")
+                }
+                500 -> {
+                    onError("Server or petition error")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $body")
+                }
+            }
+
         } catch (e:Exception){
             onError(e.message.toString())
         }

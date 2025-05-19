@@ -123,6 +123,7 @@ fun MainScreen(modifier: Modifier = Modifier){
     
     // Variables for the UI
     var reply by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
@@ -190,13 +191,24 @@ fun MainScreen(modifier: Modifier = Modifier){
                 makePetitionAndAddToDatabase(
                     enteredText = newText,
                     dataSource = dataSource,
-                    onSuccess = { reply = it },
-                    onError = { reply = it }
+                    onSuccess = { 
+                        reply = it                
+                    },
+                    onError = { 
+                        error = it 
+                    }
                 )
             }
         }
     }
     
+    LaunchedEffect(error) {
+        if (error.isNotEmpty()) {
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            error = ""
+        }
+    }
+
     if (showQrScanner) {
         hasCameraPermission = context.checkSelfPermission(cameraPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (!hasCameraPermission) {
@@ -214,7 +226,7 @@ fun MainScreen(modifier: Modifier = Modifier){
                 showQrScanner = false
             }
         } else {
-            // Mostrar el QRScannerDialog si ya tiene permisos
+            // Show the QR scanner dialog if the permission is granted
             QRScannerDialog(
                 onResult = { scannedText ->
                     handlePetition(scannedText)
