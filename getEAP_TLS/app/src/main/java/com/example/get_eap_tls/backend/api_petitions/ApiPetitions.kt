@@ -75,6 +75,9 @@ suspend fun makePetitionAndAddToDatabase(
                 401 -> {
                     onError("You are not authorized to access this resource")
                 }
+                403 -> {
+                    onError("$body")
+                }
                 404 -> {
                     onError("No user found")
                 }
