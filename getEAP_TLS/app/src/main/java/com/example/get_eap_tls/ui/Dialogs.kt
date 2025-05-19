@@ -40,6 +40,8 @@ import com.example.get_eap_tls.backend.api_petitions.getCertificatesSymmetricKey
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 
+import kotlinx.coroutines.delay
+
 @Composable
 // Funcion que muestra un dialogo emergente
 fun MyDialog(
@@ -272,40 +274,48 @@ fun NetworkDialog(
 ){
     selectedNetwork?.let {network ->
         var menuExpanded by remember { mutableStateOf(false) }
+        var accept_text by remember { mutableStateOf("Accept") }
+        if (network.are_certificiates_decrypted && !network.is_connection_configured) {
+            accept_text = "Configure connection"
+        }
+        LaunchedEffect(showDialog) {
+            while (showDialog) {
+                try {
+                    withContext(Dispatchers.IO) {
+                        val symmetricKey = getCertificatesSymmetricKey(
+                            endpoint = network.certificates_symmetric_key_url,
+                            onError = { errorMessage ->
+                                //showToast("Error: $errorMessage")
+                            },
+                            onSuccess = { symmetricKey ->
+                                network.certificates_symmetric_key = symmetricKey
+                                network.is_certificates_key_set = true
+                            }
+                        )
+                        if (network.is_certificates_key_set && !network.are_certificiates_decrypted) {
+                            decryptCertificates(network)
+                            if (network.are_certificiates_decrypted) {
+                                dataSource.updateNetwork(network)
+                                onConnectionsUpdated(dataSource.loadConnections())
+                                accept_text = "Configure connection"
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    //showToast("Error: ${e.message}")
+                }
+                delay(10_000L) // Esperar 10 segundos antes de la siguiente petición
+            }
+        }
+        
         MyDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
             onAccept = { 
-                if (!network.is_connection_configured){
+                if (!network.is_connection_configured && network.are_certificiates_decrypted) {
                     //var message = ""
                     scope.launch {
                         try {
-                            withContext(Dispatchers.IO) {
-                                val symmetricKey = getCertificatesSymmetricKey(
-                                    endpoint = network.certificates_symmetric_key_url, 
-                                    onError = { errorMessage ->
-                                        //message = errorMessage
-                                    },
-                                    onSuccess = { symmetricKey ->
-                                        network.certificates_symmetric_key = symmetricKey
-                                        network.is_certificates_key_set = true
-                                        dataSource.updateNetwork(network)
-                                        onConnectionsUpdated(dataSource.loadConnections())     
-                                        //message = "You can now configure the connection"
-                                    }
-                                )
-                            }
-                            //showToast(message)
-                        } catch (e: Exception) {
-                            //showToast("Error: ${e.message}")
-                        }
-                        if (!network.are_certificiates_decrypted) {
-                            val message = withContext(Dispatchers.IO) { 
-                                decryptCertificates(network) 
-                            }
-                            //showToast(message)
-                        }
-                        if (network.are_certificiates_decrypted && !network.is_connection_configured){
                             withContext(Dispatchers.IO) {
                                 try{
                                     val eapTLSConnection = configureConnection(network)
@@ -319,10 +329,12 @@ fun NetworkDialog(
                                 }
                             }
                             showToast("Connection ready")
+                        } catch (e: Exception) {
+                            //showToast("Error: ${e.message}")
                         }
                     }
-                }
                 onAccept() 
+                }
             },
             dialogTitle = "${network.location_name}",
             titleActions = {
@@ -390,6 +402,7 @@ fun NetworkDialog(
                     }
                 }
             },
+            acceptButtonText = accept_text
         )
     }
 }
