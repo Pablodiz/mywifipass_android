@@ -20,10 +20,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Serializable
 @Entity(tableName = "networks")
 data class Network(
-    @PrimaryKey(autoGenerate = true) 
+    @PrimaryKey(autoGenerate = true)
     @Transient
     val id: Int = 0,
-    
     val user_name: String,
     val user_email: String,
     val user_id_document: String,
@@ -38,23 +37,22 @@ data class Network(
     val end_date: String,
     val description: String,
     val location_name: String,
-    val validation_url: String, 
+    val validation_url: String,
     val certificates_symmetric_key_url: String,
     val location_uuid: String,
+    var has_downloaded_url: String = "",
 
-    // Not received on the first 
     @Transient
     var certificates_symmetric_key: String = "",
     @Transient
-    var is_connection_configured: Boolean = false,    
+    var is_connection_configured: Boolean = false,
     @Transient
     var is_certificates_key_set: Boolean = false,
     @Transient
     var are_certificiates_decrypted: Boolean = false,
-
 )
 
-@Database(entities = [Network::class], version = 4)
+@Database(entities = [Network::class], version = 5)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -97,13 +95,17 @@ private val MIGRATION_3_4 = object: Migration (3, 4) {
         database.execSQL("ALTER TABLE networks ADD COLUMN location_uuid TEXT NOT NULL DEFAULT ''")
     }
 }
-
+private val MIGRATION_4_5 = object: Migration (4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE networks ADD COLUMN has_downloaded_url TEXT NOT NULL DEFAULT ''")
+    }
+}
 class DataSource(context: Context) {
     private val db = Room.databaseBuilder(
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
 
     private val NetworkDao = db.networkDao()
 

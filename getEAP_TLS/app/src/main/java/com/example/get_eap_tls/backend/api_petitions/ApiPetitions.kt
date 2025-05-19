@@ -21,6 +21,36 @@ fun parseReply(string: String): Network{
     }
 }
 
+suspend fun confirmDownload(
+    has_downloaded_url: String,
+    onError: (String) -> Unit = {},
+    onSuccess: (String) -> Unit = {}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val httpResponse = httpPetition(has_downloaded_url, jsonString = "")
+            val statusCode = httpResponse.statusCode
+            val body = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    onSuccess(body)
+                }
+                400 -> {
+                    onError("Bad request")
+                }
+                401 -> {
+                    onError("You are not authorized to access this resource")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $body")
+                }
+            }
+        } catch (e: Exception) {
+            onError(e.message.toString())
+        }
+    }
+}
+
 suspend fun makePetitionAndAddToDatabase(
     enteredText: String,
     dataSource: DataSource, 
@@ -36,6 +66,7 @@ suspend fun makePetitionAndAddToDatabase(
                 200 -> {
                     val network = parseReply(body)
                     dataSource.insertNetwork(network)
+                    confirmDownload(network.has_downloaded_url)
                     onSuccess(body) 
                 }
                 400 -> {
