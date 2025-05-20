@@ -40,7 +40,13 @@ import com.example.get_eap_tls.backend.api_petitions.getCertificatesSymmetricKey
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 
+// Import for waiting x seconds 
 import kotlinx.coroutines.delay
+
+// Imports for asking for permissions
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -100,39 +106,68 @@ fun QRScannerDialog(
     onResult: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        text = {
-            AndroidView(
-                factory = { context ->
-                    // Create the barcode scanner view
-                    val barcodeView = DecoratedBarcodeView(context)
-                    // Set the decoder factory to only recognize QR codes
-                    barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
-                    // Set the help text
-                    barcodeView.setStatusText("Scan a QR code")
-                    // Start the camera decode (the user doesnt have to click another button)
-                    barcodeView.decodeSingle(object : BarcodeCallback {
-                        override fun barcodeResult(result: BarcodeResult?) {
-                            result?.text?.let {
-                                onResult(it)
-                                onDismiss()
-                            }
-                        }
-                        // List of the points that are analyzed by the scanner
-                        override fun possibleResultPoints(resultPoints: MutableList<ResultPoint>?) {}
-                    })
-                    barcodeView.resume()
-                    barcodeView
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            )
-        },
-        confirmButton = {},
-        dismissButton = {}
+    val context = LocalContext.current
+    val cameraPermission = android.Manifest.permission.CAMERA
+    var hasCameraPermission by remember { mutableStateOf(false) }
+
+    // Launcher to request camera permission
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasCameraPermission = isGranted
+            if (!isGranted) {
+                // Notify the user that the permission is required
+                Toast.makeText(context, "Camera permission is required to scan QR codes", Toast.LENGTH_SHORT).show()
+                onDismiss()
+            }
+        }
     )
+
+    // Check and request camera permission
+    LaunchedEffect(Unit) {
+        hasCameraPermission = context.checkSelfPermission(cameraPermission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(cameraPermission)
+        }
+    }
+
+    if (hasCameraPermission) {
+        // Show the QR scanner dialog if the permission is granted
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            text = {
+                AndroidView(
+                    factory = { context ->
+                        // Create the barcode scanner view
+                        val barcodeView = DecoratedBarcodeView(context)
+                        // Set the decoder factory to only recognize QR codes
+                        barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
+                        // Set the help text
+                        barcodeView.setStatusText("Scan a QR code")
+                        // Start the camera decode (the user doesn't have to click another button)
+                        barcodeView.decodeSingle(object : BarcodeCallback {
+                            override fun barcodeResult(result: BarcodeResult?) {
+                                result?.text?.let {
+                                    onResult(it)
+                                    onDismiss()
+                                }
+                            }
+
+                            // List of the points that are analyzed by the scanner
+                            override fun possibleResultPoints(resultPoints: MutableList<ResultPoint>?) {}
+                        })
+                        barcodeView.resume()
+                        barcodeView
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                )
+            },
+            confirmButton = {},
+            dismissButton = {}
+        )
+    }
 }
 
 @Composable
