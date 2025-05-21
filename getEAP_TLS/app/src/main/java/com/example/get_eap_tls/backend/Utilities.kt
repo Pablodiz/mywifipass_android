@@ -9,6 +9,8 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null, token: 
     return try {
         val url = URL(url_string)
         val urlConnection = url.openConnection() as HttpURLConnection
+        urlConnection.connectTimeout = 5000
+        urlConnection.readTimeout = 5000
         urlConnection.requestMethod = if (jsonString != null) "POST" else "GET"
         urlConnection.setRequestProperty("Accept", "application/json")
         urlConnection.setRequestProperty("Content-type", "application/json")
@@ -23,7 +25,7 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null, token: 
             urlConnection.outputStream.use { it.write(jsonString.toByteArray()) }
         }
 
-        val statusCode = urlConnection.responseCode
+        val statusCode = urlConnection.responseCode // The petition is made here
         val responseBody = if (statusCode in 200..299) {
             urlConnection.inputStream.bufferedReader().use { it.readText() }
         } else {
