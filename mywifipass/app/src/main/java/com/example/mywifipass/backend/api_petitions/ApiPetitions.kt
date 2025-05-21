@@ -195,7 +195,7 @@ suspend fun checkAttendee(
                 200 -> {
                     try{
                         val constructor_json = Json { ignoreUnknownKeys = true }
-                        val parsed_reply = constructor_json.decodeFromString<CheckAttendeeResponse>(body)
+                        val parsed_reply = constructor_json.decodeFromString<CheckAttendeeResponse>(response)
                         onSuccess("""
                             Name: ${parsed_reply.name}
                             ID Document: ${parsed_reply.id_document}
