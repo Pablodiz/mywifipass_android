@@ -2,6 +2,8 @@ package com.example.get_eap_tls.backend.api_petitions
 
 import kotlinx.serialization.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.example.get_eap_tls.backend.certificates.EapTLSCertificate
 
 import com.example.get_eap_tls.backend.database.Network
@@ -167,6 +169,16 @@ suspend fun authorizeAttendee(
         }
     }
 }
+
+fun extractErrorMessage(body: String): String {
+    return try {
+        val json = Json.parseToJsonElement(body).jsonObject
+        json["error"]?.jsonPrimitive?.content ?: "Unknown error"
+    } catch (e: Exception) {
+        "Unknown error"
+    }
+}
+
 suspend fun checkAttendee(
     endpoint: String,
     body: String, 
@@ -196,19 +208,19 @@ suspend fun checkAttendee(
                     }
                 }
                 400 -> {
-                    onError("Bad request: $body")
+                    onError("Bad request: ${extractErrorMessage(body)}")
                 }
                 401 -> {
                     onError("You are not authorized to access this resource")
                 }
                 403 -> {
-                    onError("Access denied for the attendee")
+                    onError(extractErrorMessage(body))
                 }
                 404 -> {
                     onError("No attendee found with the provided data")
                 }
                 else -> {
-                    onError("An unexpected error occurred: $body")
+                    onError("An unexpected error occurred: ${extractErrorMessage(body)}")
                 }
             }
         } catch (e: Exception) {
