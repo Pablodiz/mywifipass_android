@@ -35,8 +35,9 @@ import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.serialization.*
 // import androidx.compose.ui.viewinterop.AndroidView
 
-// Imports for setting the symmetric key
-import app.mywifipass.backend.api_petitions.getCertificatesSymmetricKey
+// Imports for setting the certificates
+import app.mywifipass.backend.api_petitions.getCertificates
+import app.mywifipass.backend.api_petitions.CertificatesResponse
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 
@@ -317,24 +318,21 @@ fun NetworkDialog(
             while (showDialog) {
                 try {
                     withContext(Dispatchers.IO) {
-                        val symmetricKey = getCertificatesSymmetricKey(
-                            endpoint = network.certificates_symmetric_key_url,
+                        val symmetricKey = getCertificates(
+                            endpoint = network.certificates_url,
                             onError = { errorMessage ->
                                 //showToast("Error: $errorMessage")
                             },
-                            onSuccess = { symmetricKey ->
-                                network.certificates_symmetric_key = symmetricKey
-                                network.is_certificates_key_set = true
-                            }
-                        )
-                        if (network.is_certificates_key_set && !network.are_certificiates_decrypted) {
-                            decryptCertificates(network)
-                            if (network.are_certificiates_decrypted) {
+                            onSuccess = { certificates ->
+                                network.ca_certificate = certificates.ca_certificate_pem
+                                network.certificate = certificates.certificate_pem
+                                network.private_key = certificates.private_key_pem
+                                network.are_certificiates_decrypted = true 
                                 dataSource.updateNetwork(network)
                                 onConnectionsUpdated(dataSource.loadConnections())
                                 accept_text = "Configure connection"
                             }
-                        }
+                        )
                     }
                 } catch (e: Exception) {
                     //showToast("Error: ${e.message}")

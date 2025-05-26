@@ -133,6 +133,42 @@ suspend fun getCertificatesSymmetricKey(
 }
 
 @Serializable
+data class CertificatesResponse(
+    val certificate_pem: String,
+    val private_key_pem: String,
+    val ca_certificate_pem: String
+)
+
+suspend fun getCertificates(
+    endpoint: String,
+    onError: (String) -> Unit = {},
+    onSuccess: (CertificatesResponse) -> Unit = {}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val httpResponse = httpPetition(endpoint)
+            val statusCode = httpResponse.statusCode
+            val reply = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    val json = Json { ignoreUnknownKeys = true }
+                    val certs = json.decodeFromString<CertificatesResponse>(reply)
+                    onSuccess(certs)
+                }
+                403 -> {
+                    onError("Access denied")
+                }
+                else -> {
+                    onError("An unexpected error occurred: $statusCode")
+                }
+            }
+        } catch (e: Exception) {
+            onError(e.message.toString())
+        }
+    }
+}
+
+@Serializable
 data class CheckAttendeeResponse(
     val id_document: String,
     val name: String,
