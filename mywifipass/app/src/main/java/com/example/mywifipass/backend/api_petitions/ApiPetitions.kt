@@ -13,6 +13,9 @@ import app.mywifipass.backend.HttpResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.content.Context
+import android.util.Base64
+import java.io.ByteArrayInputStream
+import java.security.KeyStore
 
 fun parseReply(string: String): Network{
     return try{
@@ -134,15 +137,14 @@ suspend fun getCertificatesSymmetricKey(
 
 @Serializable
 data class CertificatesResponse(
-    val certificate_pem: String,
-    val private_key_pem: String,
-    val ca_certificate_pem: String
+    val pkcs12_b64: String,
 )
 
 suspend fun getCertificates(
     endpoint: String,
     onError: (String) -> Unit = {},
-    onSuccess: (CertificatesResponse) -> Unit = {}
+    onSuccess: (KeyStore) -> Unit = {},
+    key: String 
 ) {
     withContext(Dispatchers.IO) {
         try {
@@ -153,7 +155,11 @@ suspend fun getCertificates(
                 200 -> {
                     val json = Json { ignoreUnknownKeys = true }
                     val certs = json.decodeFromString<CertificatesResponse>(reply)
-                    onSuccess(certs)
+                    val pkcs12Bytes = Base64.decode(certs.pkcs12_b64, Base64.DEFAULT)
+                    val inputStream = ByteArrayInputStream(pkcs12Bytes)
+                    val keyStore = KeyStore.getInstance("PKCS12")
+                    keyStore.load(inputStream, key.toCharArray()) 
+                    onSuccess(keyStore)
                 }
                 403 -> {
                     onError("Access denied")
