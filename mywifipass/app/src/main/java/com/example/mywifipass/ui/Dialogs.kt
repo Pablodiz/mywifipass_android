@@ -267,10 +267,10 @@ fun configureConnection(network: Network): EapTLSConnection {
         network.private_key.byteInputStream()
     )
     val eapTLSConnection = EapTLSConnection(
-        network.ssid,
-        certificates,
-        network.user_email, //The identity musn't have blank spaces
-        network.network_common_name
+        ssid = network.ssid,
+        eapTLSCertificate = certificates,
+        identity = network.user_email, //The identity musn't have blank spaces
+        altSubjectMatch = network.network_common_name
     )
     return eapTLSConnection
 }
@@ -380,7 +380,7 @@ fun NetworkDialog(
                 }
             }
         }
-
+        val context = LocalContext.current
         MyDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
@@ -392,7 +392,7 @@ fun NetworkDialog(
                             withContext(Dispatchers.IO) {
                                 try{
                                     val eapTLSConnection = configureConnection(network)
-                                    eapTLSConnection.connect(wifiManager)
+                                    eapTLSConnection.connect(wifiManager, context=context)
                                     network.is_connection_configured = true
                                     dataSource.updateNetwork(network)
                                     onConnectionsUpdated(dataSource.loadConnections())

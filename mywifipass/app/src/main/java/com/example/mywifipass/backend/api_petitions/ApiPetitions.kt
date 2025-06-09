@@ -19,7 +19,10 @@ import java.security.KeyStore
 
 fun parseReply(string: String): Network{
     return try{
-        val constructor_json = Json { ignoreUnknownKeys = true }
+        val constructor_json = Json { 
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        }
         constructor_json.decodeFromString<Network>(string)
     } catch (e: Exception){
         throw Exception("Unrecognized response format")

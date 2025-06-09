@@ -23,18 +23,25 @@ data class Network(
     @PrimaryKey(autoGenerate = true)
     @Transient
     val id: Int = 0,
+    
+    @SerialName("name")
     val user_name: String,
+    
+    @SerialName("email")
     val user_email: String,
+    
+    @SerialName("id_document")
     val user_id_document: String,
-    val user_uuid: String,
-    val network_common_name: String,
+    
+    val user_uuid: String, //useless
+    val network_common_name: String, 
     val ssid: String,
-    val location: String,
+    val location: String="",
     val start_date: String,
     val end_date: String,
-    val description: String,
+    val description: String="",
     val location_name: String,
-    val location_uuid: String,
+    val location_uuid: String, // useless
     val validation_url: String,
     val certificates_url: String,
     var has_downloaded_url: String,
