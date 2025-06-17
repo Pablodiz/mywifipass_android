@@ -55,12 +55,10 @@ fun AdminScreen(
                         try {
                             val qrData = Json.decodeFromString<QrData>(result)
                             val endpoint = qrData.validation_url
-                            val body = qrData.toBodyPetition()
                             val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
                             val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
                             checkAttendee(
                                 endpoint = endpoint,
-                                body = body, 
                                 token = token,
                                 onSuccess = { message, authorize_url -> 
                                     response = message
@@ -87,7 +85,7 @@ fun AdminScreen(
     if (showValidatedUserDialog) {
         AlertDialog(
             onDismissRequest = { showValidatedUserDialog = false },
-            title = { Text("Scanned ticket:") },
+            title = { Text("Scanned info:") },
             text = { 
                 Column (
                     horizontalAlignment = Alignment.CenterHorizontally,

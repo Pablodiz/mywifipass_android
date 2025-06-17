@@ -57,7 +57,11 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         context.startActivity(intent)
     }
     
-    fun disconnect(wifiManager: WifiManager){
-        wifiManager.removeNetworkSuggestions(listOf(suggestion))
+    fun disconnect(wifiManager: WifiManager, context: Context){
+         when {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && context != null -> {
+                wifiManager.removeNetworkSuggestions(listOf(suggestion))
+            }
+         }
     }
 }

@@ -24,16 +24,16 @@ data class Network(
     @Transient
     val id: Int = 0,
     
-    @SerialName("name")
-    val user_name: String,
+    // @SerialName("name")
+    // val user_name: String,
     
-    @SerialName("email")
-    val user_email: String,
+    // @SerialName("email")
+    // val user_email: String,
     
-    @SerialName("id_document")
-    val user_id_document: String,
+    // @SerialName("id_document")
+    // val user_id_document: String,
     
-    val user_uuid: String, //useless
+    // val user_uuid: String, //useless
     val network_common_name: String, 
     val ssid: String,
     val location: String="",
@@ -41,7 +41,7 @@ data class Network(
     val end_date: String,
     val description: String="",
     val location_name: String,
-    val location_uuid: String, // useless
+    // val location_uuid: String, // useless
     val validation_url: String,
     val certificates_url: String,
     var has_downloaded_url: String,
@@ -61,7 +61,7 @@ data class Network(
     var are_certificiates_decrypted: Boolean = false,
 )
 
-@Database(entities = [Network::class], version = 6)
+@Database(entities = [Network::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -85,83 +85,12 @@ interface NetworkDao {
     fun updateNetwork(network: Network)
 }
 
-private val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE networks ADD COLUMN is_certificates_key_set INTEGER NOT NULL DEFAULT 0")
-    }
-}
-
-private val MIGRATION_2_3 = object: Migration (2, 3) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE networks ADD COLUMN validation_url TEXT NOT NULL DEFAULT ''")
-        db.execSQL("ALTER TABLE networks ADD COLUMN certificates_symmetric_key_url TEXT NOT NULL DEFAULT ''")
-    }
-}
-
-private val MIGRATION_3_4 = object: Migration (3, 4) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE networks ADD COLUMN location_uuid TEXT NOT NULL DEFAULT ''")
-    }
-}
-private val MIGRATION_4_5 = object: Migration (4, 5) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE networks ADD COLUMN has_downloaded_url TEXT NOT NULL DEFAULT ''")
-    }
-}
-
-private val MIGRATION_5_6 = object : Migration(5, 6) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        // SQLIte doesnt have DROP Column statements
-        // 1. Create new table 
-        db.execSQL("""
-        CREATE TABLE networks_new (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            user_name TEXT NOT NULL, 
-            user_email TEXT NOT NULL, 
-            user_id_document TEXT NOT NULL, 
-            ca_certificate TEXT NOT NULL, 
-            certificate TEXT NOT NULL, 
-            private_key TEXT NOT NULL, 
-            ssid TEXT NOT NULL, 
-            network_common_name TEXT NOT NULL, 
-            user_uuid TEXT NOT NULL, 
-            location TEXT NOT NULL, 
-            start_date TEXT NOT NULL, 
-            end_date TEXT NOT NULL,
-            description TEXT NOT NULL,
-            location_name TEXT NOT NULL,
-            validation_url TEXT NOT NULL, 
-            certificates_url TEXT NOT NULL, 
-            location_uuid TEXT NOT NULL,
-            has_downloaded_url TEXT NOT NULL, 
-            certificates_symmetric_key TEXT NOT NULL, 
-            is_connection_configured INTEGER NOT NULL, 
-            is_certificates_key_set INTEGER NOT NULL, 
-            are_certificiates_decrypted INTEGER NOT NULL)
-            """.trimIndent())
-
-        // 2. Copy data
-        db.execSQL("""
-            INSERT INTO networks_new (
-                id, user_name, user_email, user_id_document, ca_certificate, certificate, private_key, ssid, network_common_name, user_uuid, location, start_date, end_date, description, location_name, validation_url, certificates_url, location_uuid, has_downloaded_url, certificates_symmetric_key, is_connection_configured, is_certificates_key_set, are_certificiates_decrypted
-            )
-            SELECT id, user_name, user_email, user_id_document, ca_certificate, certificate, private_key, ssid, network_common_name, user_uuid, location, start_date, end_date, description, location_name, validation_url, certificates_symmetric_key_url, location_uuid, has_downloaded_url, certificates_symmetric_key, is_connection_configured, is_certificates_key_set, are_certificiates_decrypted
-            FROM networks
-        """.trimIndent())
-        // 3. Delete old table
-        db.execSQL("DROP TABLE networks")
-
-        // 4. Rename new table 
-        db.execSQL("ALTER TABLE networks_new RENAME TO networks")
-    }
-}
-
 class DataSource(context: Context) {
     private val db = Room.databaseBuilder(
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
+    ).build() 
 
     private val NetworkDao = db.networkDao()
 

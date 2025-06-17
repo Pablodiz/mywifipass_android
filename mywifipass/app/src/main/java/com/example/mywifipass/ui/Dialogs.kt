@@ -175,15 +175,6 @@ fun QRScannerDialog(
 }
 
 @Composable
-fun NetworkDialogUserInfo(network: Network){
-    Column {
-        InfoText("User Name", network.user_name)
-        InfoText("User Email", network.user_email)
-        InfoText("User ID Document", network.user_id_document)
-    }
-}
-
-@Composable
 fun NetworkDialogEventInfo(network: Network) {
     Column {
         InfoText("Location", network.location)
@@ -193,41 +184,26 @@ fun NetworkDialogEventInfo(network: Network) {
     }
 }
 
-@Composable
-fun NetworkDialogInfo(network: Network) {
-    Column {
-        NetworkDialogUserInfo(network)
-        NetworkDialogEventInfo(network)
-    }
-}
-
 
 
 @Serializable
 data class QrData(
     val validation_url: String,
-    val location_uuid: String
 ){
     fun toJson(): String {
         return """
             {
-                "location_uuid": "$location_uuid",
                 "validation_url": "$validation_url"
             }
         """.trimIndent()
     }
     fun toBodyPetition(): String {
-        return """
-            {
-                "location_uuid": "$location_uuid"
-            }
-        """.trimIndent()
+        return ""
     }
 }
 
 fun QrInfo(network: Network): String {
     val qrData = QrData(
-        location_uuid = network.location_uuid,
         validation_url = network.validation_url
     )
     return qrData.toJson()
@@ -266,10 +242,13 @@ fun configureConnection(network: Network): EapTLSConnection {
         network.certificate.byteInputStream(),
         network.private_key.byteInputStream()
     )
+
+    // Get peer ID from the certificate, or email if possible
+    var peerID = certificates.clientCertificate.serialNumber.toString() // Convertir BigInteger a String
     val eapTLSConnection = EapTLSConnection(
         ssid = network.ssid,
         eapTLSCertificate = certificates,
-        identity = network.user_email, //The identity musn't have blank spaces
+        identity = peerID, //The identity musn't have blank spaces
         altSubjectMatch = network.network_common_name
     )
     return eapTLSConnection
@@ -386,7 +365,7 @@ fun NetworkDialog(
             onDismiss = { onDismiss() },
             onAccept = {
                 if (!network.is_connection_configured && network.are_certificiates_decrypted) {
-                    //var message = ""
+                    var message = ""
                     scope.launch {
                         try {
                             withContext(Dispatchers.IO) {
@@ -396,12 +375,12 @@ fun NetworkDialog(
                                     network.is_connection_configured = true
                                     dataSource.updateNetwork(network)
                                     onConnectionsUpdated(dataSource.loadConnections())
-                                    //message = "Connection ready"
+                                    message = "Connection ready"
                                 } catch(e: Exception){
-                                    //message = e.message.toString()
+                                    message = e.message.toString()
                                 }
                             }
-                            showToast("Connection ready")
+                            showToast(message)
                         } catch (e: Exception) {
                             //showToast("Error: ${e.message}")
                         }
@@ -441,8 +420,8 @@ fun NetworkDialog(
                             scope.launch {
                                 withContext(Dispatchers.IO) {
                                     if (networkToDelete.is_connection_configured){
-                                        configureConnection(network).disconnect(wifiManager)
-                                    }
+                                        configureConnection(network).disconnect(wifiManager, context)
+                                    } 
                                     dataSource.deleteNetwork(networkToDelete)
                                     onConnectionsUpdated(dataSource.loadConnections())
                                 }

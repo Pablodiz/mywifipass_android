@@ -84,7 +84,7 @@ suspend fun makePetitionAndAddToDatabase(
                     onError("You are not authorized to access this resource")
                 }
                 403 -> {
-                    onError("$body")
+                    onError(extractErrorMessage(body))
                 }
                 404 -> {
                     onError("No user found")
@@ -226,14 +226,13 @@ fun extractErrorMessage(body: String): String {
 
 suspend fun checkAttendee(
     endpoint: String,
-    body: String, 
     token: String,
     onError: (String) -> Unit = {},
     onSuccess: (String, String) -> Unit = {_,_ ->}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(url_string = endpoint, jsonString = body,  token = token)
+            val httpResponse = httpPetition(url_string = endpoint,  token = token)
             val statusCode = httpResponse.statusCode
             val response = httpResponse.body
             when (statusCode) {

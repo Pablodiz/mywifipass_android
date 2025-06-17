@@ -2,58 +2,16 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "1bb600a7f1688a05c4170b00e927e076",
+    "identityHash": "21973510ba9e8ca60e8ad8fbbb5f5b11",
     "entities": [
       {
         "tableName": "networks",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_name` TEXT NOT NULL, `user_email` TEXT NOT NULL, `user_id_document` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `ssid` TEXT NOT NULL, `network_common_name` TEXT NOT NULL, `user_uuid` TEXT NOT NULL, `location` TEXT NOT NULL, `start_date` TEXT NOT NULL, `end_date` TEXT NOT NULL, `description` TEXT NOT NULL, `location_name` TEXT NOT NULL, `is_connection_configured` INTEGER NOT NULL, `are_certificiates_decrypted` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `network_common_name` TEXT NOT NULL, `ssid` TEXT NOT NULL, `location` TEXT NOT NULL, `start_date` TEXT NOT NULL, `end_date` TEXT NOT NULL, `description` TEXT NOT NULL, `location_name` TEXT NOT NULL, `validation_url` TEXT NOT NULL, `certificates_url` TEXT NOT NULL, `has_downloaded_url` TEXT NOT NULL, `certificates_symmetric_key` TEXT NOT NULL, `ca_certificate` TEXT NOT NULL, `certificate` TEXT NOT NULL, `private_key` TEXT NOT NULL, `is_connection_configured` INTEGER NOT NULL, `is_certificates_key_set` INTEGER NOT NULL, `are_certificiates_decrypted` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "user_name",
-            "columnName": "user_name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "user_email",
-            "columnName": "user_email",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "user_id_document",
-            "columnName": "user_id_document",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ca_certificate",
-            "columnName": "ca_certificate",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "certificate",
-            "columnName": "certificate",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "private_key",
-            "columnName": "private_key",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "ssid",
-            "columnName": "ssid",
-            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -63,8 +21,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "user_uuid",
-            "columnName": "user_uuid",
+            "fieldPath": "ssid",
+            "columnName": "ssid",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -99,8 +57,56 @@
             "notNull": true
           },
           {
+            "fieldPath": "validation_url",
+            "columnName": "validation_url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certificates_url",
+            "columnName": "certificates_url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "has_downloaded_url",
+            "columnName": "has_downloaded_url",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certificates_symmetric_key",
+            "columnName": "certificates_symmetric_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ca_certificate",
+            "columnName": "ca_certificate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "certificate",
+            "columnName": "certificate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "private_key",
+            "columnName": "private_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
             "fieldPath": "is_connection_configured",
             "columnName": "is_connection_configured",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "is_certificates_key_set",
+            "columnName": "is_certificates_key_set",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -124,7 +130,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1bb600a7f1688a05c4170b00e927e076')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '21973510ba9e8ca60e8ad8fbbb5f5b11')"
     ]
   }
 }
