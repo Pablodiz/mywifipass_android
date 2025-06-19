@@ -38,7 +38,7 @@ fun RoleScreen(){
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Attendee")
+            Text("User")
         } 
         Button(
             onClick = { 
@@ -58,7 +58,7 @@ fun RoleScreen(){
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Admin")
+            Text("Validator")
         }        
     }
 }
