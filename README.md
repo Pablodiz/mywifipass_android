@@ -127,6 +127,4 @@ Refer to [the user manual](./user_manual.md) for help using the app.
 ## License
 
 This project is part of the MyWifiPass ecosystem designed to simplify enterprise wireless security deployment.
-## License
 
-This project is part of the MyWifiPass ecosystem designed to simplify enterprise wireless security deployment.
