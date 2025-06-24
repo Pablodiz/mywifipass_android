@@ -42,9 +42,22 @@ Wi-Fi passes contain:
 - URLs for certificate download (client and CA certificates)
 - Validation endpoints for identity verification
 
+## Installation 
+
+### Download APK
+Download the latest APK from the [releases page](https://github.com/Pablodiz/mywifipass_android/releases).
+
+### Build from Source
+```bash
+git clone https://github.com/Pablodiz/mywifipass_android.git
+cd mywifipass_android
+./gradlew assembleDebug
+# APK will be generated at: app/build/outputs/apk/debug/app-debug.apk
+```
+
 ## Requirements
 
-- Tried on Android 14.0
+- Android 14 or higher (tested only on Android 14)
 - Internet connectivity for initial setup and for later validation
 - Camera permission for QR code scanning
 
