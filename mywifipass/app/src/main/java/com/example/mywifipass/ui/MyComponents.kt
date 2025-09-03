@@ -8,6 +8,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
@@ -25,12 +26,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
-import app.mywifipass.backend.api_petitions.*
 import app.mywifipass.backend.database.*
 import app.mywifipass.model.data.Network
-import app.mywifipass.backend.httpPetition
-import app.mywifipass.backend.wifi_connection.*
-import app.mywifipass.backend.certificates.*
+import app.mywifipass.controller.MainController
 
 // Imports for the QR code scanner
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -114,11 +112,10 @@ fun MainScreen(modifier: Modifier = Modifier){
     val scope = rememberCoroutineScope()
     // Get the context
     val context = LocalContext.current
-    // Get the database
-    val dataSource = DataSource(context)
+    // Initialize MainController
+    val mainController = remember { MainController(context) }
     
     // Variables for the UI
-    var reply by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var enteredText by remember { mutableStateOf("") }
@@ -127,12 +124,18 @@ fun MainScreen(modifier: Modifier = Modifier){
     var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Get data from the database
+    // Load networks from controller
     LaunchedEffect(Unit) {
-        connections = withContext(Dispatchers.IO) {
-            dataSource.loadConnections()
+        isLoading = true
+        val result = mainController.getNetworks()
+        if (result.isSuccess) {
+            connections = result.getOrNull() ?: emptyList()
+        } else {
+            error = result.exceptionOrNull()?.message ?: "Failed to load networks"
         }
+        isLoading = false
     }
 
     AddEventButton(
@@ -150,33 +153,43 @@ fun MainScreen(modifier: Modifier = Modifier){
         ),
         content = { paddingValues ->
             Column(modifier = modifier.padding(paddingValues)) {
-                MyCardList(
-                    dataList = connections,
-                    onItemClick = { network ->
-                        selectedNetwork = network
-                        showNetworkDialog = true
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
-                )
+                } else {
+                    MyCardList(
+                        dataList = connections,
+                        onItemClick = { network ->
+                            selectedNetwork = network
+                            showNetworkDialog = true
+                        }
+                    )
+                }
             }
         }
     )   
 
-
-    val handlePetition: (String) -> Unit = { newText ->
-        // In a secondary thread, we make the petition and add the network to the database
+    // Function to handle adding networks via QR or URL using MainController
+    val handleAddNetwork: (String) -> Unit = { inputText ->
         scope.launch {
-            connections = withContext(Dispatchers.IO) {
-                makePetitionAndAddToDatabase(
-                    enteredText = newText,
-                    dataSource = dataSource,
-                    onSuccess = { 
-                        reply = it                
-                    },
-                    onError = { 
-                        error = it 
-                    }
-                )
+            isLoading = true
+            val result = mainController.addNetworkFromQR(inputText)
+            
+            if (result.isSuccess) {
+                // Refresh the networks list
+                val networksResult = mainController.getNetworks()
+                if (networksResult.isSuccess) {
+                    connections = networksResult.getOrNull() ?: emptyList()
+                }
+                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+            } else {
+                error = result.exceptionOrNull()?.message ?: "Failed to add network"
             }
+            isLoading = false
         }
     }
     
@@ -190,7 +203,7 @@ fun MainScreen(modifier: Modifier = Modifier){
     if (showQrScanner) {
         QRScannerDialog(
             onResult = { scannedText ->
-                handlePetition(scannedText)
+                handleAddNetwork(scannedText)
                 showQrScanner = false
             },
             onDismiss = { 
@@ -207,7 +220,7 @@ fun MainScreen(modifier: Modifier = Modifier){
         }, 
         onAccept = { 
             showDialog = false
-            handlePetition(enteredText)          
+            handleAddNetwork(enteredText)          
         },
         content = {
             Column{
@@ -235,11 +248,16 @@ fun MainScreen(modifier: Modifier = Modifier){
             },
             selectedNetwork = selectedNetwork!!,
             wifiManager = wifiManager,
-            dataSource = dataSource,
-            connections = connections,
+            mainController = mainController,
             scope = scope,
-            onConnectionsUpdated = { updatedConnections ->
-                connections = updatedConnections
+            onConnectionsUpdated = { 
+                // Refresh networks list through controller
+                scope.launch {
+                    val result = mainController.getNetworks()
+                    if (result.isSuccess) {
+                        connections = result.getOrNull() ?: emptyList()
+                    }
+                }
             }, 
             showToast = { message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
