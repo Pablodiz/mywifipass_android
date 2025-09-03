@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import app.mywifipass.backend.database.*
+import app.mywifipass.model.data.Network
+import app.mywifipass.model.data.QrData
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -181,24 +183,6 @@ fun NetworkDialogEventInfo(network: Network) {
         InfoText("Start date", network.start_date)
         InfoText("End date", network.end_date)
         InfoText("Description", network.description)
-    }
-}
-
-
-
-@Serializable
-data class QrData(
-    val validation_url: String,
-){
-    fun toJson(): String {
-        return """
-            {
-                "validation_url": "$validation_url"
-            }
-        """.trimIndent()
-    }
-    fun toBodyPetition(): String {
-        return ""
     }
 }
 

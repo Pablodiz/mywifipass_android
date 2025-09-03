@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import app.mywifipass.ui.theme.MyWifiPassTheme
 import app.mywifipass.backend.api_petitions.*
 import app.mywifipass.backend.database.*
+import app.mywifipass.model.data.Network
 import app.mywifipass.backend.httpPetition
 import app.mywifipass.backend.wifi_connection.*
 import app.mywifipass.backend.certificates.*

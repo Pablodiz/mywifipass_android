@@ -28,30 +28,11 @@ import kotlinx.coroutines.withContext
 
 import app.mywifipass.ui.components.BackButton 
 import app.mywifipass.ui.components.QRScannerDialog
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import androidx.lifecycle.lifecycleScope
 
-data class LoginCredentials(
-    var url: String = "",
-    var login: String = "",
-    var pwd: String = "",
-) {
-    fun isNotEmpty(): Boolean {
-        return login.isNotEmpty() && pwd.isNotEmpty() && url.isNotEmpty()
-    }
-}
-
-@Serializable
-data class QrLoginCredentials(
-    var url: String = "",
-    var username: String = "",
-    var token: String = "",
-) {
-    fun isNotEmpty(): Boolean {
-        return username.isNotEmpty() && token.isNotEmpty() && url.isNotEmpty()
-    }
-}
+import app.mywifipass.model.data.LoginCredentials
+import app.mywifipass.model.data.QrLoginCredentials
 
 
 suspend fun checkCredentials(

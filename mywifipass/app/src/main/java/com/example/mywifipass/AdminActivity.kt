@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Logout
 
 import app.mywifipass.ui.components.BackButton
 import app.mywifipass.ui.components.QRScannerDialog
-import app.mywifipass.ui.components.QrData
+import app.mywifipass.model.data.QrData
 import android.widget.Toast
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
