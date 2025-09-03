@@ -12,7 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.ui.zIndex
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
-import app.mywifipass.ui.components.MainScreen
+import app.mywifipass.ui.components.MainScreenContainer
 import app.mywifipass.ui.components.BackButton
 
 class MainActivity : ComponentActivity() {
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
                                 .zIndex(1f), // Ensure the button is on top
                             onClick = { finish() }
                         )
-                        MainScreen(
+                        MainScreenContainer(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(top = 56.dp) 

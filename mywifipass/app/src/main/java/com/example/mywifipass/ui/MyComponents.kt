@@ -26,7 +26,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
-import app.mywifipass.backend.database.*
 import app.mywifipass.model.data.Network
 import app.mywifipass.controller.MainController
 
@@ -107,7 +106,92 @@ fun BackButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(modifier: Modifier = Modifier){
+fun MainScreen(
+    modifier: Modifier = Modifier,
+    networks: List<Network> = emptyList(),
+    isLoading: Boolean = false,
+    onNetworkClick: (Network) -> Unit = {},
+    onScanQRClick: () -> Unit = {},
+    onEnterURLClick: () -> Unit = {},
+    onQRResult: (String) -> Unit = {},
+    onURLEntered: (String) -> Unit = {},
+    showQrScanner: Boolean = false,
+    onQRScannerDismiss: () -> Unit = {},
+    showUrlDialog: Boolean = false,
+    onUrlDialogDismiss: () -> Unit = {},
+    onUrlDialogAccept: (String) -> Unit = {}
+){
+    // Variables for the URL dialog
+    var enteredText by remember { mutableStateOf("") }
+
+    AddEventButton(
+        speedDialItems = listOf(
+            SpeedDialItem(
+                label = "Scan QR",
+                icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
+                onClick = onScanQRClick
+            ),
+            SpeedDialItem(
+                label = "Enter URL",
+                icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
+                onClick = onEnterURLClick
+            )
+        ),
+        content = { paddingValues ->
+            Column(modifier = modifier.padding(paddingValues)) {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    MyCardList(
+                        dataList = networks,
+                        onItemClick = onNetworkClick
+                    )
+                }
+            }
+        }
+    )   
+
+    if (showQrScanner) {
+        QRScannerDialog(
+            onResult = { scannedText ->
+                onQRResult(scannedText)
+                onQRScannerDismiss()
+            },
+            onDismiss = onQRScannerDismiss
+        )
+    }
+
+    // Dialog for adding a new network entering an URL
+    MyDialog(
+        showDialog = showUrlDialog, 
+        onDismiss = onUrlDialogDismiss, 
+        onAccept = { 
+            onUrlDialogAccept(enteredText)
+            enteredText = ""
+        },
+        content = {
+            Column{
+                TextField(
+                    value = enteredText,
+                    onValueChange = { enteredText = it },
+                    label = {Text("Enter URL")},
+                    placeholder = {Text("https://example.com")}
+                )
+            }
+        },
+        dialogTitle = "Add new network",
+    )   
+}
+
+// MainScreen Container that handles business logic
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreenContainer(modifier: Modifier = Modifier){
     // Create scope for the coroutine (for async tasks)
     val scope = rememberCoroutineScope()
     // Get the context
@@ -115,10 +199,9 @@ fun MainScreen(modifier: Modifier = Modifier){
     // Initialize MainController
     val mainController = remember { MainController(context) }
     
-    // Variables for the UI
+    // Variables for the UI state
     var error by remember { mutableStateOf("") }
-    var showDialog by remember { mutableStateOf(false) }
-    var enteredText by remember { mutableStateOf("") }
+    var showUrlDialog by remember { mutableStateOf(false) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
     var selectedNetwork by remember { mutableStateOf<Network?>(null)}
     var showNetworkDialog by remember { mutableStateOf(false) }
@@ -137,41 +220,6 @@ fun MainScreen(modifier: Modifier = Modifier){
         }
         isLoading = false
     }
-
-    AddEventButton(
-        speedDialItems = listOf(
-            SpeedDialItem(
-                label = "Scan QR",
-                icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
-                onClick = { showQrScanner = true }
-            ),
-            SpeedDialItem(
-                label = "Enter URL",
-                icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
-                onClick = { showDialog = true}
-            )
-        ),
-        content = { paddingValues ->
-            Column(modifier = modifier.padding(paddingValues)) {
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    MyCardList(
-                        dataList = connections,
-                        onItemClick = { network ->
-                            selectedNetwork = network
-                            showNetworkDialog = true
-                        }
-                    )
-                }
-            }
-        }
-    )   
 
     // Function to handle adding networks via QR or URL using MainController
     val handleAddNetwork: (String) -> Unit = { inputText ->
@@ -200,40 +248,28 @@ fun MainScreen(modifier: Modifier = Modifier){
         }
     }
 
-    if (showQrScanner) {
-        QRScannerDialog(
-            onResult = { scannedText ->
-                handleAddNetwork(scannedText)
-                showQrScanner = false
-            },
-            onDismiss = { 
-                showQrScanner = false 
-            }
-        )
-    }
-
-    // Dialog for adding a new network entering an URL
-    MyDialog(
-        showDialog = showDialog, 
-        onDismiss = { 
-            showDialog = false
-        }, 
-        onAccept = { 
-            showDialog = false
-            handleAddNetwork(enteredText)          
+    // Pure UI Component
+    MainScreen(
+        modifier = modifier,
+        networks = connections,
+        isLoading = isLoading,
+        onNetworkClick = { network ->
+            selectedNetwork = network
+            showNetworkDialog = true
         },
-        content = {
-            Column{
-                TextField(
-                    value = enteredText,
-                    onValueChange = { enteredText = it },
-                    label = {Text("Enter URL")},
-                    placeholder = {Text("https://example.com")}
-                )
-            }
-        },
-        dialogTitle = "Add new network",
-    )   
+        onScanQRClick = { showQrScanner = true },
+        onEnterURLClick = { showUrlDialog = true },
+        onQRResult = handleAddNetwork,
+        onURLEntered = handleAddNetwork,
+        showQrScanner = showQrScanner,
+        onQRScannerDismiss = { showQrScanner = false },
+        showUrlDialog = showUrlDialog,
+        onUrlDialogDismiss = { showUrlDialog = false },
+        onUrlDialogAccept = { url ->
+            showUrlDialog = false
+            handleAddNetwork(url)
+        }
+    )
 
     // Dialog for showing the information of the selected network
     if (showNetworkDialog && selectedNetwork != null) {

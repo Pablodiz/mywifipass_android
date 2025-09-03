@@ -17,14 +17,11 @@ import com.journeyapps.barcodescanner.*
 import com.google.zxing.*
 
 // Imports for the NetworkDialog
-import app.mywifipass.backend.wifi_connection.*
-import app.mywifipass.backend.certificates.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.platform.LocalContext
-import app.mywifipass.backend.database.*
 import app.mywifipass.controller.MainController
 import app.mywifipass.model.data.Network
 import app.mywifipass.model.data.QrData
@@ -48,12 +45,6 @@ import kotlinx.serialization.*
 
 // Imports for setting the certificates
 import app.mywifipass.backend.api_petitions.getCertificates
-import app.mywifipass.backend.api_petitions.CertificatesResponse
-import java.security.PrivateKey
-import java.security.cert.Certificate
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import android.util.Base64
 
 // Import for waiting x seconds
 import kotlinx.coroutines.delay
@@ -61,6 +52,7 @@ import kotlinx.coroutines.delay
 // Imports for asking for permissions
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+import android.widget.Toast
 
 
 @Composable
@@ -229,43 +221,9 @@ fun QrCode(
     )
 }
 
-fun configureConnection(network: Network): EapTLSConnection {
-    val certificates = EapTLSCertificate(
-        network.ca_certificate.byteInputStream(),
-        network.certificate.byteInputStream(),
-        network.private_key.byteInputStream()
-    )
 
-    // Get peer ID from the certificate, or email if possible
-    var peerID = certificates.clientCertificate.serialNumber.toString() // Convertir BigInteger a String
-    val eapTLSConnection = EapTLSConnection(
-        ssid = network.ssid,
-        eapTLSCertificate = certificates,
-        identity = peerID, //The identity musn't have blank spaces
-        altSubjectMatch = network.network_common_name
-    )
-    return eapTLSConnection
-}
 
-suspend fun decryptCertificates(network: Network): String {
-    return try {
-        val key = hexToSecretKey(network.certificates_symmetric_key)
-        val caCertificate = decryptAES256(network.ca_certificate, key)
-        val certificate = decryptAES256(network.certificate, key)
-        val privateKey = decryptAES256(network.private_key, key)
-        if (checkCertificates(caCertificate, certificate, privateKey)) {
-            network.private_key = privateKey
-            network.certificate = certificate
-            network.ca_certificate = caCertificate
-            network.are_certificiates_decrypted = true
-            "Certificates decrypted"
-        } else {
-            "Certificates failed"
-        }
-    } catch (e: Exception) {
-        "Error decrypting certificates: ${e.message}"
-    }
-}
+
 
 // Dialog that shows some information of the selected network in a QR code
 // In QR Code: information from the user and http endpoints
