@@ -21,7 +21,10 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
             caCertificate = eapTLSCertificate.caCertificate
             setClientKeyEntry(eapTLSCertificate.clientPrivateKey, eapTLSCertificate.clientCertificate)
             setIdentity(identity)
-            minimumTlsVersion = TLS_V1_2
+            // Only set minimum TLS version on Android 14+ (API 34+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                minimumTlsVersion = TLS_V1_2
+            }
             setAltSubjectMatch("DNS:"+altSubjectMatch)        
         }
 
