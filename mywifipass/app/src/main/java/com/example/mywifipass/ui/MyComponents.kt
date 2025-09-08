@@ -221,21 +221,43 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
         isLoading = false
     }
 
-    // Function to handle adding networks via QR or URL using MainController
-    val handleAddNetwork: (String) -> Unit = { inputText ->
+    // Function to refresh networks list
+    val refreshNetworks : () -> Unit ={
+        scope.launch {
+            val networksResult = mainController.getNetworks()
+            if (networksResult.isSuccess) {
+                connections = networksResult.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    // Function to handle QR code scanning (parses QR to get URL)
+    val handleQRResult: (String) -> Unit = { qrCodeText ->
         scope.launch {
             isLoading = true
-            val result = mainController.addNetworkFromQR(inputText)
+            val result = mainController.addNetworkFromQR(qrCodeText) // This parses QR and extracts URL
             
             if (result.isSuccess) {
-                // Refresh the networks list
-                val networksResult = mainController.getNetworks()
-                if (networksResult.isSuccess) {
-                    connections = networksResult.getOrNull() ?: emptyList()
-                }
-                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+                refreshNetworks()
+                Toast.makeText(context, "Network added successfully from QR", Toast.LENGTH_SHORT).show()
             } else {
-                error = result.exceptionOrNull()?.message ?: "Failed to add network"
+                error = result.exceptionOrNull()?.message ?: "Failed to add network from QR"
+            }
+            isLoading = false
+        }
+    }
+
+    // Function to handle direct URL input
+    val handleURLInput: (String) -> Unit = { url ->
+        scope.launch {
+            isLoading = true
+            val result = mainController.addNetworkFromUrl(url) // This uses URL directly
+            
+            if (result.isSuccess) {
+                refreshNetworks()
+                Toast.makeText(context, "Network added successfully from URL", Toast.LENGTH_SHORT).show()
+            } else {
+                error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
             }
             isLoading = false
         }
@@ -259,15 +281,15 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
         },
         onScanQRClick = { showQrScanner = true },
         onEnterURLClick = { showUrlDialog = true },
-        onQRResult = handleAddNetwork,
-        onURLEntered = handleAddNetwork,
+        onQRResult = handleQRResult,        // For QR scanning
+        onURLEntered = handleURLInput,      // For direct URL input (not used anymore)
         showQrScanner = showQrScanner,
         onQRScannerDismiss = { showQrScanner = false },
         showUrlDialog = showUrlDialog,
         onUrlDialogDismiss = { showUrlDialog = false },
         onUrlDialogAccept = { url ->
             showUrlDialog = false
-            handleAddNetwork(url)
+            handleURLInput(url)             // Use URL input function for dialog
         }
     )
 
@@ -286,15 +308,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
             wifiManager = wifiManager,
             mainController = mainController,
             scope = scope,
-            onConnectionsUpdated = { 
-                // Refresh networks list through controller
-                scope.launch {
-                    val result = mainController.getNetworks()
-                    if (result.isSuccess) {
-                        connections = result.getOrNull() ?: emptyList()
-                    }
-                }
-            }, 
+            onConnectionsUpdated = refreshNetworks,
             showToast = { message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }

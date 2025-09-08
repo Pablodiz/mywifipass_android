@@ -43,15 +43,15 @@ class NetworkRepository(private val context: Context) {
         }
     }
     
-    /**
-     * Adds a network from QR code scanning
-     * @param qrCode QR code string containing network validation URL
-     * @return Result containing the added Network or error
-     */
+   /**
+    * Adds a network from QR code scanning
+    * @param qrCode QR code string containing network validation URL
+    * @return Result containing the added Network or error
+    */
     suspend fun addNetworkFromQR(qrCode: String): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
-                // Parse QR code
+                // Parse QR code to extract URL
                 val parseResult = parseQRNetworkData(qrCode)
                 if (parseResult.isFailure) {
                     return@withContext Result.failure(parseResult.exceptionOrNull()!!)
@@ -60,16 +60,32 @@ class NetworkRepository(private val context: Context) {
                 val qrData = parseResult.getOrNull()!!
                 val validationUrl = qrData.validation_url
                 
-                // Make petition to get network data
+                // Now use the URL to add the network
+                addNetworkFromUrl(validationUrl)
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Error processing QR code: ${e.message}")
+                Result.failure(Exception("Error processing QR code: ${e.message}"))
+            }
+        }
+    }
+
+    /**
+    * Adds a network from a URL (either from QR or direct input)
+    * @param url Validation URL for the network
+    * @return Result containing the added Network or error
+    */
+    suspend fun addNetworkFromUrl(url: String): Result<Network> {
+        return withContext(Dispatchers.IO) {
+            try {
                 var resultNetwork: Network? = null
                 var errorMessage: String? = null
                 
                 // Use the existing makePetitionAndAddToDatabase function
                 makePetitionAndAddToDatabase(
-                    enteredText = validationUrl,
+                    enteredText = url,
                     dataSource = dataSource,
                     onSuccess = { body ->
-                        // Network already added to database by makePetitionAndAddToDatabase
                         Log.d("NetworkRepository", "Network added successfully: $body")
                     },
                     onError = { error ->
@@ -94,12 +110,11 @@ class NetworkRepository(private val context: Context) {
                 }
                 
             } catch (e: Exception) {
-                Log.e("NetworkRepository", "Error in addNetworkFromQR: ${e.message}")
-                Result.failure(Exception("Error processing QR code: ${e.message}"))
+                Log.e("NetworkRepository", "Error adding network from URL: ${e.message}")
+                Result.failure(Exception("Error adding network: ${e.message}"))
             }
         }
     }
-    
     /**
      * Downloads and decrypts certificates for a network
      * @param network Network to download certificates for
@@ -265,22 +280,20 @@ class NetworkRepository(private val context: Context) {
     // Private helper methods
     
     /**
-     * Parses QR code string to extract network validation data
-     * @param qrCode QR code string
-     * @return Result containing QrData or error
-     */
+    * Parses QR code string to extract network validation data
+    * @param qrCode QR code string (just a URL)
+    * @return Result containing QrData or error
+    */
     private fun parseQRNetworkData(qrCode: String): Result<QrData> {
         return try {
-            val qrData = Json.decodeFromString<QrData>(qrCode)
-            
-            if (qrData.validation_url.isNotEmpty()) {
-                Result.success(qrData)
+            val url = qrCode.trim()
+            if (url.startsWith("http://") || url.startsWith("https://")) {
+                Result.success(QrData(validation_url = url))
             } else {
-                Result.failure(Exception("QR code contains empty validation URL"))
+                Result.failure(Exception("QR code does not contain a valid URL"))
             }
-            
         } catch (e: Exception) {
-            Result.failure(Exception("Invalid QR code format: ${e.message}"))
+            Result.failure(Exception("Error parsing QR code: ${e.message}"))
         }
     }
     

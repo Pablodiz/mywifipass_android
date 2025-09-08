@@ -36,24 +36,30 @@ class MainController(private val context: Context) {
     }
     
     /**
-     * Adds a network from QR code scanning
-     * @param qrCode QR code string containing network validation URL
-     * @return Result containing the added Network or error
-     */
+    * Adds a network from QR code scanning
+    * @param qrCode QR code string containing network validation URL
+    * @return Result containing the added Network or error
+    */
     suspend fun addNetworkFromQR(qrCode: String): Result<Network> {
         return try {
-            Log.d("MainController", "Processing QR code for network addition")
-            val result = networkRepository.addNetworkFromQR(qrCode)
-            
-            if (result.isSuccess) {
-                val network = result.getOrNull()!!
-                Log.d("MainController", "Successfully added network: ${network.network_common_name}")
-            }
-            
-            result
+            networkRepository.addNetworkFromQR(qrCode)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from QR: ${e.message}")
             Result.failure(Exception("Failed to add network from QR: ${e.message}"))
+        }
+    }
+
+    /**
+    * Adds a network from URL (direct input)
+    * @param url Validation URL for the network
+    * @return Result containing the added Network or error
+    */
+    suspend fun addNetworkFromUrl(url: String): Result<Network> {
+        return try {
+            networkRepository.addNetworkFromUrl(url)
+        } catch (e: Exception) {
+            Log.e("MainController", "Error adding network from URL: ${e.message}")
+            Result.failure(Exception("Failed to add network from URL: ${e.message}"))
         }
     }
     
