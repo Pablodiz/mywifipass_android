@@ -59,7 +59,8 @@ class LoginController(context: Context) {
             val loginCredentials = LoginCredentials(
                 url = credentials.url,
                 login = credentials.username,
-                pwd = credentials.token
+                pwd = credentials.token, 
+                usePassword = false
             )
             
             // Perform login
