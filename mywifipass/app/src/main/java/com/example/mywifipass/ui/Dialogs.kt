@@ -222,16 +222,13 @@ fun QrCode(
 }
 
 
-
-
-
 // Dialog that shows some information of the selected network in a QR code
 // In QR Code: information from the user and http endpoints
 // In text: information from the event@Composable
 @Composable
 fun NetworkDialog(
     showDialog: Boolean,
-    selectedNetwork: Network?,
+    selectedNetworkId: Int,
     onDismiss: () -> Unit,
     onAccept: () -> Unit,
     wifiManager: android.net.wifi.WifiManager,
@@ -240,24 +237,47 @@ fun NetworkDialog(
     onConnectionsUpdated: () -> Unit = {},
     showToast: (String) -> Unit = {}
 ){
-    selectedNetwork?.let {network ->
-        var menuExpanded by remember { mutableStateOf(false) }
-        var accept_text by remember { mutableStateOf("Accept") }
-        if (network.are_certificiates_decrypted && !network.is_connection_configured) {
-            accept_text = "Configure connection"
+    var currentNetwork by remember { mutableStateOf<Network?>(null) }
+    
+    // Load initial network when dialog opens
+    LaunchedEffect(showDialog, selectedNetworkId) {
+        if (showDialog) {
+            val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+            currentNetwork = networks.find { it.id == selectedNetworkId }
         }
+    }
+
+    currentNetwork?.let {network ->
+        var menuExpanded by remember { mutableStateOf(false) }
+        var accept_text by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
+            mutableStateOf(
+                when {
+                    network.are_certificiates_decrypted && !network.is_connection_configured -> "Configure connection"
+                    network.is_connection_configured -> "Connected"
+                    else -> "Accept"
+                }
+            )
+        } 
         LaunchedEffect(showDialog) {
             if (!network.is_connection_configured && !network.are_certificiates_decrypted){
                 while (showDialog) {
                     try {
                         val result = mainController.downloadCertificates(network)
                         if (result.isSuccess) {
-                            accept_text = "Configure connection"
+                            val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                            currentNetwork = networks.find { it.id == selectedNetworkId }
                             onConnectionsUpdated()
-                            break // Exit the loop on success
+                            break
+                        } else {
+                            throw result.exceptionOrNull() ?: Exception("Failed to download certificates")
                         }
                     } catch (e: Exception) {
-                        // Log error but continue trying
+                        // Continue trying
+                        // Toast.makeText(
+                        //     context,
+                        //     "${e.message}",
+                        //     Toast.LENGTH_SHORT
+                        // ).show()
                     }
                     delay(10_000L) // Wait 10 seconds before trying again
                 }
@@ -267,15 +287,23 @@ fun NetworkDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
             onAccept = {
-                if (!network.is_connection_configured && network.are_certificiates_decrypted) {
-                    scope.launch {
-                        val result = mainController.connectToNetwork(network, wifiManager)
-                        if (result.isSuccess) {
-                            showToast("Connection configured successfully")
-                            onConnectionsUpdated()
-                        } else {
-                            showToast(result.exceptionOrNull()?.message ?: "Connection failed")
+                currentNetwork?.let { updatedNetwork ->
+                    if (!updatedNetwork.is_connection_configured && updatedNetwork.are_certificiates_decrypted) {
+                        scope.launch {
+                            val result = mainController.connectToNetwork(updatedNetwork, wifiManager)
+                            if (result.isSuccess) {
+                                showToast("Connection configured successfully")
+                                onConnectionsUpdated()
+                            } else {
+                                showToast(result.exceptionOrNull()?.message ?: "Connection failed")
+                            }
                         }
+                    } else if (!updatedNetwork.are_certificiates_decrypted) {
+                        showToast("No tan rápido")
+                    } else if (updatedNetwork.is_connection_configured) {
+                        showToast("Esque ya está configurado meu")
+                    } else{
+
                     }
                 }
                 onAccept()

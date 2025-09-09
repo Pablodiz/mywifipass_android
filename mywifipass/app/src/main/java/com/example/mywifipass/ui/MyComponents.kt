@@ -304,7 +304,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
             onAccept = {
                 selectedNetwork = null                 
             },
-            selectedNetwork = selectedNetwork!!,
+            selectedNetworkId = selectedNetwork!!.id,
             wifiManager = wifiManager,
             mainController = mainController,
             scope = scope,
