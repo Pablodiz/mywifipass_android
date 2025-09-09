@@ -16,9 +16,16 @@ import app.mywifipass.backend.certificates.decryptAES256
 import app.mywifipass.backend.certificates.checkCertificates
 import java.util.Enumeration
 import java.security.cert.X509Certificate
+import java.security.cert.Certificate
 import java.security.PrivateKey
-import java.util.Base64
 import java.io.ByteArrayOutputStream
+
+// Imports for setting the certificates
+import app.mywifipass.backend.api_petitions.getCertificates
+import app.mywifipass.backend.api_petitions.CertificatesResponse
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import java.util.Base64
 
 /**
  * Repository for handling network data operations
@@ -314,49 +321,41 @@ class NetworkRepository(private val context: Context) {
      */
     private fun extractCertificatesFromKeyStore(keyStore: KeyStore, password: String): Result<ExtractedCertificates> {
         return try {
-            var caCertificate = ""
-            var clientCertificate = ""
-            var privateKey = ""
-            
-            // Iterate through KeyStore aliases
-            val aliases: Enumeration<String> = keyStore.aliases()
-            
+            val aliases = keyStore.aliases()
+            var foundAlias: String? = null
+            var userCert: Certificate? = null
+            var caCert: Certificate? = null
+            var privateKey: PrivateKey? = null
+            var ca: Array<Certificate>? = null
+            // Find all certificates found in the store
+            var contador: Int = 0
             while (aliases.hasMoreElements()) {
-                val alias = aliases.nextElement()
-                
-                // Get certificate
-                val certificate = keyStore.getCertificate(alias)
-                if (certificate is X509Certificate) {
-                    val certPem = convertCertificateToPem(certificate)
-                    
-                    // Determine if it's a CA certificate or client certificate
-                    // CA certificates usually have CA:TRUE in basic constraints
-                    val basicConstraints = certificate.basicConstraints
-                    if (basicConstraints >= 0) {
-                        // This is a CA certificate
-                        caCertificate = certPem
-                    } else {
-                        // This is a client certificate
-                        clientCertificate = certPem
-                    }
-                }
-                
-                // Get private key
-                val key = keyStore.getKey(alias, password.toCharArray())
-                if (key is PrivateKey) {
-                    privateKey = convertPrivateKeyToPem(key)
+                val a = aliases.nextElement()
+                // Obtain private key 
+                val pk = keyStore.getKey(a, password.toCharArray())
+                // Obtain certificate chain
+                val chain = keyStore.getCertificateChain(a)
+                // Get user and CA certs from the cert chain
+                if (pk != null && chain != null && chain.size >= 2) {
+                    foundAlias = a
+                    userCert = chain[0]
+                    privateKey = pk as? PrivateKey
+                    caCert = chain[1]
+                    break
                 }
             }
-            
-            // Validate that we have all required certificates
-            if (checkCertificates(caCertificate, clientCertificate, privateKey)) {
-                Result.success(ExtractedCertificates(caCertificate, clientCertificate, privateKey))
+
+            // Encode in PEM format
+            val certPem = convertCertificateToPem(userCert as X509Certificate)
+            val caPem  = convertCertificateToPem(caCert as X509Certificate)
+            val privateKeyPem = convertPrivateKeyToPem(privateKey as PrivateKey)
+
+            if (checkCertificates(caPem, certPem, privateKeyPem)) {
+                Result.success(ExtractedCertificates(caPem, certPem, privateKeyPem))
             } else {
-                Result.failure(Exception("Invalid certificate format or missing certificates"))
+                Result.failure(Exception("Could not find valid certificate chain with at least 2 certificates"))
             }
-            
         } catch (e: Exception) {
-            Log.e("NetworkRepository", "Error extracting certificates: ${e.message}")
             Result.failure(Exception("Failed to extract certificates: ${e.message}"))
         }
     }
