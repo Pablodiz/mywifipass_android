@@ -121,6 +121,7 @@ class MainController(private val context: Context) {
                 
                 // Create EAP-TLS connection configuration
                 val eapTLSConnection = createEapTLSConnection(network)
+                Log.d("MainController", "Created EapTLSConnection for connection with SSID: ${network.ssid}")
                 if (eapTLSConnection == null) {
                     return@withContext Result.failure(Exception("Failed to create EAP-TLS connection configuration"))
                 }
@@ -163,6 +164,7 @@ class MainController(private val context: Context) {
                 
                 // Create EAP-TLS connection to get the suggestion for removal
                 val eapTLSConnection = createEapTLSConnection(network)
+                Log.d("MainController", "Created EapTLSConnection for disconnection with SSID: ${network.ssid}")
                 if (eapTLSConnection == null) {
                     return@withContext Result.failure(Exception("Failed to create EAP-TLS connection for disconnection"))
                 }
