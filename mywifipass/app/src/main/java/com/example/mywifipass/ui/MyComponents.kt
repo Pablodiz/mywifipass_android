@@ -239,9 +239,11 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
             
             if (result.isSuccess) {
                 refreshNetworks()
-                Toast.makeText(context, "Network added successfully from QR", Toast.LENGTH_SHORT).show()
+                // Toast.makeText(context, "Network added successfully from QR", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
             } else {
-                error = result.exceptionOrNull()?.message ?: "Failed to add network from QR"
+                // error = result.exceptionOrNull()?.message ?: "Failed to add network"
+                error = result.exceptionOrNull()?.message ?: "Failed to add network"
             }
             isLoading = false
         }
@@ -255,9 +257,11 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
             
             if (result.isSuccess) {
                 refreshNetworks()
-                Toast.makeText(context, "Network added successfully from URL", Toast.LENGTH_SHORT).show()
+                // Toast.makeText(context, "Network added successfully from URL", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
             } else {
-                error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
+                // error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
+                error = result.exceptionOrNull()?.message ?: "Failed to add network"
             }
             isLoading = false
         }
