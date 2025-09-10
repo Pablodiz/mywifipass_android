@@ -14,10 +14,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import app.mywifipass.controller.RoleController
 
 @Composable 
 fun RoleScreen(){
     val context = LocalContext.current
+    val roleController = remember { RoleController(context) }
     var role by remember { mutableStateOf("") }
 
     Column(
@@ -32,7 +34,7 @@ fun RoleScreen(){
         Button(
             onClick = { 
                 role = "Attendee"
-                // Navigate to MainActivity
+                // Navigate to MainActivity using controller logic
                 val intent = Intent(context, MainActivity::class.java)
                 context.startActivity(intent)
             },
@@ -43,16 +45,11 @@ fun RoleScreen(){
         Button(
             onClick = { 
                 role = "Admin"
-                // Check if there is a token in shared preferences
-                val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                val token = sharedPreferences.getString("auth_token", null)
-                val intent: Intent
-                if (token != null) {
-                    // Navigate to AdminActivity
-                    intent = Intent(context, AdminActivity::class.java)
+                // Use RoleController to determine navigation
+                val intent: Intent = if (roleController.hasStoredAuthToken()) {
+                    Intent(context, AdminActivity::class.java)
                 } else {
-                    // Navigate to LoginActivity
-                    intent = Intent(context, LoginActivity::class.java)
+                    Intent(context, LoginActivity::class.java)
                 }
                 context.startActivity(intent)
             },

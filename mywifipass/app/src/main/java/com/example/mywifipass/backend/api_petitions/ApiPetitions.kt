@@ -6,7 +6,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import app.mywifipass.backend.certificates.EapTLSCertificate
 
-import app.mywifipass.backend.database.Network
+import app.mywifipass.model.data.Network
 import app.mywifipass.backend.database.DataSource
 import app.mywifipass.backend.httpPetition
 import app.mywifipass.backend.HttpResponse

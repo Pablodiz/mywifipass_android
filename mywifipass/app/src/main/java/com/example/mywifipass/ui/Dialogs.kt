@@ -17,15 +17,23 @@ import com.journeyapps.barcodescanner.*
 import com.google.zxing.*
 
 // Imports for the NetworkDialog
-import app.mywifipass.backend.wifi_connection.*
-import app.mywifipass.backend.certificates.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import app.mywifipass.backend.database.*
+import kotlinx.coroutines.delay
+import androidx.compose.ui.platform.LocalContext
+import app.mywifipass.controller.MainController
+import app.mywifipass.model.data.Network
+import app.mywifipass.model.data.QrData
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.size
 
 // Imports for the QRCode
 import android.graphics.Bitmap
@@ -37,12 +45,6 @@ import kotlinx.serialization.*
 
 // Imports for setting the certificates
 import app.mywifipass.backend.api_petitions.getCertificates
-import app.mywifipass.backend.api_petitions.CertificatesResponse
-import java.security.PrivateKey
-import java.security.cert.Certificate
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
-import android.util.Base64
 
 // Import for waiting x seconds
 import kotlinx.coroutines.delay
@@ -50,6 +52,7 @@ import kotlinx.coroutines.delay
 // Imports for asking for permissions
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
+import android.widget.Toast
 
 
 @Composable
@@ -184,24 +187,6 @@ fun NetworkDialogEventInfo(network: Network) {
     }
 }
 
-
-
-@Serializable
-data class QrData(
-    val validation_url: String,
-){
-    fun toJson(): String {
-        return """
-            {
-                "validation_url": "$validation_url"
-            }
-        """.trimIndent()
-    }
-    fun toBodyPetition(): String {
-        return ""
-    }
-}
-
 fun QrInfo(network: Network): String {
     val qrData = QrData(
         validation_url = network.validation_url
@@ -236,43 +221,6 @@ fun QrCode(
     )
 }
 
-fun configureConnection(network: Network): EapTLSConnection {
-    val certificates = EapTLSCertificate(
-        network.ca_certificate.byteInputStream(),
-        network.certificate.byteInputStream(),
-        network.private_key.byteInputStream()
-    )
-
-    // Get peer ID from the certificate, or email if possible
-    var peerID = certificates.clientCertificate.serialNumber.toString() // Convertir BigInteger a String
-    val eapTLSConnection = EapTLSConnection(
-        ssid = network.ssid,
-        eapTLSCertificate = certificates,
-        identity = peerID, //The identity musn't have blank spaces
-        altSubjectMatch = network.network_common_name
-    )
-    return eapTLSConnection
-}
-
-suspend fun decryptCertificates(network: Network): String {
-    return try {
-        val key = hexToSecretKey(network.certificates_symmetric_key)
-        val caCertificate = decryptAES256(network.ca_certificate, key)
-        val certificate = decryptAES256(network.certificate, key)
-        val privateKey = decryptAES256(network.private_key, key)
-        if (checkCertificates(caCertificate, certificate, privateKey)) {
-            network.private_key = privateKey
-            network.certificate = certificate
-            network.ca_certificate = caCertificate
-            network.are_certificiates_decrypted = true
-            "Certificates decrypted"
-        } else {
-            "Certificates failed"
-        }
-    } catch (e: Exception) {
-        "Error decrypting certificates: ${e.message}"
-    }
-}
 
 // Dialog that shows some information of the selected network in a QR code
 // In QR Code: information from the user and http endpoints
@@ -280,113 +228,85 @@ suspend fun decryptCertificates(network: Network): String {
 @Composable
 fun NetworkDialog(
     showDialog: Boolean,
-    selectedNetwork: Network?,
+    selectedNetworkId: Int,
     onDismiss: () -> Unit,
     onAccept: () -> Unit,
     wifiManager: android.net.wifi.WifiManager,
-    dataSource: DataSource,
-    connections: List<Network>,
+    mainController: MainController,
     scope: CoroutineScope,
-    onConnectionsUpdated: (List<Network>) -> Unit = {},
+    onConnectionsUpdated: () -> Unit = {},
     showToast: (String) -> Unit = {}
 ){
-    selectedNetwork?.let {network ->
-        var menuExpanded by remember { mutableStateOf(false) }
-        var accept_text by remember { mutableStateOf("Accept") }
-        if (network.are_certificiates_decrypted && !network.is_connection_configured) {
-            accept_text = "Configure connection"
+    var currentNetwork by remember { mutableStateOf<Network?>(null) }
+    
+    // Load initial network when dialog opens
+    LaunchedEffect(showDialog, selectedNetworkId) {
+        if (showDialog) {
+            val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+            currentNetwork = networks.find { it.id == selectedNetworkId }
         }
+    }
+
+    currentNetwork?.let {network ->
+        var menuExpanded by remember { mutableStateOf(false) }
+        var accept_text by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
+            mutableStateOf(
+                when {
+                    network.are_certificiates_decrypted && !network.is_connection_configured -> "Configure connection"
+                    network.is_connection_configured -> "Connected"
+                    else -> "Accept"
+                }
+            )
+        } 
         LaunchedEffect(showDialog) {
-            if (!network.is_connection_configured){
+            if (!network.is_connection_configured && !network.are_certificiates_decrypted){
                 while (showDialog) {
                     try {
-                        withContext(Dispatchers.IO) {
-                            val symmetricKey = getCertificates(
-                                endpoint = network.certificates_url,
-                                key = network.certificates_symmetric_key,
-                                onError = { errorMessage ->
-                                    throw Exception("$errorMessage")
-                                },
-                                onSuccess = { keyStore ->
-                                    val aliases = keyStore.aliases()
-                                    var foundAlias: String? = null
-                                    var userCert: Certificate? = null
-                                    var caCert: Certificate? = null
-                                    var privateKey: PrivateKey? = null
-                                    var ca: Array<Certificate>? = null
-                                    // names of all the aliases found in the keystore
-                                    var contador: Int = 0
-                                    while (aliases.hasMoreElements()) {
-                                        val a = aliases.nextElement()
-                                        val pk = keyStore.getKey(a, network.certificates_symmetric_key.toCharArray())
-                                        val chain = keyStore.getCertificateChain(a)
-                                        if (pk != null && chain != null && chain.size >= 2) {
-                                            foundAlias = a
-                                            userCert = chain[0]
-                                            privateKey = pk as? PrivateKey
-                                            caCert = chain[1]
-                                            break
-                                        }
-                                    }
-
-
-                                    // Encode in PEM format
-                                    val certPem = "-----BEGIN CERTIFICATE-----\n" +
-                                        Base64.encodeToString(userCert!!.encoded, Base64.NO_WRAP) +
-                                        "\n-----END CERTIFICATE-----"
-                                    val caPem = "-----BEGIN CERTIFICATE-----\n" +
-                                        Base64.encodeToString(caCert!!.encoded, Base64.NO_WRAP) +
-                                        "\n-----END CERTIFICATE-----"
-                                    val privateKeyPem = "-----BEGIN PRIVATE KEY-----\n" +
-                                        Base64.encodeToString(privateKey!!.encoded, Base64.NO_WRAP) +
-                                        "\n-----END PRIVATE KEY-----"
-
-                                    // throw Exception("$chain.length")
-                                    network.certificate = certPem
-                                    network.private_key = privateKeyPem
-                                    network.ca_certificate = caPem
-                                    network.are_certificiates_decrypted = true
-                                    dataSource.updateNetwork(network)
-                                    onConnectionsUpdated(dataSource.loadConnections())
-                                    accept_text = "Configure connection"
-                                }
-                            )
+                        val result = mainController.downloadCertificates(network)
+                        if (result.isSuccess) {
+                            val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                            currentNetwork = networks.find { it.id == selectedNetworkId }
+                            onConnectionsUpdated()
+                            break
+                        } else {
+                            throw result.exceptionOrNull() ?: Exception("Failed to download certificates")
                         }
                     } catch (e: Exception) {
-                        //showToast("Error: ${e.message}")
+                        // Continue trying
+                        // Toast.makeText(
+                        //     context,
+                        //     "${e.message}",
+                        //     Toast.LENGTH_SHORT
+                        // ).show()
                     }
                     delay(10_000L) // Wait 10 seconds before trying again
                 }
             }
         }
-        val context = LocalContext.current
         MyDialog(
             showDialog = showDialog,
             onDismiss = { onDismiss() },
             onAccept = {
-                if (!network.is_connection_configured && network.are_certificiates_decrypted) {
-                    var message = ""
-                    scope.launch {
-                        try {
-                            withContext(Dispatchers.IO) {
-                                try{
-                                    val eapTLSConnection = configureConnection(network)
-                                    eapTLSConnection.connect(wifiManager, context=context)
-                                    network.is_connection_configured = true
-                                    dataSource.updateNetwork(network)
-                                    onConnectionsUpdated(dataSource.loadConnections())
-                                    message = "Connection ready"
-                                } catch(e: Exception){
-                                    message = e.message.toString()
-                                }
+                currentNetwork?.let { updatedNetwork ->
+                    if (!updatedNetwork.is_connection_configured && updatedNetwork.are_certificiates_decrypted) {
+                        scope.launch {
+                            val result = mainController.connectToNetwork(updatedNetwork, wifiManager)
+                            if (result.isSuccess) {
+                                showToast("Connection configured successfully")
+                                onConnectionsUpdated()
+                            } else {
+                                showToast(result.exceptionOrNull()?.message ?: "Connection failed")
                             }
-                            showToast(message)
-                        } catch (e: Exception) {
-                            //showToast("Error: ${e.message}")
                         }
+                    } else if (!updatedNetwork.are_certificiates_decrypted) {
+                        showToast("No tan rápido")
+                    } else if (updatedNetwork.is_connection_configured) {
+                        showToast("Esque ya está configurado meu")
+                    } else{
+
                     }
-                onAccept()
                 }
+                onAccept()
             },
             dialogTitle = "${network.location_name}",
             titleActions = {
@@ -415,15 +335,13 @@ fun NetworkDialog(
                         },
                         onClick = {
                             menuExpanded = false
-                            // Tu acción de editar aquí
-                            val networkToDelete = network
                             scope.launch {
-                                withContext(Dispatchers.IO) {
-                                    if (networkToDelete.is_connection_configured){
-                                        configureConnection(network).disconnect(wifiManager, context)
-                                    } 
-                                    dataSource.deleteNetwork(networkToDelete)
-                                    onConnectionsUpdated(dataSource.loadConnections())
+                                val result = mainController.deleteNetwork(network, wifiManager)
+                                if (result.isSuccess) {
+                                    showToast("Network deleted successfully")
+                                    onConnectionsUpdated()
+                                } else {
+                                    showToast(result.exceptionOrNull()?.message ?: "Delete failed")
                                 }
                             }
                             onDismiss()

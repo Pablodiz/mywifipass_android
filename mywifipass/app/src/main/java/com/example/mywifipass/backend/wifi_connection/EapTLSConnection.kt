@@ -9,6 +9,10 @@ import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.provider.Settings
 import app.mywifipass.backend.certificates.EapTLSCertificate
+import android.util.Log
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
 
 class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, identity: String, altSubjectMatch: String) {
     val suggestion: WifiNetworkSuggestion
@@ -60,10 +64,25 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         context.startActivity(intent)
     }
     
-    fun disconnect(wifiManager: WifiManager, context: Context){
+    fun disconnect(wifiManager: WifiManager, context: Context) {
          when {
+            // Android 10-: Remove suggestion directly
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && context != null -> {
                 wifiManager.removeNetworkSuggestions(listOf(suggestion))
+                Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
+            }
+            else -> {
+                // Android 11+: Cannot remove suggestion added via Settings Intent
+                Log.d("EapTLSConnection", "Network must be removed manually from WiFi settings on Android 11+")
+                
+                // Show Toast on main thread
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(context, "You may forget the network in settings", Toast.LENGTH_LONG).show()
+                }
+
+                // Open WiFi settings for user to remove manually
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                context.startActivity(intent)
             }
          }
     }

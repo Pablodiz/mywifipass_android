@@ -8,6 +8,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
-import app.mywifipass.backend.api_petitions.*
-import app.mywifipass.backend.database.*
-import app.mywifipass.backend.httpPetition
-import app.mywifipass.backend.wifi_connection.*
-import app.mywifipass.backend.certificates.*
+import app.mywifipass.model.data.Network
+import app.mywifipass.controller.MainController
 
 // Imports for the QR code scanner
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -108,105 +106,73 @@ fun BackButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(modifier: Modifier = Modifier){
-    // Create scope for the coroutine (for async tasks)
-    val scope = rememberCoroutineScope()
-    // Get the context
-    val context = LocalContext.current
-    // Get the database
-    val dataSource = DataSource(context)
-    
-    // Variables for the UI
-    var reply by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf("") }
-    var showDialog by remember { mutableStateOf(false) }
+fun MainScreen(
+    modifier: Modifier = Modifier,
+    networks: List<Network> = emptyList(),
+    isLoading: Boolean = false,
+    onNetworkClick: (Network) -> Unit = {},
+    onScanQRClick: () -> Unit = {},
+    onEnterURLClick: () -> Unit = {},
+    onQRResult: (String) -> Unit = {},
+    onURLEntered: (String) -> Unit = {},
+    showQrScanner: Boolean = false,
+    onQRScannerDismiss: () -> Unit = {},
+    showUrlDialog: Boolean = false,
+    onUrlDialogDismiss: () -> Unit = {},
+    onUrlDialogAccept: (String) -> Unit = {}
+){
+    // Variables for the URL dialog
     var enteredText by remember { mutableStateOf("") }
-    val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-    var selectedNetwork by remember { mutableStateOf<Network?>(null)}
-    var showNetworkDialog by remember { mutableStateOf(false) }
-    var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
-    var showQrScanner by remember { mutableStateOf(false) }
-
-    // Get data from the database
-    LaunchedEffect(Unit) {
-        connections = withContext(Dispatchers.IO) {
-            dataSource.loadConnections()
-        }
-    }
 
     AddEventButton(
         speedDialItems = listOf(
             SpeedDialItem(
                 label = "Scan QR",
                 icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
-                onClick = { showQrScanner = true }
+                onClick = onScanQRClick
             ),
             SpeedDialItem(
                 label = "Enter URL",
                 icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
-                onClick = { showDialog = true}
+                onClick = onEnterURLClick
             )
         ),
         content = { paddingValues ->
             Column(modifier = modifier.padding(paddingValues)) {
-                MyCardList(
-                    dataList = connections,
-                    onItemClick = { network ->
-                        selectedNetwork = network
-                        showNetworkDialog = true
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
                     }
-                )
+                } else {
+                    MyCardList(
+                        dataList = networks,
+                        onItemClick = onNetworkClick
+                    )
+                }
             }
         }
     )   
 
-
-    val handlePetition: (String) -> Unit = { newText ->
-        // In a secondary thread, we make the petition and add the network to the database
-        scope.launch {
-            connections = withContext(Dispatchers.IO) {
-                makePetitionAndAddToDatabase(
-                    enteredText = newText,
-                    dataSource = dataSource,
-                    onSuccess = { 
-                        reply = it                
-                    },
-                    onError = { 
-                        error = it 
-                    }
-                )
-            }
-        }
-    }
-    
-    LaunchedEffect(error) {
-        if (error.isNotEmpty()) {
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
-            error = ""
-        }
-    }
-
     if (showQrScanner) {
         QRScannerDialog(
             onResult = { scannedText ->
-                handlePetition(scannedText)
-                showQrScanner = false
+                onQRResult(scannedText)
+                onQRScannerDismiss()
             },
-            onDismiss = { 
-                showQrScanner = false 
-            }
+            onDismiss = onQRScannerDismiss
         )
     }
 
     // Dialog for adding a new network entering an URL
     MyDialog(
-        showDialog = showDialog, 
-        onDismiss = { 
-            showDialog = false
-        }, 
+        showDialog = showUrlDialog, 
+        onDismiss = onUrlDialogDismiss, 
         onAccept = { 
-            showDialog = false
-            handlePetition(enteredText)          
+            onUrlDialogAccept(enteredText)
+            enteredText = ""
         },
         content = {
             Column{
@@ -220,6 +186,116 @@ fun MainScreen(modifier: Modifier = Modifier){
         },
         dialogTitle = "Add new network",
     )   
+}
+
+// MainScreen Container that handles business logic
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreenContainer(modifier: Modifier = Modifier){
+    // Create scope for the coroutine (for async tasks)
+    val scope = rememberCoroutineScope()
+    // Get the context
+    val context = LocalContext.current
+    // Initialize MainController
+    val mainController = remember { MainController(context) }
+    
+    // Variables for the UI state
+    var error by remember { mutableStateOf("") }
+    var showUrlDialog by remember { mutableStateOf(false) }
+    val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+    var selectedNetwork by remember { mutableStateOf<Network?>(null)}
+    var showNetworkDialog by remember { mutableStateOf(false) }
+    var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    // Load networks from controller
+    LaunchedEffect(Unit) {
+        isLoading = true
+        val result = mainController.getNetworks()
+        if (result.isSuccess) {
+            connections = result.getOrNull() ?: emptyList()
+        } else {
+            error = result.exceptionOrNull()?.message ?: "Failed to load networks"
+        }
+        isLoading = false
+    }
+
+    // Function to refresh networks list
+    val refreshNetworks : () -> Unit ={
+        scope.launch {
+            val networksResult = mainController.getNetworks()
+            if (networksResult.isSuccess) {
+                connections = networksResult.getOrNull() ?: emptyList()
+            }
+        }
+    }
+
+    // Function to handle QR code scanning (parses QR to get URL)
+    val handleQRResult: (String) -> Unit = { qrCodeText ->
+        scope.launch {
+            isLoading = true
+            val result = mainController.addNetworkFromQR(qrCodeText) // This parses QR and extracts URL
+            
+            if (result.isSuccess) {
+                refreshNetworks()
+                // Toast.makeText(context, "Network added successfully from QR", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+            } else {
+                // error = result.exceptionOrNull()?.message ?: "Failed to add network"
+                error = result.exceptionOrNull()?.message ?: "Failed to add network"
+            }
+            isLoading = false
+        }
+    }
+
+    // Function to handle direct URL input
+    val handleURLInput: (String) -> Unit = { url ->
+        scope.launch {
+            isLoading = true
+            val result = mainController.addNetworkFromUrl(url) // This uses URL directly
+            
+            if (result.isSuccess) {
+                refreshNetworks()
+                // Toast.makeText(context, "Network added successfully from URL", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+            } else {
+                // error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
+                error = result.exceptionOrNull()?.message ?: "Failed to add network"
+            }
+            isLoading = false
+        }
+    }
+    
+    LaunchedEffect(error) {
+        if (error.isNotEmpty()) {
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            error = ""
+        }
+    }
+
+    // Pure UI Component
+    MainScreen(
+        modifier = modifier,
+        networks = connections,
+        isLoading = isLoading,
+        onNetworkClick = { network ->
+            selectedNetwork = network
+            showNetworkDialog = true
+        },
+        onScanQRClick = { showQrScanner = true },
+        onEnterURLClick = { showUrlDialog = true },
+        onQRResult = handleQRResult,        // For QR scanning
+        onURLEntered = handleURLInput,      // For direct URL input (not used anymore)
+        showQrScanner = showQrScanner,
+        onQRScannerDismiss = { showQrScanner = false },
+        showUrlDialog = showUrlDialog,
+        onUrlDialogDismiss = { showUrlDialog = false },
+        onUrlDialogAccept = { url ->
+            showUrlDialog = false
+            handleURLInput(url)             // Use URL input function for dialog
+        }
+    )
 
     // Dialog for showing the information of the selected network
     if (showNetworkDialog && selectedNetwork != null) {
@@ -232,14 +308,11 @@ fun MainScreen(modifier: Modifier = Modifier){
             onAccept = {
                 selectedNetwork = null                 
             },
-            selectedNetwork = selectedNetwork!!,
+            selectedNetworkId = selectedNetwork!!.id,
             wifiManager = wifiManager,
-            dataSource = dataSource,
-            connections = connections,
+            mainController = mainController,
             scope = scope,
-            onConnectionsUpdated = { updatedConnections ->
-                connections = updatedConnections
-            }, 
+            onConnectionsUpdated = refreshNetworks,
             showToast = { message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }

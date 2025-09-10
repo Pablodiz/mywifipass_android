@@ -18,15 +18,10 @@ import androidx.compose.material.icons.filled.Logout
 
 import app.mywifipass.ui.components.BackButton
 import app.mywifipass.ui.components.QRScannerDialog
-import app.mywifipass.ui.components.QrData
+import app.mywifipass.controller.AdminController
 import android.widget.Toast
-import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import app.mywifipass.backend.api_petitions.checkAttendee
-import app.mywifipass.backend.api_petitions.authorizeAttendee
-import kotlinx.coroutines.withContext
 
 
 import androidx.compose.material.icons.filled.Check 
@@ -43,6 +38,10 @@ fun AdminScreen(
     var lastAuthorizeUrl by remember { mutableStateOf("") }
     var response by remember { mutableStateOf("") }
     var failed by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    // Initialize AdminController
+    val adminController = remember { AdminController(context) }
     
     if (showScannerDialog) {
         QRScannerDialog(
@@ -51,31 +50,21 @@ fun AdminScreen(
             },
             onResult = { result ->
                 scope.launch {
-                    withContext(Dispatchers.IO){
-                        try {
-                            val qrData = Json.decodeFromString<QrData>(result)
-                            val endpoint = qrData.validation_url
-                            val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                            val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
-                            checkAttendee(
-                                endpoint = endpoint,
-                                token = token,
-                                onSuccess = { message, authorize_url -> 
-                                    response = message
-                                    failed = false
-                                    lastAuthorizeUrl = authorize_url
-                                    showValidatedUserDialog = true
-                                },
-                                onError = { error -> 
-                                    response = error
-                                    failed = true
-                                    showValidatedUserDialog = true
-                                }
-                            )
-                        } catch (e: Exception) {
-                            response = "Error: ${e.message}"
-                        }
+                    isLoading = true
+                    val validationResult = adminController.validateQR(result)
+                    
+                    if (validationResult.isSuccess) {
+                        val attendeeResult = validationResult.getOrNull()!!
+                        response = attendeeResult.message
+                        failed = !attendeeResult.isSuccess
+                        lastAuthorizeUrl = attendeeResult.authorizeUrl
+                        showValidatedUserDialog = true
+                    } else {
+                        response = validationResult.exceptionOrNull()?.message ?: "Validation failed"
+                        failed = true
+                        showValidatedUserDialog = true
                     }
+                    isLoading = false
                 }
                 showScannerDialog = false
             }
@@ -118,34 +107,33 @@ fun AdminScreen(
             confirmButton = {
                 Button(
                     onClick = { 
-                        if(!failed){
+                        if(!failed && lastAuthorizeUrl.isNotEmpty()){
                             scope.launch {
-                                withContext(Dispatchers.IO){
-                                    try {
-                                        val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                                        val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
-                                        authorizeAttendee(
-                                            endpoint = lastAuthorizeUrl,
-                                            token = token,
-                                            onSuccess = { message -> 
-                                                response = message
-                                            },
-                                            onError = { error -> 
-                                                response = error
-                                            }
-                                        )
-                                    } catch (e: Exception) {
-                                        response = "Error: ${e.message}"
-                                    }
+                                isLoading = true
+                                val authResult = adminController.authorizeAttendee(lastAuthorizeUrl)
+                                
+                                if (authResult.isSuccess) {
+                                    response = authResult.getOrNull() ?: "Authorization successful"
+                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                                } else {
+                                    response = authResult.exceptionOrNull()?.message ?: "Authorization failed"
+                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
                                 }
-                                Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                                isLoading = false
                             }
                         } 
                         showValidatedUserDialog = false
-
-                    }
+                    },
+                    enabled = !isLoading
                 ) {
-                    Text("OK")
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("OK")
+                    }
                 }
             }
         )
@@ -158,8 +146,17 @@ fun AdminScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(onClick = { showScannerDialog = true }) {
-            Text("Open QR Scanner")
+        if (isLoading) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Processing...")
+        } else {
+            Button(
+                onClick = { showScannerDialog = true },
+                modifier = Modifier.fillMaxWidth(0.8f)
+            ) {
+                Text("Open QR Scanner")
+            }
         }
     }
 }
@@ -181,9 +178,9 @@ class AdminActivity : ComponentActivity() {
                                 .size(40.dp)
                                 .align(Alignment.TopEnd), 
                             onClick = { 
-                                // Handle logout action
-                                val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                                sharedPreferences.edit().remove("auth_token").apply()
+                                // Handle logout action using AdminController
+                                val adminController = AdminController(context)
+                                adminController.logout()
                                 finish() 
                             }
                         ){
