@@ -28,6 +28,7 @@ import kotlinx.coroutines.launch
 import app.mywifipass.ui.theme.MyWifiPassTheme
 import app.mywifipass.model.data.Network
 import app.mywifipass.controller.MainController
+import app.mywifipass.NetworkDetailActivity
 
 // Imports for the QR code scanner
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,10 +40,20 @@ import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.animation.ExperimentalAnimationApi
 
-
-
 // Imports for Back Button
 import androidx.compose.material.icons.filled.ArrowBack
+
+// Imports for Network Detail Screen
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 
 data class SpeedDialItem(
     val label: String,
@@ -203,11 +214,19 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     var error by remember { mutableStateOf("") }
     var showUrlDialog by remember { mutableStateOf(false) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-    var selectedNetwork by remember { mutableStateOf<Network?>(null)}
-    var showNetworkDialog by remember { mutableStateOf(false) }
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+
+    // Function to refresh networks list - define it first
+    val refreshNetworks : () -> Unit = {
+        scope.launch {
+            val networksResult = mainController.getNetworks()
+            if (networksResult.isSuccess) {
+                connections = networksResult.getOrNull() ?: emptyList()
+            }
+        }
+    }
 
     // Load networks from controller
     LaunchedEffect(Unit) {
@@ -219,6 +238,23 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             error = result.exceptionOrNull()?.message ?: "Failed to load networks"
         }
         isLoading = false
+    }
+
+    // Listen for lifecycle changes to refresh when returning from other activities
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                // Refresh networks when returning to this screen
+                scope.launch {
+                    refreshNetworks()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Procesar automáticamente la URL del deep link si existe
@@ -237,16 +273,6 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
                     error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
                 }
                 isLoading = false
-            }
-        }
-    }
-
-    // Function to refresh networks list
-    val refreshNetworks : () -> Unit ={
-        scope.launch {
-            val networksResult = mainController.getNetworks()
-            if (networksResult.isSuccess) {
-                connections = networksResult.getOrNull() ?: emptyList()
             }
         }
     }
@@ -300,8 +326,8 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         networks = connections,
         isLoading = isLoading,
         onNetworkClick = { network ->
-            selectedNetwork = network
-            showNetworkDialog = true
+            // Navigate to NetworkDetailActivity instead of showing dialog
+            NetworkDetailActivity.start(context, network.id)
         },
         onScanQRClick = { showQrScanner = true },
         onEnterURLClick = { showUrlDialog = true },
@@ -316,26 +342,175 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             handleURLInput(url)             // Use URL input function for dialog
         }
     )
+}
 
-    // Dialog for showing the information of the selected network
-    if (showNetworkDialog && selectedNetwork != null) {
-        NetworkDialog(
-            showDialog = showNetworkDialog,
-            onDismiss = {
-                showNetworkDialog = false
-                selectedNetwork = null
-            },
-            onAccept = {
-                selectedNetwork = null                 
-            },
-            selectedNetworkId = selectedNetwork!!.id,
-            wifiManager = wifiManager,
-            mainController = mainController,
-            scope = scope,
-            onConnectionsUpdated = refreshNetworks,
-            showToast = { message ->
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+
+data class ButtonState(val text: String, val isBlocked: Boolean)
+
+@Composable
+fun NetworkDetailScreen(
+    modifier:Modifier = Modifier, 
+    selectedNetworkId: Int,
+    wifiManager: android.net.wifi.WifiManager,
+    mainController: MainController,
+    onNavigateBack: () -> Unit = {}
+){
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var currentNetwork by remember {mutableStateOf<Network?>(null)}
+
+    // Load initial network when this screen opens
+    LaunchedEffect(selectedNetworkId){
+        val networks = mainController.getNetworks().getOrNull()?:emptyList()
+        currentNetwork = networks.find {it.id == selectedNetworkId}
+    }
+
+    currentNetwork?.let {network ->
+        var menuExpanded by remember { mutableStateOf(false) }
+
+        val buttonState by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
+            mutableStateOf(
+                when {
+                    network.are_certificiates_decrypted && !network.is_connection_configured -> 
+                        ButtonState("Configure connection", false)
+                    network.is_connection_configured -> 
+                        ButtonState("Connected", true)
+                    else -> 
+                        ButtonState("Not connected yet", true)
+                }
+            )
+        }
+
+        LaunchedEffect(selectedNetworkId) {
+            if (!network.is_connection_configured && !network.are_certificiates_decrypted){
+                while (true) {
+                    try {
+                        val result = mainController.downloadCertificates(network)
+                        if (result.isSuccess) {
+                            val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                            currentNetwork = networks.find { it.id == selectedNetworkId }
+                            break
+                        } else {
+                            throw result.exceptionOrNull() ?: Exception("Failed to download certificates")
+                        }
+                    } catch (e: Exception) {
+                        // Continue trying
+                        // Toast.makeText(
+                        //     context,
+                        //     "${e.message}",
+                        //     Toast.LENGTH_SHORT
+                        // ).show()
+                    }
+                    delay(10_000L) // Wait 10 seconds before trying again
+                }
             }
-        )
+        }
+
+        Column(modifier=modifier){
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // BackButton on the left
+                BackButton(
+                    onClick = onNavigateBack,
+                )
+                
+                // Title in the center
+                Text(
+                    text = network.location_name,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // DropDownMenu on the right
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = androidx.compose.ui.graphics.Color.Red
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Delete", color = androidx.compose.ui.graphics.Color.Red)
+                                }
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                scope.launch {
+                                    val result = mainController.deleteNetwork(network, wifiManager)
+                                    if (result.isSuccess) {
+                                        Toast.makeText(context, "Network deleted successfully", Toast.LENGTH_SHORT).show()
+                                        // Go back after deleting the network
+                                        onNavigateBack()
+                                    } else {
+                                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Delete failed", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            // QR Code section
+            QrCode(
+                data = QrInfo(network = network),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Network information section - scrollable content
+            Box(
+                modifier = Modifier
+                    .weight(1f) // Take all available space
+                    .padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    NetworkDialogEventInfo(network = network)
+                }
+            }
+            
+            // Action button for connecting/configuring network - always at bottom
+            Button(
+                enabled = !buttonState.isBlocked,
+                onClick = {
+                    if (!network.is_connection_configured && network.are_certificiates_decrypted) {
+                        scope.launch {
+                            val result = mainController.connectToNetwork(network, wifiManager)
+                            if (result.isSuccess) {
+                                Toast.makeText(context, "Connection configured successfully", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Connection failed", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                ) {
+                Text(buttonState.text)
+            }
+        }
     }
 }
