@@ -191,7 +191,7 @@ fun MainScreen(
 // MainScreen Container that handles business logic
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreenContainer(modifier: Modifier = Modifier){
+fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: String? = null){
     // Create scope for the coroutine (for async tasks)
     val scope = rememberCoroutineScope()
     // Get the context
@@ -219,6 +219,26 @@ fun MainScreenContainer(modifier: Modifier = Modifier){
             error = result.exceptionOrNull()?.message ?: "Failed to load networks"
         }
         isLoading = false
+    }
+
+    // Procesar automáticamente la URL del deep link si existe
+    LaunchedEffect(initialWifiPassUrl) {
+        if (!initialWifiPassUrl.isNullOrEmpty()) {
+            isLoading = true
+            scope.launch {
+                val result = mainController.addNetworkFromUrl(initialWifiPassUrl)
+                if (result.isSuccess) {
+                    // Recargar la lista de redes después de añadir una nueva
+                    val networksResult = mainController.getNetworks()
+                    if (networksResult.isSuccess) {
+                        connections = networksResult.getOrNull() ?: emptyList()
+                    }
+                } else {
+                    error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
+                }
+                isLoading = false
+            }
+        }
     }
 
     // Function to refresh networks list

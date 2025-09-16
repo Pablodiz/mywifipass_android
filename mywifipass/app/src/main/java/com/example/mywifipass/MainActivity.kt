@@ -18,6 +18,10 @@ import app.mywifipass.ui.components.BackButton
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Obtener la URL del pase WiFi si viene del deep link
+        val wifiPassUrl = intent.getStringExtra("wifi_pass_url")
+        
         setContent {
             MyWifiPassTheme {
                 Surface(
@@ -36,7 +40,8 @@ class MainActivity : ComponentActivity() {
                         MainScreenContainer(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = 56.dp) 
+                                .padding(top = 56.dp),
+                            initialWifiPassUrl = wifiPassUrl
                         )
                     }
                 }
