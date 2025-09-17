@@ -23,13 +23,12 @@ import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
-import app.mywifipass.ui.components.BackButton 
+import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
 import androidx.lifecycle.lifecycleScope
 
 import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.controller.LoginController
-
 @Composable
 fun LoginScreen() {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
@@ -121,23 +120,19 @@ class LoginActivity : ComponentActivity() {
                     val loginController = remember { LoginController(this@LoginActivity) }
                     
                     Box(modifier = Modifier.fillMaxSize()) {
-                        IconButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopEnd), 
-                            onClick = { 
-                                showQrScanner = true
+                        TopBar(
+                            title = "Login",
+                            onBackClick = { finish() },
+                            actions = {
+                                IconButton(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .size(40.dp),
+                                    onClick = { showQrScanner = true }
+                                ) {
+                                    Icon(Icons.Filled.QrCode, contentDescription = "Scan a QR")
+                                }
                             }
-                        ){
-                            Icon(Icons.Filled.QrCode, contentDescription = "Scan a QR")   
-                        }
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart), 
-                            onClick = { finish() }
                         )
                         LoginScreen()
                     }

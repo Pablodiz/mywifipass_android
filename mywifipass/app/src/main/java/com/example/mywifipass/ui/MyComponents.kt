@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
@@ -112,6 +113,52 @@ fun BackButton(
     ) {
         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
     
+    }
+}
+
+@Composable
+fun TopBar(
+    title: String,
+    onBackClick: (() -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primary)
+            .height(56.dp)
+    ) {
+        // Apply color and text styles
+        CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimary
+        ) {
+            ProvideTextStyle(MaterialTheme.typography.titleLarge) {
+
+                // Left side - Back button
+                if (onBackClick != null) {
+                    BackButton(
+                        onClick = onBackClick,
+                        modifier = Modifier.align(Alignment.CenterStart)
+                    )
+                }
+
+                // Center - Title
+                Text(
+                    text = title,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+
+                // Right side - Actions
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                ) {
+                    actions()
+                }
+            }
+        }
     }
 }
 
@@ -446,36 +493,20 @@ fun NetworkDetailScreen(
         }
 
         Column(modifier=modifier){
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // BackButton on the left
-                BackButton(
-                    onClick = onNavigateBack,
-                )
-                
-                // Title in the center
-                Text(
-                    text = network.location_name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                // DropDownMenu on the right
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                    }
-                    DropdownMenu(
+            // Top bar with back button, title and menu
+            TopBar(
+                title = network.location_name,
+                onBackClick = onNavigateBack,
+                actions = {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        }
+                        DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
+                        ) {
+                            DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
@@ -500,10 +531,11 @@ fun NetworkDetailScreen(
                                     }
                                 }
                             }
-                        )
+                            )
+                        }
                     }
                 }
-            }
+            )
 
             // QR Code section
             QrCode(

@@ -14,7 +14,6 @@ import android.content.Intent
 import android.content.Context
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
-import app.mywifipass.ui.components.BackButton
 import app.mywifipass.ui.components.NetworkDetailScreen
 
 import app.mywifipass.controller.MainController

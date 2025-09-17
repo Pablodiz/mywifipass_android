@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 
-import app.mywifipass.ui.components.BackButton
+import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
 import app.mywifipass.controller.AdminController
 import android.widget.Toast
@@ -172,26 +172,27 @@ class AdminActivity : ComponentActivity() {
                 ) {
                     val context = LocalContext.current
                     Box(modifier = Modifier.fillMaxSize()) {
-                        IconButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopEnd), 
-                            onClick = { 
-                                // Handle logout action using AdminController
-                                val adminController = AdminController(context)
-                                adminController.logout()
-                                finish() 
+                        TopBar(
+                            title = "Admin Panel",
+                            onBackClick = { finish() },
+                            actions = {
+                                Box(){
+                                    IconButton(
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(40.dp)
+                                            .align(Alignment.TopEnd), 
+                                    onClick = { 
+                                        // Handle logout action using AdminController
+                                        val adminController = AdminController(context)
+                                        adminController.logout()
+                                        finish() 
+                                    }
+                                    ){
+                                        Icon(Icons.Filled.Logout, contentDescription = "Logout")   
+                                    }
+                                }
                             }
-                        ){
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout")   
-                        }
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart),
-                            onClick = { finish() }
                         )
                         AdminScreen(context)
                     }

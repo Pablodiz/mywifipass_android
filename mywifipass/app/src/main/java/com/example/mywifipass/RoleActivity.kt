@@ -15,7 +15,7 @@ import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import app.mywifipass.controller.RoleController
-
+import app.mywifipass.ui.components.TopBar
 @Composable 
 fun RoleScreen(){
     val context = LocalContext.current
@@ -29,8 +29,6 @@ fun RoleScreen(){
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Select Role", style = MaterialTheme.typography.headlineLarge)
-        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { 
                 role = "Attendee"
@@ -66,10 +64,15 @@ class RoleActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    RoleScreen()
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        TopBar(
+                            title = "Select Role"
+                        )
+                        RoleScreen()
+                    }
                 }
             }
         }

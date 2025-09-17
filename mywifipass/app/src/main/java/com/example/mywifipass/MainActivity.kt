@@ -13,7 +13,7 @@ import androidx.compose.ui.zIndex
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
 import app.mywifipass.ui.components.MainScreenContainer
-import app.mywifipass.ui.components.BackButton
+import app.mywifipass.ui.components.TopBar
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,13 +29,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart)
-                                .zIndex(1f), // Ensure the button is on top
-                            onClick = { finish() }
+                        TopBar(
+                            title = "Downloaded Wifi Passes",
+                            onBackClick = { finish() },
                         )
                         MainScreenContainer(
                             modifier = Modifier
