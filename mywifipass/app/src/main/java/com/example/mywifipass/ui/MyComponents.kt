@@ -56,6 +56,19 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 
+// Imports for IconWithAttribution
+import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.AnnotatedString
+import app.mywifipass.R
+import androidx.compose.ui.text.TextStyle
+
 data class SpeedDialItem(
     val label: String,
     val icon: @Composable () -> Unit,
@@ -114,6 +127,60 @@ fun BackButton(
         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
     
     }
+}
+
+@Composable
+fun IconWithAttribution(
+    @DrawableRes icon: Int,
+    text: String,
+    url: String,
+    icon_size: Int,
+    modifier: Modifier = Modifier
+) {
+    val uriHandler = LocalUriHandler.current
+
+    Column(
+        modifier = modifier.padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(id = icon),
+            contentDescription = null,
+            modifier = Modifier.size(icon_size.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        val annotatedText = buildAnnotatedString {
+            pushStringAnnotation(tag = "URL", annotation = url)
+            withStyle(style = androidx.compose.ui.text.SpanStyle(textDecoration = TextDecoration.Underline)) {
+                append(text)
+            }
+            pop()
+        }
+
+        ClickableText(
+            text = annotatedText,
+            style = TextStyle(
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center 
+            ),
+            onClick = { offset: Int ->
+                annotatedText.getStringAnnotations("URL", offset, offset)
+                    .firstOrNull()?.let { uriHandler.openUri(it.item) }
+            }
+        )
+    }
+}
+
+@Composable 
+fun NoNetworksIcon(){
+    IconWithAttribution(
+        icon = R.drawable.no_networks_added,
+        text = "Technology illustrations by Storyset",
+        url = "https://storyset.com/technology",
+        icon_size = 300
+    )
 }
 
 @Composable
@@ -230,10 +297,29 @@ fun MainScreen(
             }
         } else {
             Box(modifier = Modifier.weight(1f)) {
-                MyCardList(
-                    dataList = networks,
-                    onItemClick = onNetworkClick
-                )
+                if (networks.isEmpty()) {
+                    // Show icon with attribution when there are no networks
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.height(32.dp))
+                        NoNetworksIcon()
+                        Text(
+                            text = "No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one.",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    MyCardList(
+                        dataList = networks,
+                        onItemClick = onNetworkClick
+                    )
+                }
             }
         }
         
