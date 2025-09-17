@@ -133,40 +133,78 @@ fun MainScreen(
     onUrlDialogAccept: (String) -> Unit = {}
 ){
     // Variables for the URL dialog
-    var enteredText by remember { mutableStateOf("") }
+    // var enteredText by remember { mutableStateOf("") }
 
-    AddEventButton(
-        speedDialItems = listOf(
-            SpeedDialItem(
-                label = "Scan QR",
-                icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
-                onClick = onScanQRClick
-            ),
-            SpeedDialItem(
-                label = "Enter URL",
-                icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
-                onClick = onEnterURLClick
-            )
-        ),
-        content = { paddingValues ->
-            Column(modifier = modifier.padding(paddingValues)) {
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    MyCardList(
-                        dataList = networks,
-                        onItemClick = onNetworkClick
-                    )
-                }
+    // #DEPRECATED 
+    //AddEventButton(
+    //     speedDialItems = listOf(
+    //         SpeedDialItem(
+    //             label = "Scan QR",
+    //             icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
+    //             onClick = onScanQRClick
+    //         ),
+    //         SpeedDialItem(
+    //             label = "Enter URL",
+    //             icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
+    //             onClick = onEnterURLClick
+    //         )
+    //     ),
+    //     content = { paddingValues ->
+    //         Column(modifier = modifier.padding(paddingValues)) {
+    //             if (isLoading) {
+    //                 Box(
+    //                     modifier = Modifier.fillMaxSize(),
+    //                     contentAlignment = Alignment.Center
+    //                 ) {
+    //                     CircularProgressIndicator()
+    //                 }
+    //             } else {
+    //                 MyCardList(
+    //                     dataList = networks,
+    //                     onItemClick = onNetworkClick
+    //                 )
+    //             }
+    //         }
+    //     }
+    // )   
+    
+    
+    // Main layout with button at bottom
+    Column(modifier = modifier.fillMaxSize()) {
+        // Networks list takes all available space
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Box(modifier = Modifier.weight(1f)) {
+                MyCardList(
+                    dataList = networks,
+                    onItemClick = onNetworkClick
+                )
             }
         }
-    )   
-
+        
+        // Button for adding events via a QR Code - always at bottom
+        Button(
+            onClick = onScanQRClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.QrCode, contentDescription="Add Wifi Pass")
+                Text("Add a new Wifi Pass", modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+    // Dialog for adding a new network scanning a QR Code
     if (showQrScanner) {
         QRScannerDialog(
             onResult = { scannedText ->
@@ -177,26 +215,27 @@ fun MainScreen(
         )
     }
 
+    // #DEPRECATED
     // Dialog for adding a new network entering an URL
-    MyDialog(
-        showDialog = showUrlDialog, 
-        onDismiss = onUrlDialogDismiss, 
-        onAccept = { 
-            onUrlDialogAccept(enteredText)
-            enteredText = ""
-        },
-        content = {
-            Column{
-                TextField(
-                    value = enteredText,
-                    onValueChange = { enteredText = it },
-                    label = {Text("Enter URL")},
-                    placeholder = {Text("https://example.com")}
-                )
-            }
-        },
-        dialogTitle = "Add new network",
-    )   
+    // MyDialog(
+    //     showDialog = showUrlDialog, 
+    //     onDismiss = onUrlDialogDismiss, 
+    //     onAccept = { 
+    //         onUrlDialogAccept(enteredText)
+    //         enteredText = ""
+    //     },
+    //     content = {
+    //         Column{
+    //             TextField(
+    //                 value = enteredText,
+    //                 onValueChange = { enteredText = it },
+    //                 label = {Text("Enter URL")},
+    //                 placeholder = {Text("https://example.com")}
+    //             )
+    //         }
+    //     },
+    //     dialogTitle = "Add new network",
+    // )   
 }
 
 // MainScreen Container that handles business logic
