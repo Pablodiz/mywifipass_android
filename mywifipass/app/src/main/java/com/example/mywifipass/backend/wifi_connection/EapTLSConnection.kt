@@ -60,6 +60,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         // Create intent to add network via Settings
         val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
             putParcelableArrayListExtra(Settings.EXTRA_WIFI_NETWORK_LIST, arrayListOf(suggestion))
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
         }
         context.startActivity(intent)
     }
@@ -81,7 +82,9 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
                 }
 
                 // Open WiFi settings for user to remove manually
-                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
+                }
                 context.startActivity(intent)
             }
          }

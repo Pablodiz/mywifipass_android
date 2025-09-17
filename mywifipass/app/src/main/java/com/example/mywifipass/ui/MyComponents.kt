@@ -498,6 +498,9 @@ fun NetworkDetailScreen(
                             val result = mainController.connectToNetwork(network, wifiManager)
                             if (result.isSuccess) {
                                 Toast.makeText(context, "Connection configured successfully", Toast.LENGTH_SHORT).show()
+                                // Reload the network to get updated state
+                                val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                                currentNetwork = networks.find { it.id == selectedNetworkId }
                             } else {
                                 Toast.makeText(context, result.exceptionOrNull()?.message ?: "Connection failed", Toast.LENGTH_SHORT).show()
                             }
