@@ -69,6 +69,9 @@ import androidx.compose.ui.text.AnnotatedString
 import app.mywifipass.R
 import androidx.compose.ui.text.TextStyle
 
+import app.mywifipass.ui.components.ShowText
+import android.os.Build
+
 data class SpeedDialItem(
     val label: String,
     val icon: @Composable () -> Unit,
@@ -457,8 +460,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                // Toast.makeText(context, "Network added successfully from QR", Toast.LENGTH_SHORT).show()
-                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+                ShowText(context, "Network added successfully")
             } else {
                 // error = result.exceptionOrNull()?.message ?: "Failed to add network"
                 error = result.exceptionOrNull()?.message ?: "Failed to add network"
@@ -475,10 +477,8 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                // Toast.makeText(context, "Network added successfully from URL", Toast.LENGTH_SHORT).show()
-                Toast.makeText(context, "Network added successfully", Toast.LENGTH_SHORT).show()
+                ShowText(context, "Network added successfully", dialog = false)
             } else {
-                // error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
                 error = result.exceptionOrNull()?.message ?: "Failed to add network"
             }
             isLoading = false
@@ -487,7 +487,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     
     LaunchedEffect(error) {
         if (error.isNotEmpty()) {
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            ShowText(context, error)
             error = ""
         }
     }
@@ -609,11 +609,11 @@ fun NetworkDetailScreen(
                                 scope.launch {
                                     val result = mainController.deleteNetwork(network, wifiManager)
                                     if (result.isSuccess) {
-                                        Toast.makeText(context, "Network deleted successfully", Toast.LENGTH_SHORT).show()
+                                        ShowText(context, "Network deleted successfully")
                                         // Go back after deleting the network
                                         onNavigateBack()
                                     } else {
-                                        Toast.makeText(context, result.exceptionOrNull()?.message ?: "Delete failed", Toast.LENGTH_SHORT).show()
+                                        ShowText(context, result.exceptionOrNull()?.message ?: "Delete failed")
                                     }
                                 }
                             }
@@ -654,12 +654,16 @@ fun NetworkDetailScreen(
                         scope.launch {
                             val result = mainController.connectToNetwork(network, wifiManager)
                             if (result.isSuccess) {
-                                Toast.makeText(context, "Connection configured successfully", Toast.LENGTH_SHORT).show()
+                                // Only show success message in Android 10-
+                                // As in 11+, the system has it's own way of notifying users
+                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                                    ShowText(context, "Connection configured successfully")
+                                }
                                 // Reload the network to get updated state
                                 val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                                 currentNetwork = networks.find { it.id == selectedNetworkId }
                             } else {
-                                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Connection failed", Toast.LENGTH_SHORT).show()
+                                ShowText(context, result.exceptionOrNull()?.message ?: "Connection failed")
                             }
                         }
                     }

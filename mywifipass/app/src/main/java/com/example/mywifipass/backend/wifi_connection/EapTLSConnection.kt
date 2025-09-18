@@ -13,6 +13,8 @@ import android.util.Log
 import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
+import app.mywifipass.ui.components.ShowText
+
 
 class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, identity: String, altSubjectMatch: String) {
     val suggestion: WifiNetworkSuggestion
@@ -78,7 +80,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
                 
                 // Show Toast on main thread
                 Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(context, "You may forget the network in settings", Toast.LENGTH_LONG).show()
+                    ShowText(context, "You may forget the network in settings")
                 }
 
                 // Open WiFi settings for user to remove manually

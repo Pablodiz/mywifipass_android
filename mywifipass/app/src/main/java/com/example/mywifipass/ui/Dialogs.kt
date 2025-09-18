@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.platform.LocalContext
+import android.content.Context
 import app.mywifipass.model.data.Network
 import app.mywifipass.model.data.QrData
 
@@ -108,6 +109,19 @@ fun MyDialog(
 }
 
 
+// Non-composable version that can be called from anywhere
+fun ShowText(
+    context: Context,
+    text: String,
+    dialog: Boolean = false,
+){
+    if (dialog){
+        // TODO: Implement dialog version if needed
+    }else{
+        Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+    }
+}
+
 @Composable
 fun QRScannerDialog(
     onResult: (String) -> Unit,
@@ -124,7 +138,7 @@ fun QRScannerDialog(
             hasCameraPermission = isGranted
             if (!isGranted) {
                 // Notify the user that the permission is required
-                Toast.makeText(context, "Camera permission is required to scan QR codes", Toast.LENGTH_SHORT).show()
+                ShowText(context, "Camera permission is required to scan QR codes")
                 onDismiss()
             }
         }

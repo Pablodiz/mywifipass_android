@@ -27,6 +27,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Check 
 import androidx.compose.material.icons.filled.Close
 
+import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.ShowText
+
 
 @Composable 
 fun AdminScreen(
@@ -114,11 +117,10 @@ fun AdminScreen(
                                 
                                 if (authResult.isSuccess) {
                                     response = authResult.getOrNull() ?: "Authorization successful"
-                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
                                 } else {
                                     response = authResult.exceptionOrNull()?.message ?: "Authorization failed"
-                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
                                 }
+                                ShowText(context, response)
                                 isLoading = false
                             }
                         } 

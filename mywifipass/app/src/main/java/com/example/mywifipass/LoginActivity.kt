@@ -29,6 +29,9 @@ import androidx.lifecycle.lifecycleScope
 
 import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.controller.LoginController
+
+import app.mywifipass.ui.components.ShowText
+
 @Composable
 fun LoginScreen() {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
@@ -42,12 +45,12 @@ fun LoginScreen() {
             val result = loginController.login(credentials)
             result.fold(
                 onSuccess = { message ->
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    ShowText(context, message)
                     context.startActivity(Intent(context, AdminActivity::class.java))
                     (context as Activity).finish()
                 },
                 onFailure = { exception ->
-                    Toast.makeText(context, exception.message ?: "Login failed", Toast.LENGTH_SHORT).show()
+                    ShowText(context, exception.message ?: "Login failed")
                 }
             )
         }
@@ -145,12 +148,12 @@ class LoginActivity : ComponentActivity() {
                                     val result = loginController.loginWithQR(qrCode)
                                     result.fold(
                                         onSuccess = { message ->
-                                            Toast.makeText(this@LoginActivity, message, Toast.LENGTH_SHORT).show()
+                                            ShowText(this@LoginActivity, message)
                                             startActivity(Intent(this@LoginActivity, AdminActivity::class.java))
                                             finish()
                                         },
                                         onFailure = { exception ->
-                                            Toast.makeText(this@LoginActivity, exception.message ?: "QR login failed", Toast.LENGTH_SHORT).show()
+                                            ShowText(this@LoginActivity, exception.message ?: "QR login failed")
                                         }
                                     )
                                 }
