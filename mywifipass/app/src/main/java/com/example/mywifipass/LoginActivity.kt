@@ -31,6 +31,7 @@ import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.controller.LoginController
 
 import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
 
 // i18n
 import androidx.compose.ui.res.stringResource
@@ -54,7 +55,7 @@ fun LoginScreen() {
                     (context as Activity).finish()
                 },
                 onFailure = { exception ->
-                    ShowText.toastDirect(context, exception.message ?: context.getString(R.string.login_failed))
+                    ShowText.dialog(title=context.getString(R.string.login_failed), message=exception.message ?: context.getString(R.string.login_failed))
                 }
             )
         }
@@ -126,6 +127,9 @@ class LoginActivity : ComponentActivity() {
                     var showQrScanner by remember { mutableStateOf(false) }
                     val loginController = remember { LoginController(this@LoginActivity) }
                     
+                    // Add NotificationHandler to handle loading dialogs
+                    NotificationHandler(context = this@LoginActivity)
+                    
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
                             title = stringResource(R.string.login),
@@ -143,13 +147,15 @@ class LoginActivity : ComponentActivity() {
                         )
                         LoginScreen()
                     }
-                    
                     if (showQrScanner) {
                         QRScannerDialog(
                             onDismiss = { showQrScanner = false },
                             barcodeText = stringResource(R.string.login_qr_code),
                             onResult = { qrCode ->
                                 lifecycleScope.launch {
+                                    // Loading dialog while we don't get the message 
+                                    // It has a loading circle and a processing text
+                                    ShowText.loadingDialog(this@LoginActivity.getString(R.string.processing))
                                     val result = loginController.loginWithQR(qrCode)
                                     result.fold(
                                         onSuccess = { message ->
@@ -158,9 +164,13 @@ class LoginActivity : ComponentActivity() {
                                             finish()
                                         },
                                         onFailure = { exception ->
-                                            ShowText.toastDirect(this@LoginActivity, exception.message ?: this@LoginActivity.getString(R.string.qr_login_failed))
+                                            ShowText.dialog(title=this@LoginActivity.getString(R.string.login_failed), 
+                                                message=exception.message ?: this@LoginActivity.getString(R.string.qr_login_failed),
+                                                onDismiss = { showQrScanner = false }
+                                            )
                                         }
                                     )
+                                    ShowText.hideLoadingDialog()
                                 }
                                 showQrScanner = false
                             }
