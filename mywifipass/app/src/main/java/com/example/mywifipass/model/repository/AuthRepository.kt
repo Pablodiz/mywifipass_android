@@ -30,6 +30,7 @@ class AuthRepository(private val context: Context) {
                     login = credentials.login,
                     pwd = credentials.pwd,
                     usePassword = credentials.usePassword,
+                    context = context,
                     onSuccess = { token ->
                         authToken = token
                         saveToken(token)

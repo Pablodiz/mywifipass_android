@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">MyWifiPass</string>
+    <!-- Roles -->
+    <string name="validator">Validador</string>
+    <string name="admin">Administrador</string>
+    <string name="user">Usuario</string>
+    <string name="select_role">Seleccionar Rol</string>
+
+    <!-- Main Screen -->
+    <string name="no_networks_message">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
+    <string name="add_wifi_pass">Añadir un nuevo pase de Wifi</string>
+    <string name="processing">Procesando...</string>
+
+    <!-- Dialog title -->
+    <string name="default_dialog_title">MyWifiPass</string>
+    <string name="default_dialog_message">Este es el mensaje del diálogo</string>
+    
+    <!-- Login Activity -->
+    <string name="enter_credentials">Introduce tus credenciales</string>
+    <string name="enter_your_login">Introduce tu usuario</string>
+    <string name="enter_your_password">Introduce tu contraseña</string>
+    <string name="username">Usuario</string>
+    <string name="password">Contraseña</string>
+    <string name="url_admin_server">URL del Servidor Admin</string>
+    <string name="login">Iniciar Sesión</string>
+    <string name="login_successful">Inicio de sesión exitoso</string>
+    <string name="login_failed">Error de inicio de sesión</string>
+    <string name="invalid_credentials">Credenciales inválidas</string>
+    <string name="qr_login_failed">Error de inicio de sesión QR</string>
+
+    <!-- Admin Activity -->
+    <string name="scanned_info">Información escaneada:</string>
+    <string name="authorization_failed">Autorización falló</string>
+    <string name="authorization_successful">Autorización exitosa</string>
+    <string name="attendee_authorized_successfully">Asistente autorizado exitosamente</string>
+    <string name="ok">Aceptar</string>
+    <string name="admin_panel">Panel de Administración</string>
+    <string name="admin_scan_qr_code">Escanear Código QR</string>
+    
+    <!-- Network operations -->
+    <string name="network_added_successfully">Red añadida exitosamente</string>
+    <string name="failed_to_add_network">Error al añadir la red</string>
+    <string name="failed_to_add_network_from_url">Error al añadir red desde URL</string>
+    <string name="failed_to_load_networks">Error al cargar las redes</string>
+    <string name="network_deleted_successfully">Red eliminada exitosamente</string>
+    <string name="delete_failed">Error al eliminar</string>
+    <string name="connection_configured_successfully">Conexión configurada exitosamente</string>
+    <string name="connection_failed">Error de conexión</string>
+    <string name="no_wifi_passes_added_yet">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
+    <string name="downloaded_wifi_passes">Pases de Wifi Descargados</string>
+    
+    <!-- Network Detail Screen -->
+    <string name="configure_connection">Configurar conexión</string>
+    <string name="connected">Conectado</string>
+    <string name="not_connected_yet">Aún no conectado</string>
+    <string name="delete">Eliminar</string>
+    <string name="more_options">Más opciones</string>
+    
+    <!-- Camera permissions -->
+    <string name="camera_permission_required">Se requiere permiso de cámara para escanear códigos QR</string>
+    
+    <!-- WiFi configuration -->
+    <string name="wifi_forget_message">Puedes olvidar esta red manualmente si es necesario</string>
+    
+    <!-- API Errors -->
+    <string name="error">Error</string>
+    <string name="error_400">Solicitud Incorrecta</string>
+    <string name="error_401">No estás autorizado para acceder a este recurso</string>
+    <string name="error_403">Prohibido</string>
+    <string name="error_404">No Encontrado</string>
+    <string name="error_500">Error del servidor o de petición</string>
+    <string name="unexpected_error">Ocurrió un error inesperado: </string>
+    <string name="unknown_error">Error desconocido</string>
+    <string name="unrecognized_response_format">Formato de respuesta no reconocido</string>
+    <string name="error_parsing_response">Error al analizar la respuesta</string>
+    <string name="no_attendee_found">No se encontró asistente con los datos proporcionados</string>
+    <string name="incorrect_login_credentials">Credenciales de inicio de sesión incorrectas</string>
+    
+    <!-- Common -->
+    <string name="success">Éxito</string>
+    <string name="cancel">Cancelar</string>
+    <string name="accept">Aceptar</string>
+    <string name="retry">Reintentar</string>
+    <string name="back">Atrás</string>
+
+    <!-- Network Info -->
+    <string name="network_info">Información de Red</string>
+    <string name="location">Ubicación</string>
+    <string name="start_date">Fecha de Inicio</string>
+    <string name="end_date">Fecha de Fin</string>
+    <string name="description">Descripción</string>
+
+    <!-- QR Code Scanner -->
+    <string name="open_qr_scanner">Abrir Escáner QR</string>
+    <string name="scan_qr_code">Escanear Código QR</string>
+    
+    <!-- NetworkRepository error messages -->
+    <string name="error_processing_qr_code">Error procesando código QR</string>
+    <string name="error_adding_network">Error añadiendo red</string>
+    <string name="failed_to_retrieve_added_network">Error al recuperar red añadida</string>
+    <string name="no_certificates_symmetric_key_available">No hay clave simétrica de certificados disponible</string>
+    <string name="certificates_downloaded_and_decrypted_successfully">Certificados descargados y descifrados exitosamente</string>
+    <string name="failed_to_download_certificates">Error al descargar certificados</string>
+    <string name="certificate_download_failed">Descarga de certificados falló</string>
+    <string name="failed_to_delete_network">Error al eliminar red</string>
+    <string name="failed_to_update_network">Error al actualizar red</string>
+    <string name="failed_to_insert_network">Error al insertar red</string>
+    <string name="no_validation_url_available">No hay URL de validación disponible</string>
+    <string name="failed_to_get_symmetric_key">Error al obtener clave simétrica</string>
+    <string name="qr_code_invalid_url">El código QR no contiene una URL válida</string>
+    <string name="error_parsing_qr_code">Error analizando código QR</string>
+    <string name="failed_to_extract_certificates">Error al extraer certificados</string>
+    <string name="could_not_find_valid_certificate_chain">No se pudo encontrar cadena de certificados válida con al menos 2 certificados</string>
+    
+    <!-- MainController error messages -->
+    <string name="failed_to_get_networks">Error al obtener redes</string>
+    <string name="failed_to_add_network_from_qr">Error al añadir red desde QR</string>
+    <string name="network_has_no_certificate_download_url">La red no tiene URL de descarga de certificados</string>
+    <string name="network_has_no_certificate_symmetric_key">La red no tiene clave simétrica de certificados</string>
+    <string name="network_certificates_are_not_decrypted">Los certificados de red no están descifrados</string>
+    <string name="network_is_missing_required_certificates">La red no tiene los certificados requeridos</string>
+    <string name="invalid_certificate_format">Formato de certificado inválido</string>
+    <string name="failed_to_create_eap_tls_connection_configuration">Error al crear configuración de conexión EAP-TLS</string>
+    <string name="network_connection_configured_successfully">Conexión de red configurada exitosamente</string>
+    <string name="failed_to_connect_to_network">Error al conectar a la red</string>
+    <string name="network_is_not_configured">La red no está configurada</string>
+    <string name="failed_to_create_eap_tls_connection_for_disconnection">Error al crear conexión EAP-TLS para desconexión</string>
+    <string name="network_disconnected_successfully">Red desconectada exitosamente</string>
+    <string name="failed_to_disconnect_from_network">Error al desconectar de la red</string>
+    <string name="network_updated_successfully">Red actualizada exitosamente</string>
+    <string name="failed_to_get_certificate_symmetric_key">Error al obtener clave simétrica de certificados</string>
+    <string name="certificates_are_not_decrypted">Los certificados no están descifrados</string>
+    <string name="missing_ca_certificate">Falta certificado CA</string>
+    <string name="missing_client_certificate">Falta certificado de cliente</string>
+    <string name="missing_private_key">Falta clave privada</string>
+    <string name="missing_ssid">Falta SSID</string>
+    <string name="missing_network_common_name">Falta nombre común de red</string>
+    <string name="network_is_ready_for_connection">La red está lista para conexión</string>
+    <string name="failed_to_validate_network">Error al validar red</string>
+
+</resources>

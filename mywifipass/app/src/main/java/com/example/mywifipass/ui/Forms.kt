@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.text.input.VisualTransformation
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +58,8 @@ fun PasswordField(
     onChange: (String) -> Unit,
     submit: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Password",
-    placeholder: String = "Enter your Password"
+    label: String = stringResource(id = R.string.password),
+    placeholder: String = stringResource(id = R.string.enter_your_password)
 ) {
     var isPasswordVisible by remember { mutableStateOf(false) }
 

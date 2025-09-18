@@ -1,3 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">myWifiPass</string>
+    <!-- App name -->
+    <string name="app_name">MyWifiPass</string>
+    <!-- Roles -->
+    <string name="validator">Validator</string>
+    <string name="admin">Admin</string>
+    <string name="user">User</string>
+    <string name="select_role">Select Role</string>
+
+    <!-- Main Screen -->
+    <string name="no_networks_message">No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one.</string>
+    <string name="add_wifi_pass">Add a new Wifi Pass</string>
+    <string name="processing">Processing...</string>
+
+    <!-- Dialog title -->
+    <string name="default_dialog_title">MyWifiPass</string>
+    <string name="default_dialog_message">This is the dialog message</string>
+
+    <!-- Login Activity -->
+    <string name="enter_credentials">Enter your credentials</string>
+    <string name="enter_your_login">Enter your username</string>
+    <string name="enter_your_password">Enter your password</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="url_admin_server">Admin Server URL</string>
+    <string name="login">Login</string>
+    <string name="login_successful">Login successful</string>
+    <string name="login_failed">Login failed</string>
+    <string name="invalid_credentials">Invalid credentials</string>
+    <string name="qr_login_failed">QR login failed</string>
+
+    <!-- Admin Activity -->
+    <string name="scanned_info">Scanned info:</string>
+    <string name="authorization_failed">Authorization Failed</string>
+    <string name="authorization_successful">Authorization successful</string>
+    <string name="ok">OK</string>
+    <string name="admin_panel">Admin Panel</string>
+    <string name="admin_scan_qr_code">Scan QR Code</string>
+    
+    <!-- Network operations -->
+    <string name="network_added_successfully">Network added successfully</string>
+    <string name="failed_to_add_network">Failed to add network</string>
+    <string name="failed_to_add_network_from_url">Failed to add network from URL</string>
+    <string name="failed_to_load_networks">Failed to load networks</string>
+    <string name="network_deleted_successfully">Network deleted successfully</string>
+    <string name="delete_failed">Delete failed</string>
+    <string name="connection_configured_successfully">Connection configured successfully</string>
+    <string name="connection_failed">Connection failed</string>
+    <string name="no_wifi_passes_added_yet">"No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one."</string>
+    <string name="downloaded_wifi_passes">Downloaded Wifi Passes</string>   
+
+    <!-- Network Detail Screen -->
+    <string name="configure_connection">Configure connection</string>
+    <string name="connected">Connected</string>
+    <string name="not_connected_yet">Not connected yet</string>
+    <string name="delete">Delete</string>
+    <string name="more_options">More options</string>
+    
+
+    
+    <!-- Camera permissions -->
+    <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
+    
+    <!-- WiFi configuration -->
+    <string name="wifi_forget_message">You may forget this network manually if needed</string>
+    
+    <!-- Common -->
+    <string name="error">Error</string>
+    <string name="success">Success</string>
+    <string name="cancel">Cancel</string>
+    <string name="accept">Accept</string>
+    <string name="retry">Retry</string>
+    <string name="back">Back</string>
+
+    <!-- Network Info -->
+    <string name="network_info">Network Information</string>
+    <string name="location">Location</string>
+    <string name="start_date">Start Date</string>
+    <string name="end_date">End Date</string>
+    <string name="description">Description</string>
+
+    <!-- QR Code Scanner -->
+    <string name="open_qr_scanner">Open QR Scanner</string>
+    <string name="scan_qr_code">Scan QR Code</string>
+
+    <!-- API Responses -->
+    <string name="error_400">Bad Request</string>
+    <string name="error_401">You are not authorized to access this resource</string>
+    <string name="error_403">Forbidden</string>
+    <string name="error_404">Not Found</string>
+    <string name="error_500">Server or petition error</string>
+    <string name="unexpected_error">An unexpected error occurred: </string>
+    <string name="attendee_authorized_successfully">Attendee authorized successfully</string>
+    <string name="no_attendee_found">No attendee found with the provided data</string>
+    <string name="incorrect_login_credentials">Incorrect login credentials</string>
+    <string name="error_parsing_response">Error parsing the response</string>
+    <string name="unrecognized_response_format">Unrecognized response format</string>
+    <string name="unknown_error">Unknown error</string>
+    
+    <!-- NetworkRepository error messages -->
+    <string name="error_processing_qr_code">Error processing QR code</string>
+    <string name="error_adding_network">Error adding network</string>
+    <string name="failed_to_retrieve_added_network">Failed to retrieve added network</string>
+    <string name="no_certificates_symmetric_key_available">No certificates symmetric key available</string>
+    <string name="certificates_downloaded_and_decrypted_successfully">Certificates downloaded and decrypted successfully</string>
+    <string name="failed_to_download_certificates">Failed to download certificates</string>
+    <string name="certificate_download_failed">Certificate download failed</string>
+    <string name="failed_to_delete_network">Failed to delete network</string>
+    <string name="failed_to_update_network">Failed to update network</string>
+    <string name="failed_to_insert_network">Failed to insert network</string>
+    <string name="no_validation_url_available">No validation URL available</string>
+    <string name="failed_to_get_symmetric_key">Failed to get symmetric key</string>
+    <string name="qr_code_invalid_url">QR code does not contain a valid URL</string>
+    <string name="error_parsing_qr_code">Error parsing QR code</string>
+    <string name="failed_to_extract_certificates">Failed to extract certificates</string>
+    <string name="could_not_find_valid_certificate_chain">Could not find valid certificate chain with at least 2 certificates</string>
+    
+    <!-- MainController error messages -->
+    <string name="failed_to_get_networks">Failed to get networks</string>
+    <string name="failed_to_add_network_from_qr">Failed to add network from QR</string>
+    <string name="network_has_no_certificate_download_url">Network has no certificate download URL</string>
+    <string name="network_has_no_certificate_symmetric_key">Network has no certificate symmetric key</string>
+    <string name="network_certificates_are_not_decrypted">Network certificates are not decrypted</string>
+    <string name="network_is_missing_required_certificates">Network is missing required certificates</string>
+    <string name="invalid_certificate_format">Invalid certificate format</string>
+    <string name="failed_to_create_eap_tls_connection_configuration">Failed to create EAP-TLS connection configuration</string>
+    <string name="network_connection_configured_successfully">Network connection configured successfully</string>
+    <string name="failed_to_connect_to_network">Failed to connect to network</string>
+    <string name="network_is_not_configured">Network is not configured</string>
+    <string name="failed_to_create_eap_tls_connection_for_disconnection">Failed to create EAP-TLS connection for disconnection</string>
+    <string name="network_disconnected_successfully">Network disconnected successfully</string>
+    <string name="failed_to_disconnect_from_network">Failed to disconnect from network</string>
+    <string name="network_updated_successfully">Network updated successfully</string>
+    <string name="failed_to_get_certificate_symmetric_key">Failed to get certificate symmetric key</string>
+    <string name="certificates_are_not_decrypted">Certificates are not decrypted</string>
+    <string name="missing_ca_certificate">Missing CA certificate</string>
+    <string name="missing_client_certificate">Missing client certificate</string>
+    <string name="missing_private_key">Missing private key</string>
+    <string name="missing_ssid">Missing SSID</string>
+    <string name="missing_network_common_name">Missing network common name</string>
+    <string name="network_is_ready_for_connection">Network is ready for connection</string>
+    <string name="failed_to_validate_network">Failed to validate network</string>
 </resources>

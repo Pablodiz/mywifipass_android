@@ -11,6 +11,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
+
 // Data classes for different types of notifications
 sealed class NotificationMessage {
     data class Toast(val message: String, val duration: Int = android.widget.Toast.LENGTH_SHORT) : NotificationMessage()
@@ -105,7 +109,7 @@ fun NotificationHandler(
                         dialog.onDismiss()
                     }
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.accept))
                 }
             }
         )

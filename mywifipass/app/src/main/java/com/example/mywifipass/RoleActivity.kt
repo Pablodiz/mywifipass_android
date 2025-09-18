@@ -16,6 +16,11 @@ import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import app.mywifipass.controller.RoleController
 import app.mywifipass.ui.components.TopBar
+
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
+
 @Composable 
 fun RoleScreen(){
     val context = LocalContext.current
@@ -38,8 +43,8 @@ fun RoleScreen(){
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("User")
-        } 
+            Text(stringResource(R.string.user))
+        }   
         Button(
             onClick = { 
                 role = "Admin"
@@ -53,7 +58,7 @@ fun RoleScreen(){
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Validator")
+            Text(stringResource(R.string.validator))
         }        
     }
 }
@@ -69,7 +74,7 @@ class RoleActivity : ComponentActivity() {
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
-                            title = "Select Role"
+                            title = stringResource(R.string.select_role),
                         )
                         RoleScreen()
                     }

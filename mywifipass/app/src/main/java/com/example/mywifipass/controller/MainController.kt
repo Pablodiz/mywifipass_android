@@ -11,6 +11,7 @@ import app.mywifipass.model.data.Network
 import app.mywifipass.model.repository.NetworkRepository
 import app.mywifipass.backend.certificates.EapTLSCertificate
 import app.mywifipass.backend.wifi_connection.EapTLSConnection
+import app.mywifipass.R
 
 /**
  * MainController handles the main application business logic
@@ -31,7 +32,7 @@ class MainController(private val context: Context) {
             Result.success(networks)
         } catch (e: Exception) {
             Log.e("MainController", "Error getting networks: ${e.message}")
-            Result.failure(Exception("Failed to get networks: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_get_networks) + ": ${e.message}"))
         }
     }
     
@@ -45,7 +46,7 @@ class MainController(private val context: Context) {
             networkRepository.addNetworkFromQR(qrCode)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from QR: ${e.message}")
-            Result.failure(Exception("Failed to add network from QR: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_add_network_from_qr) + ": ${e.message}"))
         }
     }
 
@@ -59,7 +60,7 @@ class MainController(private val context: Context) {
             networkRepository.addNetworkFromUrl(url)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from URL: ${e.message}")
-            Result.failure(Exception("Failed to add network from URL: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_add_network_from_url) + ": ${e.message}"))
         }
     }
     
@@ -74,11 +75,11 @@ class MainController(private val context: Context) {
             
             // Validate network has required data
             if (network.certificates_url.isEmpty()) {
-                return Result.failure(Exception("Network has no certificate download URL"))
+                return Result.failure(Exception(context.getString(R.string.network_has_no_certificate_download_url)))
             }
             
             if (network.certificates_symmetric_key.isEmpty()) {
-                return Result.failure(Exception("Network has no certificate symmetric key"))
+                return Result.failure(Exception(context.getString(R.string.network_has_no_certificate_symmetric_key)))
             }
             
             val result = networkRepository.downloadCertificates(network)
@@ -90,7 +91,7 @@ class MainController(private val context: Context) {
             result
         } catch (e: Exception) {
             Log.e("MainController", "Error downloading certificates: ${e.message}")
-            Result.failure(Exception("Failed to download certificates: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_download_certificates) + ": ${e.message}"))
         }
     }
     
@@ -107,23 +108,23 @@ class MainController(private val context: Context) {
                 
                 // Validate network has certificates
                 if (!network.are_certificiates_decrypted) {
-                    return@withContext Result.failure(Exception("Network certificates are not decrypted"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.network_certificates_are_not_decrypted)))
                 }
                 
                 if (network.ca_certificate.isEmpty() || network.certificate.isEmpty() || network.private_key.isEmpty()) {
-                    return@withContext Result.failure(Exception("Network is missing required certificates"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.network_is_missing_required_certificates)))
                 }
                 
                 // Validate certificates format
                 if (!isValidCertificateFormat(network)) {
-                    return@withContext Result.failure(Exception("Invalid certificate format"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.invalid_certificate_format)))
                 }
                 
                 // Create EAP-TLS connection configuration
                 val eapTLSConnection = createEapTLSConnection(network)
                 Log.d("MainController", "Created EapTLSConnection for connection with SSID: ${network.ssid}")
                 if (eapTLSConnection == null) {
-                    return@withContext Result.failure(Exception("Failed to create EAP-TLS connection configuration"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_configuration)))
                 }
                 
                 // Attempt connection
@@ -138,11 +139,11 @@ class MainController(private val context: Context) {
                 }
                 
                 Log.d("MainController", "Successfully configured connection to: ${network.ssid}")
-                Result.success("Network connection configured successfully")
+                Result.success(context.getString(R.string.network_connection_configured_successfully))
                 
             } catch (e: Exception) {
                 Log.e("MainController", "Error connecting to network: ${e.message}")
-                Result.failure(Exception("Failed to connect to network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_connect_to_network) + ": ${e.message}"))
             }
         }
     }
@@ -159,14 +160,14 @@ class MainController(private val context: Context) {
                 Log.d("MainController", "Attempting to disconnect from network: ${network.ssid}")
                 
                 if (!network.is_connection_configured) {
-                    return@withContext Result.failure(Exception("Network is not configured"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.network_is_not_configured)))
                 }
                 
                 // Create EAP-TLS connection to get the suggestion for removal
                 val eapTLSConnection = createEapTLSConnection(network)
                 Log.d("MainController", "Created EapTLSConnection for disconnection with SSID: ${network.ssid}")
                 if (eapTLSConnection == null) {
-                    return@withContext Result.failure(Exception("Failed to create EAP-TLS connection for disconnection"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_for_disconnection)))
                 }
                 
                 // Disconnect
@@ -181,11 +182,11 @@ class MainController(private val context: Context) {
                 }
                 
                 Log.d("MainController", "Successfully disconnected from: ${network.ssid}")
-                Result.success("Network disconnected successfully")
+                Result.success(context.getString(R.string.network_disconnected_successfully))
                 
             } catch (e: Exception) {
                 Log.e("MainController", "Error disconnecting from network: ${e.message}")
-                Result.failure(Exception("Failed to disconnect from network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_disconnect_from_network) + ": ${e.message}"))
             }
         }
     }
@@ -213,14 +214,14 @@ class MainController(private val context: Context) {
             
             if (result.isSuccess) {
                 Log.d("MainController", "Successfully deleted network: ${network.network_common_name}")
-                Result.success("Network deleted successfully")
+                Result.success(context.getString(R.string.network_deleted_successfully))
             } else {
-                result.map { "Network deleted successfully" }
+                result.map { context.getString(R.string.network_deleted_successfully) }
             }
             
         } catch (e: Exception) {
             Log.e("MainController", "Error deleting network: ${e.message}")
-            Result.failure(Exception("Failed to delete network: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_delete_network) + ": ${e.message}"))
         }
     }
     
@@ -237,14 +238,14 @@ class MainController(private val context: Context) {
             
             if (result.isSuccess) {
                 Log.d("MainController", "Successfully updated network: ${network.network_common_name}")
-                Result.success("Network updated successfully")
+                Result.success(context.getString(R.string.network_updated_successfully))
             } else {
-                result.map { "Network updated successfully" }
+                result.map { context.getString(R.string.network_updated_successfully) }
             }
             
         } catch (e: Exception) {
             Log.e("MainController", "Error updating network: ${e.message}")
-            Result.failure(Exception("Failed to update network: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_update_network) + ": ${e.message}"))
         }
     }
     
@@ -259,7 +260,7 @@ class MainController(private val context: Context) {
             networkRepository.getCertificatesSymmetricKey(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error getting certificate symmetric key: ${e.message}")
-            Result.failure(Exception("Failed to get certificate symmetric key: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_get_certificate_symmetric_key) + ": ${e.message}"))
         }
     }
     
@@ -272,25 +273,25 @@ class MainController(private val context: Context) {
         return try {
             when {
                 !network.are_certificiates_decrypted -> 
-                    Result.failure(Exception("Certificates are not decrypted"))
+                    Result.failure(Exception(context.getString(R.string.certificates_are_not_decrypted)))
                 network.ca_certificate.isEmpty() -> 
-                    Result.failure(Exception("Missing CA certificate"))
+                    Result.failure(Exception(context.getString(R.string.missing_ca_certificate)))
                 network.certificate.isEmpty() -> 
-                    Result.failure(Exception("Missing client certificate"))
+                    Result.failure(Exception(context.getString(R.string.missing_client_certificate)))
                 network.private_key.isEmpty() -> 
-                    Result.failure(Exception("Missing private key"))
+                    Result.failure(Exception(context.getString(R.string.missing_private_key)))
                 network.ssid.isEmpty() -> 
-                    Result.failure(Exception("Missing SSID"))
+                    Result.failure(Exception(context.getString(R.string.missing_ssid)))
                 network.network_common_name.isEmpty() -> 
-                    Result.failure(Exception("Missing network common name"))
+                    Result.failure(Exception(context.getString(R.string.missing_network_common_name)))
                 !isValidCertificateFormat(network) -> 
-                    Result.failure(Exception("Invalid certificate format"))
+                    Result.failure(Exception(context.getString(R.string.invalid_certificate_format)))
                 else -> 
-                    Result.success("Network is ready for connection")
+                    Result.success(context.getString(R.string.network_is_ready_for_connection))
             }
         } catch (e: Exception) {
             Log.e("MainController", "Error validating network: ${e.message}")
-            Result.failure(Exception("Failed to validate network: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_validate_network) + ": ${e.message}"))
         }
     }
     

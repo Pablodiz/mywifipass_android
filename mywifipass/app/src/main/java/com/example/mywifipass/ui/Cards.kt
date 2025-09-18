@@ -13,7 +13,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.mywifipass.model.data.Network
 
-
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
 
 @Composable
 fun InfoText(label: String, value: String) {
@@ -25,9 +27,9 @@ fun InfoText(label: String, value: String) {
 @Composable
 fun NetworkCardInfo(network: Network) {
     Column {
-        InfoText("Location", network.location)
-        InfoText("Start date", network.start_date)
-        InfoText("End date", network.end_date)
+        InfoText(stringResource(R.string.location), network.location)
+        InfoText(stringResource(R.string.start_date), network.start_date)
+        InfoText(stringResource(R.string.end_date), network.end_date)
     }
 }
 

@@ -30,6 +30,9 @@ import androidx.compose.material.icons.filled.Close
 import app.mywifipass.ui.components.ShowText
 import app.mywifipass.ui.components.NotificationHandler
 
+// i18n
+import app.mywifipass.R
+import androidx.compose.ui.res.stringResource
 
 @Composable 
 fun AdminScreen(
@@ -77,7 +80,7 @@ fun AdminScreen(
     if (showValidatedUserDialog) {
         AlertDialog(
             onDismissRequest = { showValidatedUserDialog = false },
-            title = { Text("Scanned info:") },
+            title = { Text(stringResource(R.string.scanned_info)) },
             text = { 
                 Column (
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -90,14 +93,14 @@ fun AdminScreen(
                         if (failed) {
                             Icon(
                                 Icons.Filled.Close, 
-                                contentDescription = "Error", 
+                                contentDescription = stringResource(R.string.error), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         } else {
                             Icon(
                                 Icons.Filled.Check, 
-                                contentDescription = "Success", 
+                                contentDescription = stringResource(R.string.success), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -135,7 +138,7 @@ fun AdminScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("OK")
+                        stringResource(R.string.ok)
                     }
                 }
             }
@@ -155,13 +158,13 @@ fun AdminScreen(
         if (isLoading) {
             CircularProgressIndicator()
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Processing...")
+            Text(stringResource(R.string.processing))
         } else {
             Button(
                 onClick = { showScannerDialog = true },
                 modifier = Modifier.fillMaxWidth(0.8f)
             ) {
-                Text("Open QR Scanner")
+                Text(stringResource(R.string.open_qr_scanner))
             }
         }
     }
@@ -179,7 +182,7 @@ class AdminActivity : ComponentActivity() {
                     val context = LocalContext.current
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
-                            title = "Admin Panel",
+                            title = stringResource(R.string.admin_panel),
                             onBackClick = { finish() },
                             actions = {
                                 Box(){

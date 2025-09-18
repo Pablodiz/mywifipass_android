@@ -15,6 +15,10 @@ import app.mywifipass.ui.theme.MyWifiPassTheme
 import app.mywifipass.ui.components.MainScreenContainer
 import app.mywifipass.ui.components.TopBar
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,7 +34,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
-                            title = "Downloaded Wifi Passes",
+                            title = stringResource(R.string.downloaded_wifi_passes),
                             onBackClick = { finish() },
                         )
                         MainScreenContainer(
