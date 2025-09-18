@@ -56,6 +56,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.widget.Toast
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
 
 @Composable
 // Funcion que muestra un dialogo emergente
@@ -63,10 +66,10 @@ fun MyDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit, // Función que se ejecuta al cancelar, normalemente cerrar la ventana
     onAccept: () -> Unit,
-    dialogTitle: String = "Dialog's title",
-    dialogContent: String = "This is the dialog's content",
-    acceptButtonText: String = "Accept",
-    cancelButtonText: String = "Cancel",
+    dialogTitle: String = stringResource(R.string.default_dialog_title),
+    dialogContent: String = stringResource(R.string.default_dialog_message),
+    acceptButtonText: String = stringResource(R.string.ok),
+    cancelButtonText: String = stringResource(R.string.cancel),
     content: @Composable () -> Unit = {Text(dialogContent)}, // Utilizamos una función para poder pasarle un composable y cambiar el content
     titleActions: (@Composable () -> Unit)? = null
 ) {
@@ -113,7 +116,8 @@ fun MyDialog(
 @Composable
 fun QRScannerDialog(
     onResult: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    barcodeText: String = stringResource(R.string.scan_qr_code)
 ) {
     val context = LocalContext.current
     val cameraPermission = android.Manifest.permission.CAMERA
@@ -126,7 +130,7 @@ fun QRScannerDialog(
             hasCameraPermission = isGranted
             if (!isGranted) {
                 // Notify the user that the permission is required
-                ShowText.toastDirect(context, "Camera permission is required to scan QR codes")
+                ShowText.toastDirect(context, context.getString(R.string.camera_permission_required))
                 onDismiss()
             }
         }
@@ -152,7 +156,9 @@ fun QRScannerDialog(
                         // Set the decoder factory to only recognize QR codes
                         barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
                         // Set the help text
-                        barcodeView.setStatusText("Scan a QR code")
+                        barcodeView.setStatusText(barcodeText)
+                        // Center the status text
+                        barcodeView.statusView.gravity = android.view.Gravity.CENTER
                         // Start the camera decode (the user doesn't have to click another button)
                         barcodeView.decodeSingle(object : BarcodeCallback {
                             override fun barcodeResult(result: BarcodeResult?) {
@@ -182,10 +188,10 @@ fun QRScannerDialog(
 @Composable
 fun NetworkDialogEventInfo(network: Network) {
     Column {
-        InfoText("Location", network.location)
-        InfoText("Start date", network.start_date)
-        InfoText("End date", network.end_date)
-        InfoText("Description", network.description)
+        InfoText(stringResource(R.string.location), network.location)
+        InfoText(stringResource(R.string.start_date), network.start_date)
+        InfoText(stringResource(R.string.end_date), network.end_date)
+        InfoText(stringResource(R.string.description), network.description)
     }
 }
 

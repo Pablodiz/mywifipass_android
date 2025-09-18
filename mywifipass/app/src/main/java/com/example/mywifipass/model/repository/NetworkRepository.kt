@@ -11,8 +11,6 @@ import app.mywifipass.model.data.Network
 import app.mywifipass.model.data.QrData
 import app.mywifipass.backend.database.DataSource
 import app.mywifipass.backend.api_petitions.*
-import app.mywifipass.backend.certificates.hexToSecretKey
-import app.mywifipass.backend.certificates.decryptAES256
 import app.mywifipass.backend.certificates.checkCertificates
 import java.util.Enumeration
 import java.security.cert.X509Certificate
@@ -26,6 +24,7 @@ import app.mywifipass.backend.api_petitions.CertificatesResponse
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import java.util.Base64
+import app.mywifipass.R
 
 /**
  * Repository for handling network data operations
@@ -59,7 +58,7 @@ class NetworkRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 // Parse QR code to extract URL
-                val parseResult = parseQRNetworkData(qrCode)
+                val parseResult = parseQRNetworkData(qrCode, context)
                 if (parseResult.isFailure) {
                     return@withContext Result.failure(parseResult.exceptionOrNull()!!)
                 }
@@ -72,7 +71,7 @@ class NetworkRepository(private val context: Context) {
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error processing QR code: ${e.message}")
-                Result.failure(Exception("Error processing QR code: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.error_processing_qr_code) + ": ${e.message}"))
             }
         }
     }
@@ -85,13 +84,13 @@ class NetworkRepository(private val context: Context) {
     suspend fun addNetworkFromUrl(url: String): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
-                var resultNetwork: Network? = null
                 var errorMessage: String? = null
                 
                 // Use the existing makePetitionAndAddToDatabase function
                 makePetitionAndAddToDatabase(
                     enteredText = url,
                     dataSource = dataSource,
+                    context = context,
                     onSuccess = { body ->
                         Log.d("NetworkRepository", "Network added successfully: $body")
                     },
@@ -108,17 +107,17 @@ class NetworkRepository(private val context: Context) {
                 
                 // Get the latest network (should be the one we just added)
                 val networks = dataSource.loadConnections()
-                resultNetwork = networks.lastOrNull()
+                var resultNetwork = networks.lastOrNull()
                 
                 if (resultNetwork != null) {
                     Result.success(resultNetwork)
                 } else {
-                    Result.failure(Exception("Failed to retrieve added network"))
+                    Result.failure(Exception(context.getString(R.string.failed_to_retrieve_added_network)))
                 }
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error adding network from URL: ${e.message}")
-                Result.failure(Exception("Error adding network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.error_adding_network) + ": ${e.message}"))
             }
         }
     }
@@ -132,7 +131,7 @@ class NetworkRepository(private val context: Context) {
             try {
                 // Step 1: Get certificates symmetric key if not already present
                 if (network.certificates_symmetric_key.isEmpty()) {
-                    return@withContext Result.failure(Exception("No certificates symmetric key available"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.no_certificates_symmetric_key_available)))
                 }
                 
                 var errorMessage: String? = null
@@ -141,6 +140,7 @@ class NetworkRepository(private val context: Context) {
                 // Step 2: Download certificates using existing function
                 getCertificates(
                     endpoint = network.certificates_url,
+                    context = context,
                     key = network.certificates_symmetric_key,
                     onSuccess = { downloadedKeyStore ->
                         keyStore = downloadedKeyStore
@@ -159,7 +159,7 @@ class NetworkRepository(private val context: Context) {
                 
                 keyStore?.let { ks ->
                     // Step 3: Extract certificates from KeyStore
-                    val extractResult = extractCertificatesFromKeyStore(ks, network.certificates_symmetric_key)
+                    val extractResult = extractCertificatesFromKeyStore(ks, network.certificates_symmetric_key, context)
                     if (extractResult.isFailure) {
                         return@withContext Result.failure(extractResult.exceptionOrNull()!!)
                     }
@@ -178,12 +178,12 @@ class NetworkRepository(private val context: Context) {
                     // Step 5: Update in database
                     dataSource.updateNetwork(updatedNetwork)
                     
-                    Result.success("Certificates downloaded and decrypted successfully")
-                } ?: Result.failure(Exception("Failed to download certificates"))
+                    Result.success(context.getString(R.string.certificates_downloaded_and_decrypted_successfully))
+                } ?: Result.failure(Exception(context.getString(R.string.failed_to_download_certificates)))
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error downloading certificates: ${e.message}")
-                Result.failure(Exception("Certificate download failed: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.certificate_download_failed) + ": ${e.message}"))
             }
         }
     }
@@ -201,7 +201,7 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error deleting network: ${e.message}")
-                Result.failure(Exception("Failed to delete network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_delete_network) + ": ${e.message}"))
             }
         }
     }
@@ -219,7 +219,7 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error updating network: ${e.message}")
-                Result.failure(Exception("Failed to update network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_update_network) + ": ${e.message}"))
             }
         }
     }
@@ -237,7 +237,7 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error inserting network: ${e.message}")
-                Result.failure(Exception("Failed to insert network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_insert_network) + ": ${e.message}"))
             }
         }
     }
@@ -251,7 +251,7 @@ class NetworkRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 if (network.validation_url.isEmpty()) {
-                    return@withContext Result.failure(Exception("No validation URL available"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.no_validation_url_available)))
                 }
                 
                 var symmetricKey: String? = null
@@ -259,6 +259,7 @@ class NetworkRepository(private val context: Context) {
                 
                 getCertificatesSymmetricKey(
                     endpoint = network.validation_url,
+                    context = context,
                     onSuccess = { key ->
                         symmetricKey = key
                         Log.d("NetworkRepository", "Symmetric key retrieved successfully")
@@ -275,11 +276,11 @@ class NetworkRepository(private val context: Context) {
                 
                 symmetricKey?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Failed to retrieve symmetric key"))
+                } ?: Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key)))
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error getting certificates symmetric key: ${e.message}")
-                Result.failure(Exception("Failed to get symmetric key: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key) + ": ${e.message}"))
             }
         }
     }
@@ -289,18 +290,19 @@ class NetworkRepository(private val context: Context) {
     /**
     * Parses QR code string to extract network validation data
     * @param qrCode QR code string (just a URL)
+    * @param context Android context for string resources
     * @return Result containing QrData or error
     */
-    private fun parseQRNetworkData(qrCode: String): Result<QrData> {
+    private fun parseQRNetworkData(qrCode: String, context: Context): Result<QrData> {
         return try {
             val url = qrCode.trim()
             if (url.startsWith("http://") || url.startsWith("https://")) {
                 Result.success(QrData(validation_url = url))
             } else {
-                Result.failure(Exception("QR code does not contain a valid URL"))
+                Result.failure(Exception(context.getString(R.string.qr_code_invalid_url)))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Error parsing QR code: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.error_parsing_qr_code) + ": ${e.message}"))
         }
     }
     
@@ -317,9 +319,10 @@ class NetworkRepository(private val context: Context) {
      * Extracts certificates from KeyStore and converts them to PEM format
      * @param keyStore KeyStore containing certificates
      * @param password Password for the KeyStore
+     * @param context Android context for string resources
      * @return Result containing extracted certificates or error
      */
-    private fun extractCertificatesFromKeyStore(keyStore: KeyStore, password: String): Result<ExtractedCertificates> {
+    private fun extractCertificatesFromKeyStore(keyStore: KeyStore, password: String, context: Context): Result<ExtractedCertificates> {
         return try {
             val aliases = keyStore.aliases()
             var foundAlias: String? = null
@@ -353,10 +356,10 @@ class NetworkRepository(private val context: Context) {
             if (checkCertificates(caPem, certPem, privateKeyPem)) {
                 Result.success(ExtractedCertificates(caPem, certPem, privateKeyPem))
             } else {
-                Result.failure(Exception("Could not find valid certificate chain with at least 2 certificates"))
+                Result.failure(Exception(context.getString(R.string.could_not_find_valid_certificate_chain)))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Failed to extract certificates: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.failed_to_extract_certificates) + ": ${e.message}"))
         }
     }
     

@@ -3,9 +3,13 @@ package app.mywifipass.backend
 import java.net.HttpURLConnection 
 import java.net.URL
 
+import android.content.Context
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
+
 data class HttpResponse(val statusCode: Int, val body: String)
 
-suspend fun httpPetition(url_string: String, jsonString: String? = null, token: String? = null): HttpResponse {
+suspend fun httpPetition(url_string: String, jsonString: String? = null, token: String? = null, context: Context): HttpResponse {
     return try {
         val url = URL(url_string)
         val urlConnection = url.openConnection() as HttpURLConnection
@@ -33,6 +37,6 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null, token: 
         }
         HttpResponse(statusCode, responseBody)
     } catch (e: Exception) {
-        HttpResponse(500, e.message ?: "Unknown Error")
+        HttpResponse(500, e.message ?: context.getString(R.string.unknown_error)) // Return 500 on exception
     }
 }

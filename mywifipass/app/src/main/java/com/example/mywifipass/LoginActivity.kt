@@ -32,6 +32,10 @@ import app.mywifipass.controller.LoginController
 
 import app.mywifipass.ui.components.ShowText
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
+
 @Composable
 fun LoginScreen() {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
@@ -50,7 +54,7 @@ fun LoginScreen() {
                     (context as Activity).finish()
                 },
                 onFailure = { exception ->
-                    ShowText.toastDirect(context, exception.message ?: "Login failed")
+                    ShowText.toastDirect(context, exception.message ?: context.getString(R.string.login_failed))
                 }
             )
         }
@@ -74,7 +78,7 @@ fun LoginScreen() {
                 )
             },
             label = "Url",
-            placeholder = "Enter the URL of the admin server",
+            placeholder = stringResource(R.string.url_admin_server),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -88,8 +92,8 @@ fun LoginScreen() {
                     tint = MaterialTheme.colorScheme.primary
                 )
             },
-            label = "Login",
-            placeholder = "Enter your login",
+            label = stringResource(R.string.username),
+            placeholder = stringResource(R.string.enter_your_login),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -105,7 +109,7 @@ fun LoginScreen() {
             enabled = credentials.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text(stringResource(R.string.login))
         }
     }
 }
@@ -124,7 +128,7 @@ class LoginActivity : ComponentActivity() {
                     
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
-                            title = "Login",
+                            title = stringResource(R.string.login),
                             onBackClick = { finish() },
                             actions = {
                                 IconButton(
@@ -143,6 +147,7 @@ class LoginActivity : ComponentActivity() {
                     if (showQrScanner) {
                         QRScannerDialog(
                             onDismiss = { showQrScanner = false },
+                            barcodeText = stringResource(R.string.login_qr_code),
                             onResult = { qrCode ->
                                 lifecycleScope.launch {
                                     val result = loginController.loginWithQR(qrCode)
@@ -153,7 +158,7 @@ class LoginActivity : ComponentActivity() {
                                             finish()
                                         },
                                         onFailure = { exception ->
-                                            ShowText.toastDirect(this@LoginActivity, exception.message ?: "QR login failed")
+                                            ShowText.toastDirect(this@LoginActivity, exception.message ?: this@LoginActivity.getString(R.string.qr_login_failed))
                                         }
                                     )
                                 }

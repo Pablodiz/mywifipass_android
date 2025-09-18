@@ -62,6 +62,7 @@ class AdminController(private val context: Context) {
                 checkAttendee(
                     endpoint = endpoint,
                     token = token,
+                    context = context,
                     onSuccess = { message, authorizeUrl -> 
                         validationResult = AttendeeValidationResult(
                             message = message,
@@ -121,6 +122,7 @@ class AdminController(private val context: Context) {
                 authorizeAttendee(
                     endpoint = authorizeUrl,
                     token = token,
+                    context = context,
                     onSuccess = { message -> 
                         authorizationResult = message
                         Log.d("AdminController", "Attendee authorization successful: $message")

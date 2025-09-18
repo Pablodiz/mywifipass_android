@@ -72,6 +72,10 @@ import androidx.compose.ui.text.TextStyle
 import app.mywifipass.ui.components.ShowText
 import android.os.Build
 
+
+// i18n
+import androidx.compose.ui.res.stringResource
+
 data class SpeedDialItem(
     val label: String,
     val icon: @Composable () -> Unit,
@@ -312,7 +316,7 @@ fun MainScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         NoNetworksIcon()
                         Text(
-                            text = "No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one.",
+                            text = stringResource(R.string.no_wifi_passes_added_yet),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -336,7 +340,7 @@ fun MainScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.QrCode, contentDescription="Add Wifi Pass")
-                Text("Add a new Wifi Pass", modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.add_wifi_pass), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
@@ -347,7 +351,8 @@ fun MainScreen(
                 onQRResult(scannedText)
                 onQRScannerDismiss()
             },
-            onDismiss = onQRScannerDismiss
+            onDismiss = onQRScannerDismiss,
+            barcodeText = stringResource(R.string.user_qr_code)
         )
     }
 
@@ -410,7 +415,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         if (result.isSuccess) {
             connections = result.getOrNull() ?: emptyList()
         } else {
-            error = result.exceptionOrNull()?.message ?: "Failed to load networks"
+            error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_load_networks)
         }
         isLoading = false
     }
@@ -445,7 +450,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
                         connections = networksResult.getOrNull() ?: emptyList()
                     }
                 } else {
-                    error = result.exceptionOrNull()?.message ?: "Failed to add network from URL"
+                    error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network_from_url)
                 }
                 isLoading = false
             }
@@ -460,10 +465,9 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                ShowText.toastDirect(context, "Network added successfully")
+                ShowText.toastDirect(context, context.getString(R.string.network_added_successfully))
             } else {
-                // error = result.exceptionOrNull()?.message ?: "Failed to add network"
-                error = result.exceptionOrNull()?.message ?: "Failed to add network"
+                error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network)
             }
             isLoading = false
         }
@@ -477,9 +481,9 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                ShowText.toastDirect(context, "Network added successfully")
+                ShowText.toastDirect(context, context.getString(R.string.network_added_successfully))
             } else {
-                error = result.exceptionOrNull()?.message ?: "Failed to add network"
+                error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network)
             }
             isLoading = false
         }
@@ -539,16 +543,26 @@ fun NetworkDetailScreen(
 
     currentNetwork?.let {network ->
         var menuExpanded by remember { mutableStateOf(false) }
+        
+        // Get strings in composable context
+        val configureConnectionText = stringResource(R.string.configure_connection)
+        val connectedText = stringResource(R.string.connected)
+        val notConnectedYetText = stringResource(R.string.not_connected_yet)
+        val deleteText = stringResource(R.string.delete)
+        val networkDeletedSuccessfullyText = stringResource(R.string.network_deleted_successfully)
+        val deleteFailedText = stringResource(R.string.delete_failed)
+        val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
+        val connectionFailedText = stringResource(R.string.connection_failed)
 
         val buttonState by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
             mutableStateOf(
                 when {
                     network.are_certificiates_decrypted && !network.is_connection_configured -> 
-                        ButtonState("Configure connection", false)
+                        ButtonState(configureConnectionText, false)
                     network.is_connection_configured -> 
-                        ButtonState("Connected", true)
+                        ButtonState(connectedText, true)
                     else -> 
-                        ButtonState("Not connected yet", true)
+                        ButtonState(notConnectedYetText, true)
                 }
             )
         }
@@ -601,7 +615,7 @@ fun NetworkDetailScreen(
                                         tint = androidx.compose.ui.graphics.Color.Red
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Delete", color = androidx.compose.ui.graphics.Color.Red)
+                                    Text(deleteText, color = androidx.compose.ui.graphics.Color.Red)
                                 }
                             },
                             onClick = {
@@ -609,11 +623,11 @@ fun NetworkDetailScreen(
                                 scope.launch {
                                     val result = mainController.deleteNetwork(network, wifiManager)
                                     if (result.isSuccess) {
-                                        ShowText.toastDirect(context, "Network deleted successfully")
+                                        ShowText.toastDirect(context, networkDeletedSuccessfullyText)
                                         // Go back after deleting the network
                                         onNavigateBack()
                                     } else {
-                                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Delete failed")
+                                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: deleteFailedText)
                                     }
                                 }
                             }
@@ -657,13 +671,13 @@ fun NetworkDetailScreen(
                                 // Only show success message in Android 10-
                                 // As in 11+, the system has it's own way of notifying users
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                                    ShowText.toastDirect(context, "Connection configured successfully")
+                                    ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
                                 }
                                 // Reload the network to get updated state
                                 val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                                 currentNetwork = networks.find { it.id == selectedNetworkId }
                             } else {
-                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Connection failed")
+                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
                             }
                         }
                     }

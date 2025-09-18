@@ -16,8 +16,9 @@ import android.content.Context
 import android.util.Base64
 import java.io.ByteArrayInputStream
 import java.security.KeyStore
+import app.mywifipass.R
 
-fun parseReply(string: String): Network{
+fun parseReply(string: String, context: Context): Network{
     return try{
         val constructor_json = Json { 
             ignoreUnknownKeys = true
@@ -25,18 +26,19 @@ fun parseReply(string: String): Network{
         }
         constructor_json.decodeFromString<Network>(string)
     } catch (e: Exception){
-        throw Exception("Unrecognized response format")
+        throw Exception(context.getString(R.string.unrecognized_response_format))
     }
 }
 
 suspend fun confirmDownload(
     has_downloaded_url: String,
+    context: Context,
     onError: (String) -> Unit = {},
     onSuccess: (String) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(has_downloaded_url, jsonString = "")
+            val httpResponse = httpPetition(has_downloaded_url, jsonString = "", context = context)
             val statusCode = httpResponse.statusCode
             val body = httpResponse.body
             when (statusCode) {
@@ -44,13 +46,13 @@ suspend fun confirmDownload(
                     onSuccess(body)
                 }
                 400 -> {
-                    onError("Bad request")
+                    onError(context.getString(R.string.error_400))
                 }
                 401 -> {
-                    onError("You are not authorized to access this resource")
+                    onError(context.getString(R.string.error_401))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $body")
+                    onError(context.getString(R.string.unexpected_error) + ": $body")
                 }
             }
         } catch (e: Exception) {
@@ -61,39 +63,40 @@ suspend fun confirmDownload(
 
 suspend fun makePetitionAndAddToDatabase(
     enteredText: String,
-    dataSource: DataSource, 
+    dataSource: DataSource,
+    context: Context, 
     onSuccess: (String) -> Unit = {},
     onError: (String) -> Unit = {}
 ):List<Network> {
     withContext(Dispatchers.IO) {
         try{
-            val reply = httpPetition(enteredText)
+            val reply = httpPetition(enteredText, context = context)
             val body = reply.body
             val statusCode = reply.statusCode
             when (statusCode) {
                 200 -> {
-                    val network = parseReply(body)
+                    val network = parseReply(body, context)
                     dataSource.insertNetwork(network)
-                    confirmDownload(network.has_downloaded_url)
+                    confirmDownload(network.has_downloaded_url, context)
                     onSuccess(body) 
                 }
                 400 -> {
-                    onError("Bad request")
+                    onError(context.getString(R.string.error_400))
                 }
                 401 -> {
-                    onError("You are not authorized to access this resource")
+                    onError(context.getString(R.string.error_401))
                 }
                 403 -> {
-                    onError(extractErrorMessage(body))
+                    onError(extractErrorMessage(body, context))
                 }
                 404 -> {
-                    onError("No user found")
+                    onError(context.getString(R.string.error_404))
                 }
                 500 -> {
-                    onError("Server or petition error")
+                    onError(context.getString(R.string.error_500))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $body")
+                    onError(context.getString(R.string.unexpected_error) + ": $body")
                 }
             }
 
@@ -110,13 +113,14 @@ data class CertificatesSymmetricKey(
 )
 
 suspend fun getCertificatesSymmetricKey(
-    endpoint: String, 
+    endpoint: String,
+    context: Context, 
     onError: (String) -> Unit = {},
     onSuccess: (String) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(endpoint)
+            val httpResponse = httpPetition(endpoint, context = context)
             val statusCode = httpResponse.statusCode
             val reply = httpResponse.body
             when (statusCode) {
@@ -126,10 +130,10 @@ suspend fun getCertificatesSymmetricKey(
                     onSuccess(symmetricKeyJSON.certificates_symmetric_key)
                 }
                 403 -> {
-                    onError("Access denied")
+                    onError(context.getString(R.string.error_403))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $statusCode")
+                    onError(context.getString(R.string.unexpected_error) + ": $statusCode")
                 }
             }
         } catch (e: Exception) {
@@ -145,13 +149,14 @@ data class CertificatesResponse(
 
 suspend fun getCertificates(
     endpoint: String,
+    context: Context,
     onError: (String) -> Unit = {},
     onSuccess: (KeyStore) -> Unit = {},
     key: String 
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(endpoint)
+            val httpResponse = httpPetition(endpoint, context = context)
             val statusCode = httpResponse.statusCode
             val reply = httpResponse.body
             when (statusCode) {
@@ -165,10 +170,10 @@ suspend fun getCertificates(
                     onSuccess(keyStore)
                 }
                 403 -> {
-                    onError("Access denied")
+                    onError(context.getString(R.string.error_403))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $statusCode")
+                    onError(context.getString(R.string.unexpected_error) + ": $statusCode")
                 }
             }
         } catch (e: Exception) {
@@ -187,52 +192,54 @@ data class CheckAttendeeResponse(
 suspend fun authorizeAttendee(
     endpoint: String,
     token: String,
+    context: Context,
     onError: (String) -> Unit = {},
     onSuccess: (String) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(url_string = endpoint, jsonString="", token = token)
+            val httpResponse = httpPetition(url_string = endpoint, jsonString="", token = token, context = context)
             val statusCode = httpResponse.statusCode
             val body = httpResponse.body
             when (statusCode) {
                 200 -> {
-                    onSuccess("Attendee authorized successfully")
+                    onSuccess(context.getString(R.string.attendee_authorized_successfully))
                 }
                 400 -> {
-                    onError("Bad request: $body")
+                    onError(context.getString(R.string.error_400) + ": $body")
                 }
                 401 -> {
-                    onError("You are not authorized to access this resource")
+                    onError(context.getString(R.string.error_401))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $body")
+                    onError(context.getString(R.string.unexpected_error) + ": ${extractErrorMessage(body, context)}")
                 }
             }
         } catch (e: Exception) {
-            onError("An error occurred: ${e.message}")
-        }
+            onError(context.getString(R.string.error) + ": ${e.message}")
+        }       
     }
 }
 
-fun extractErrorMessage(body: String): String {
+fun extractErrorMessage(body: String, context: Context): String {
     return try {
         val json = Json.parseToJsonElement(body).jsonObject
-        json["error"]?.jsonPrimitive?.content ?: "Unknown error"
+        json["error"]?.jsonPrimitive?.content ?: context.getString(R.string.unknown_error)
     } catch (e: Exception) {
-        "Unknown error"
+        context.getString(R.string.unknown_error)
     }
 }
 
 suspend fun checkAttendee(
     endpoint: String,
     token: String,
+    context: Context,
     onError: (String) -> Unit = {},
     onSuccess: (String, String) -> Unit = {_,_ ->}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val httpResponse = httpPetition(url_string = endpoint,  token = token)
+            val httpResponse = httpPetition(url_string = endpoint,  token = token, context = context)
             val statusCode = httpResponse.statusCode
             val response = httpResponse.body
             when (statusCode) {
@@ -247,28 +254,28 @@ suspend fun checkAttendee(
                         )
 
                     } catch (e: Exception){
-                        onError("Error parsing the response: ${e.message}")
+                        onError(context.getString(R.string.error_parsing_response) + ": ${e.message}")
                         return@withContext
                     }
                 }
                 400 -> {
-                    onError("Bad request: ${extractErrorMessage(response)}")
+                    onError(context.getString(R.string.error_400) + ": ${extractErrorMessage(response, context)}")
                 }
                 401 -> {
-                    onError("You are not authorized to access this resource")
+                    onError(context.getString(R.string.error_401))
                 }
                 403 -> {
-                    onError(extractErrorMessage(response))
+                    onError(extractErrorMessage(response, context))
                 }
                 404 -> {
-                    onError("No attendee found with the provided data")
+                    onError(context.getString(R.string.no_attendee_found))
                 }
                 else -> {
-                    onError("An unexpected error occurred: ${extractErrorMessage(response)}")
+                    onError(context.getString(R.string.unexpected_error) + ": ${extractErrorMessage(response, context)}")
                 }
             }
         } catch (e: Exception) {
-            onError("An error occurred: ${e.message}")
+            onError(context.getString(R.string.error) + ": ${e.message}")
         }
     }
 }
@@ -281,7 +288,8 @@ fun buildUrl(baseUrl: String, endpoint: String): String {
 suspend fun loginPetition(
     url: String,
     login: String,
-    pwd: String, 
+    pwd: String,
+    context: Context, 
     onSuccess: (String) -> Unit = {},
     onError: (String) -> Unit = {}, 
     usePassword: Boolean = true
@@ -300,7 +308,7 @@ suspend fun loginPetition(
             }
             val constructorJson = Json { ignoreUnknownKeys = true }
             val jsonString = constructorJson.encodeToString(credentials)
-            val response = httpPetition(endpoint, jsonString)
+            val response = httpPetition(endpoint, jsonString, context = context)
             val statusCode = response.statusCode
             val responseBody = response.body
 
@@ -312,14 +320,14 @@ suspend fun loginPetition(
                     onSuccess(token)
                 }
                 400 -> {
-                    onError("Incorrect login credentials")
+                    onError(context.getString(R.string.incorrect_login_credentials))
                 }
                 else -> {
-                    onError("An unexpected error occurred: $statusCode")
+                    onError(context.getString(R.string.unexpected_error) + ": $responseBody")
                 }
             }
         } catch (e: Exception) {
-            onError("An error occurred: ${e.message}")
+            onError(context.getString(R.string.error) + ": ${e.message}")
         }
     }
 }

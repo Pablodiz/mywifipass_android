@@ -5,8 +5,9 @@ import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.model.data.QrLoginCredentials
 import app.mywifipass.model.repository.AuthRepository
 import kotlinx.serialization.json.Json
+import app.mywifipass.R
 
-class LoginController(context: Context) {
+class LoginController(private val context: Context) {
     
     private val authRepository = AuthRepository(context)
     
@@ -28,15 +29,15 @@ class LoginController(context: Context) {
             
             loginResult.fold(
                 onSuccess = { _ ->
-                    Result.success("Login successful")
+                    Result.success(context.getString(R.string.login_successful))
                 },
                 onFailure = { exception ->
-                    Result.failure(Exception("Login failed: ${exception.message}"))
+                    Result.failure(Exception("${context.getString(R.string.login_failed)}: ${exception.message}"))
                 }
             )
             
         } catch (e: Exception) {
-            Result.failure(Exception("Login error: ${e.message}"))
+            Result.failure(Exception("${context.getString(R.string.login_error)}: ${e.message}"))
         }
     }
     
@@ -67,7 +68,7 @@ class LoginController(context: Context) {
             login(loginCredentials)
             
         } catch (e: Exception) {
-            Result.failure(Exception("QR login error: ${e.message}"))
+            Result.failure(Exception("${context.getString(R.string.qr_login_error)}: ${e.message}"))
         }
     }
     
@@ -102,15 +103,15 @@ class LoginController(context: Context) {
     private fun validateCredentials(credentials: LoginCredentials): Result<String> {
         return when {
             credentials.url.isBlank() -> 
-                Result.failure(Exception("URL cannot be empty"))
+                Result.failure(Exception(context.getString(R.string.url_cannot_be_empty)))
             credentials.login.isBlank() -> 
-                Result.failure(Exception("Username cannot be empty"))
+                Result.failure(Exception(context.getString(R.string.username_cannot_be_empty)))
             credentials.pwd.isBlank() -> 
-                Result.failure(Exception("Password cannot be empty"))
+                Result.failure(Exception(context.getString(R.string.password_cannot_be_empty)))
             !isValidUrl(credentials.url) -> 
-                Result.failure(Exception("Invalid URL format"))
+                Result.failure(Exception(context.getString(R.string.invalid_url_format)))
             else -> 
-                Result.success("Validation passed")
+                Result.success(context.getString(R.string.validation_passed))
         }
     }
     
@@ -126,11 +127,11 @@ class LoginController(context: Context) {
             if (qrCredentials.isNotEmpty()) {
                 Result.success(qrCredentials)
             } else {
-                Result.failure(Exception("QR code contains empty credentials"))
+                Result.failure(Exception(context.getString(R.string.qr_code_empty_credentials)))
             }
             
         } catch (e: Exception) {
-            Result.failure(Exception("Invalid QR code format: ${e.message}"))
+            Result.failure(Exception("${context.getString(R.string.invalid_qr_code_format)}: ${e.message}"))
         }
     }
     
