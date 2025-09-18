@@ -29,6 +29,15 @@
     <string name="login_failed">Error de inicio de sesión</string>
     <string name="invalid_credentials">Credenciales inválidas</string>
     <string name="qr_login_failed">Error de inicio de sesión QR</string>
+    <string name="login_error">Error de inicio de sesión</string>
+    <string name="qr_login_error">Error de inicio de sesión con QR</string>
+    <string name="url_cannot_be_empty">La URL no puede estar vacía</string>
+    <string name="username_cannot_be_empty">El nombre de usuario no puede estar vacío</string>
+    <string name="password_cannot_be_empty">La contraseña no puede estar vacía</string>
+    <string name="invalid_url_format">Formato de URL inválido</string>
+    <string name="validation_passed">Validación exitosa</string>
+    <string name="qr_code_empty_credentials">El código QR contiene credenciales vacías</string>
+    <string name="invalid_qr_code_format">Formato de código QR inválido</string>
 
     <!-- Admin Activity -->
     <string name="scanned_info">Información escaneada:</string>

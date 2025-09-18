@@ -29,6 +29,15 @@
     <string name="login_failed">Login failed</string>
     <string name="invalid_credentials">Invalid credentials</string>
     <string name="qr_login_failed">QR login failed</string>
+    <string name="login_error">Login error</string>
+    <string name="qr_login_error">QR login error</string>
+    <string name="url_cannot_be_empty">URL cannot be empty</string>
+    <string name="username_cannot_be_empty">Username cannot be empty</string>
+    <string name="password_cannot_be_empty">Password cannot be empty</string>
+    <string name="invalid_url_format">Invalid URL format</string>
+    <string name="validation_passed">Validation passed</string>
+    <string name="qr_code_empty_credentials">QR code contains empty credentials</string>
+    <string name="invalid_qr_code_format">Invalid QR code format</string>
 
     <!-- Admin Activity -->
     <string name="scanned_info">Scanned info:</string>
