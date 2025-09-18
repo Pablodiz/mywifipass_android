@@ -51,6 +51,7 @@ fun AdminScreen(
     
     if (showScannerDialog) {
         QRScannerDialog(
+            barcodeText = stringResource(R.string.validator_qr_code),
             onDismiss = { 
                 showScannerDialog = false 
             },

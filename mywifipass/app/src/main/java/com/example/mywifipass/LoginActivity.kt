@@ -147,6 +147,7 @@ class LoginActivity : ComponentActivity() {
                     if (showQrScanner) {
                         QRScannerDialog(
                             onDismiss = { showQrScanner = false },
+                            barcodeText = stringResource(R.string.login_qr_code),
                             onResult = { qrCode ->
                                 lifecycleScope.launch {
                                     val result = loginController.loginWithQR(qrCode)

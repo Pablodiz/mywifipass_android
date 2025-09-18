@@ -83,6 +83,9 @@
     <!-- QR Code Scanner -->
     <string name="open_qr_scanner">Open QR Scanner</string>
     <string name="scan_qr_code">Scan QR Code</string>
+    <string name="validator_qr_code">Scan the QR of a Wifi Pass</string>
+    <string name="user_qr_code">Scan the QR code in the email you received</string>
+    <string name="login_qr_code">Scan the QR code in the admin panel</string>
 
     <!-- API Responses -->
     <string name="error_400">Bad Request</string>

@@ -95,7 +95,10 @@
     <!-- QR Code Scanner -->
     <string name="open_qr_scanner">Abrir Escáner QR</string>
     <string name="scan_qr_code">Escanear Código QR</string>
-    
+    <string name="validator_qr_code">Escanea el QR de un Wifi Pass</string>
+    <string name="user_qr_code">Escanea el código QR en el correo electrónico que recibiste</string>
+    <string name="login_qr_code">Escanea el código QR en el panel de administración</string>
+
     <!-- NetworkRepository error messages -->
     <string name="error_processing_qr_code">Error procesando código QR</string>
     <string name="error_adding_network">Error añadiendo red</string>

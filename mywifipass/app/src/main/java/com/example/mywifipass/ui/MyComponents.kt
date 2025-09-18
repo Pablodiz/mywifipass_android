@@ -351,7 +351,8 @@ fun MainScreen(
                 onQRResult(scannedText)
                 onQRScannerDismiss()
             },
-            onDismiss = onQRScannerDismiss
+            onDismiss = onQRScannerDismiss,
+            barcodeText = stringResource(R.string.user_qr_code)
         )
     }
 

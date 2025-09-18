@@ -156,7 +156,9 @@ fun QRScannerDialog(
                         // Set the decoder factory to only recognize QR codes
                         barcodeView.barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
                         // Set the help text
-                        barcodeView.setStatusText("Scan a QR code")
+                        barcodeView.setStatusText(barcodeText)
+                        // Center the status text
+                        barcodeView.statusView.gravity = android.view.Gravity.CENTER
                         // Start the camera decode (the user doesn't have to click another button)
                         barcodeView.decodeSingle(object : BarcodeCallback {
                             override fun barcodeResult(result: BarcodeResult?) {
