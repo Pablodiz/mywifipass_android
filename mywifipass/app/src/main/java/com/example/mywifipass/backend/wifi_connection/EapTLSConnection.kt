@@ -80,7 +80,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
                 
                 // Show Toast on main thread
                 Handler(Looper.getMainLooper()).post {
-                    ShowText(context, "You may forget the network in settings")
+                    ShowText.toastDirect(context, "You may forget the network in settings")
                 }
 
                 // Open WiFi settings for user to remove manually

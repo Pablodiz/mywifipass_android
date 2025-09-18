@@ -460,7 +460,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                ShowText(context, "Network added successfully")
+                ShowText.toastDirect(context, "Network added successfully")
             } else {
                 // error = result.exceptionOrNull()?.message ?: "Failed to add network"
                 error = result.exceptionOrNull()?.message ?: "Failed to add network"
@@ -477,7 +477,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             
             if (result.isSuccess) {
                 refreshNetworks()
-                ShowText(context, "Network added successfully", dialog = false)
+                ShowText.toastDirect(context, "Network added successfully")
             } else {
                 error = result.exceptionOrNull()?.message ?: "Failed to add network"
             }
@@ -487,7 +487,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     
     LaunchedEffect(error) {
         if (error.isNotEmpty()) {
-            ShowText(context, error)
+            ShowText.toastDirect(context, error)
             error = ""
         }
     }
@@ -609,11 +609,11 @@ fun NetworkDetailScreen(
                                 scope.launch {
                                     val result = mainController.deleteNetwork(network, wifiManager)
                                     if (result.isSuccess) {
-                                        ShowText(context, "Network deleted successfully")
+                                        ShowText.toastDirect(context, "Network deleted successfully")
                                         // Go back after deleting the network
                                         onNavigateBack()
                                     } else {
-                                        ShowText(context, result.exceptionOrNull()?.message ?: "Delete failed")
+                                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Delete failed")
                                     }
                                 }
                             }
@@ -657,13 +657,13 @@ fun NetworkDetailScreen(
                                 // Only show success message in Android 10-
                                 // As in 11+, the system has it's own way of notifying users
                                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                                    ShowText(context, "Connection configured successfully")
+                                    ShowText.toastDirect(context, "Connection configured successfully")
                                 }
                                 // Reload the network to get updated state
                                 val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                                 currentNetwork = networks.find { it.id == selectedNetworkId }
                             } else {
-                                ShowText(context, result.exceptionOrNull()?.message ?: "Connection failed")
+                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Connection failed")
                             }
                         }
                     }

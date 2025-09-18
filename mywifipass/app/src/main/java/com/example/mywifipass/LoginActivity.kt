@@ -45,12 +45,12 @@ fun LoginScreen() {
             val result = loginController.login(credentials)
             result.fold(
                 onSuccess = { message ->
-                    ShowText(context, message)
+                    ShowText.toastDirect(context, message)
                     context.startActivity(Intent(context, AdminActivity::class.java))
                     (context as Activity).finish()
                 },
                 onFailure = { exception ->
-                    ShowText(context, exception.message ?: "Login failed")
+                    ShowText.toastDirect(context, exception.message ?: "Login failed")
                 }
             )
         }
@@ -148,12 +148,12 @@ class LoginActivity : ComponentActivity() {
                                     val result = loginController.loginWithQR(qrCode)
                                     result.fold(
                                         onSuccess = { message ->
-                                            ShowText(this@LoginActivity, message)
+                                            ShowText.toastDirect(this@LoginActivity, message)
                                             startActivity(Intent(this@LoginActivity, AdminActivity::class.java))
                                             finish()
                                         },
                                         onFailure = { exception ->
-                                            ShowText(this@LoginActivity, exception.message ?: "QR login failed")
+                                            ShowText.toastDirect(this@LoginActivity, exception.message ?: "QR login failed")
                                         }
                                     )
                                 }

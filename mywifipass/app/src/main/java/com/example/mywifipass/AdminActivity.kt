@@ -28,7 +28,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 
 import app.mywifipass.ui.components.ShowText
-import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
 
 
 @Composable 
@@ -117,10 +117,11 @@ fun AdminScreen(
                                 
                                 if (authResult.isSuccess) {
                                     response = authResult.getOrNull() ?: "Authorization successful"
+                                    ShowText.toast(response)
                                 } else {
-                                    response = authResult.exceptionOrNull()?.message ?: "Authorization failed"
+                                    val errorMsg = authResult.exceptionOrNull()?.message ?: "Authorization failed"
+                                    ShowText.dialog("Authorization Failed", errorMsg)
                                 }
-                                ShowText(context, response)
                                 isLoading = false
                             }
                         } 
@@ -140,6 +141,9 @@ fun AdminScreen(
             }
         )
     }
+
+    // Add the notification handler to manage all notifications
+    NotificationHandler(context)
 
     Column(
         modifier = Modifier
