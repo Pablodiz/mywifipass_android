@@ -153,4 +153,7 @@
     <string name="missing_network_common_name">Missing network common name</string>
     <string name="network_is_ready_for_connection">Network is ready for connection</string>
     <string name="failed_to_validate_network">Failed to validate network</string>
+
+    <string name="loginText">Login as validator</string>
+
 </resources>

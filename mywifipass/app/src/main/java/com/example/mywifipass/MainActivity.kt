@@ -10,6 +10,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
 import androidx.compose.ui.zIndex
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.launch
+import android.content.Intent
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
 import app.mywifipass.ui.components.MainScreenContainer
@@ -32,10 +39,36 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize().padding(top = 20.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val scope = rememberCoroutineScope()
+                    var menuExpanded by remember { mutableStateOf(false) }
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
-                            title = stringResource(R.string.downloaded_wifi_passes),
-                            onBackClick = { finish() },
+                            title = stringResource(R.string.downloaded_wifi_passes), 
+                            actions = {
+                                Box {
+                                    IconButton(onClick = { menuExpanded = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                                    }
+                                    DropdownMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                            text = {
+                                                Text(stringResource(R.string.loginText))
+                                            },
+                                            onClick = {
+                                                menuExpanded = false
+                                                scope.launch {
+                                                    // Navigate to LoginActivity
+                                                    startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }                            
                         )
                         MainScreenContainer(
                             modifier = Modifier
