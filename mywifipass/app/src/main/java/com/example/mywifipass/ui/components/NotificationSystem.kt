@@ -151,7 +151,7 @@ fun NotificationHandler(
             onDismissRequest = { }, // Loading dialogs can't be dismissed by user
             title = null,
             text = {
-                Column(
+                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
