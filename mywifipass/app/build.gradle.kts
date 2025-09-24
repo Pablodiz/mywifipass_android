@@ -56,6 +56,8 @@ android {
 
 dependencies {
     val room_version = "2.6.1"
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     implementation("androidx.room:room-runtime:$room_version") 
     ksp("androidx.room:room-compiler:$room_version") 
     implementation("androidx.room:room-ktx:$room_version") 

@@ -5,6 +5,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import app.mywifipass.backend.certificates.EapTLSCertificate
+import app.mywifipass.backend.certificates.generateKeyPair
+import app.mywifipass.backend.certificates.generateCSR
+import app.mywifipass.backend.certificates.csrToPem
 
 import app.mywifipass.model.data.Network
 import app.mywifipass.backend.database.DataSource
@@ -331,3 +334,47 @@ suspend fun loginPetition(
         }
     }
 }
+
+
+@Serializable
+data class CSRResponse(
+    val signed_cert: String? = null,
+    val ca_cert: String? = null
+)
+
+
+suspend fun sendCSR(
+    endpoint: String,
+    csrPem: String,
+    context: Context,
+    onError: (String) -> Unit = {},
+    onSuccess: (CSRResponse) -> Unit = {}
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val jsonBody = Json.encodeToString(mapOf("csr" to csrPem))
+            val httpResponse = httpPetition(endpoint, jsonBody, context = context)
+            val statusCode = httpResponse.statusCode
+            val body = httpResponse.body
+            when (statusCode) {
+                200 -> {
+                    val constructor_json = Json { ignoreUnknownKeys = true }
+                    val cert = constructor_json.decodeFromString<CSRResponse>(body)
+                    onSuccess(cert)
+                }
+                400 -> {
+                    onError(context.getString(R.string.error_400) + ": ${extractErrorMessage(body, context)}")
+                }
+                403 -> {
+                    onError(context.getString(R.string.error_403) + ": ${extractErrorMessage(body, context)}")
+                }
+                else -> {
+                    onError(context.getString(R.string.unexpected_error) + ": $body")
+                }
+            }
+        } catch (e: Exception) {
+            onError(e.message.toString())
+        }
+    }
+}
+
