@@ -85,8 +85,8 @@
     <!-- Network Info -->
     <string name="network_info">Network Information</string>
     <string name="location">Location</string>
-    <string name="start_date">Start Date</string>
-    <string name="end_date">End Date</string>
+    <string name="start_date">Valid since</string>
+    <string name="end_date">Valid until</string>
     <string name="description">Description</string>
 
     <!-- QR Code Scanner -->
