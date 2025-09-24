@@ -28,9 +28,17 @@ import app.mywifipass.R
 
 import app.mywifipass.backend.extractURLFromParameter
 
+// Imports for CSR generation and submission
+import app.mywifipass.backend.certificates.generateKeyPair
+import app.mywifipass.backend.certificates.generateCSR
+import app.mywifipass.backend.certificates.csrToPem
+import app.mywifipass.backend.api_petitions.sendCSR
+import app.mywifipass.backend.api_petitions.CSRResponse
+import java.security.KeyPair
+
 /**
  * Repository for handling network data operations
- * Implements database operations, certificate downloads, and QR network parsing
+ * Implements database operations, certificate downloads, QR network parsing, and CSR operations
  */
 class NetworkRepository(private val context: Context) {
     
@@ -405,5 +413,110 @@ class NetworkRepository(private val context: Context) {
         
         pemKey.append("-----END PRIVATE KEY-----\n")
         return pemKey.toString()
+    }
+
+    /**
+     * Generates a CSR for a network and sends it to get signed certificates
+     * @param network Network to generate CSR for
+     * @param commonName Common name for the certificate (usually the user identifier)
+     * @return Result containing success message or error
+     */
+    suspend fun generateAndSubmitCSR(network: Network, commonName: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("NetworkRepository", "Generating CSR for network: ${network.network_common_name}")
+                
+                // Validate network has CSR endpoint
+                if (network.certificates_url.isEmpty()) {
+                    return@withContext Result.failure(Exception(context.getString(R.string.network_has_no_certificate_download_url)))
+                }
+                
+                // Step 1: Generate key pair
+                val keyPair = generateKeyPair()
+                Log.d("NetworkRepository", "Generated key pair for CSR")
+                
+                // Step 2: Generate CSR
+                val csr = generateCSR(keyPair, commonName)
+                val csrPem = csrToPem(csr)
+                Log.d("NetworkRepository", "Generated CSR in PEM format")
+                
+                // Step 3: Send CSR to server
+                var errorMessage: String? = null
+                var csrResponse: CSRResponse? = null
+                
+                sendCSR(
+                    endpoint = network.certificates_url,
+                    csrPem = csrPem,
+                    context = context,
+                    onSuccess = { response ->
+                        csrResponse = response
+                        Log.d("NetworkRepository", "CSR submitted successfully and certificates received")
+                    },
+                    onError = { error ->
+                        errorMessage = error
+                        Log.e("NetworkRepository", "Error submitting CSR: $error")
+                    }
+                )
+                
+                // Check for submission errors
+                errorMessage?.let {
+                    return@withContext Result.failure(Exception(it))
+                }
+                
+                csrResponse?.let { response ->
+                    // Step 4: Validate response contains required certificates
+                    if (response.signed_cert.isNullOrEmpty() || response.ca_cert.isNullOrEmpty()) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.invalid_csr_response_missing_certificates)))
+                    }
+                    
+                    // Step 5: Convert private key to PEM format
+                    val privateKeyPem = convertPrivateKeyToPem(keyPair.private)
+                    
+                    // Step 6: Validate certificates format
+                    if (!isValidPemCertificate(response.signed_cert) || 
+                        !isValidPemCertificate(response.ca_cert) ||
+                        !isValidPemPrivateKey(privateKeyPem)) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.invalid_certificate_format_from_csr)))
+                    }
+                    
+                    // Step 7: Update network with new certificates
+                    val updatedNetwork = network.copy(
+                        ca_certificate = response.ca_cert,
+                        certificate = response.signed_cert,
+                        private_key = privateKeyPem,
+                        is_certificates_key_set = true,
+                        are_certificiates_decrypted = true
+                    )
+                    
+                    // Step 8: Update in database
+                    val updateResult = updateNetwork(updatedNetwork)
+                    if (updateResult.isFailure) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.failed_to_update_network_with_csr_certificates)))
+                    }
+                    
+                    Log.d("NetworkRepository", "CSR process completed successfully for network: ${network.network_common_name}")
+                    Result.success(context.getString(R.string.csr_generated_and_certificates_obtained_successfully))
+                } ?: Result.failure(Exception(context.getString(R.string.failed_to_receive_csr_response)))
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Error generating and submitting CSR: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.csr_generation_failed) + ": ${e.message}"))
+            }
+        }
+    }
+    /**
+     * Validates if a string is a valid PEM certificate
+     */
+    private fun isValidPemCertificate(pemData: String): Boolean {
+        return pemData.startsWith("-----BEGIN CERTIFICATE-----") && 
+               pemData.endsWith("-----END CERTIFICATE-----\n")
+    }
+
+    /**
+     * Validates if a string is a valid PEM private key
+     */
+    private fun isValidPemPrivateKey(pemData: String): Boolean {
+        return pemData.startsWith("-----BEGIN PRIVATE KEY-----") && 
+               pemData.endsWith("-----END PRIVATE KEY-----\n")
     }
 }

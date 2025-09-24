@@ -15,7 +15,7 @@ import app.mywifipass.R
 
 /**
  * MainController handles the main application business logic
- * Coordinates network operations, WiFi connections, and certificate management
+ * Coordinates network operations, WiFi connections, certificate management, and CSR operations
  */
 class MainController(private val context: Context) {
     
@@ -349,6 +349,39 @@ class MainController(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MainController", "Error validating certificate format: ${e.message}")
             false
+        }
+    }
+    // CSR-related methods
+
+    /**
+     * Generates a CSR and submits it to get signed certificates for a network
+     * @param network Network to generate CSR for
+     * @param commonName Common name for the certificate (usually the user identifier)
+     * @return Result containing success message or error
+     */
+    suspend fun generateAndSubmitCSR(network: Network, commonName: String): Result<String> {
+        return try {
+            Log.d("MainController", "Generating and submitting CSR for network: ${network.network_common_name}")
+            
+            // Validate inputs
+            if (commonName.isBlank()) {
+                return Result.failure(Exception(context.getString(R.string.common_name_cannot_be_empty)))
+            }
+            
+            if (network.certificates_url.isEmpty()) {
+                return Result.failure(Exception(context.getString(R.string.network_has_no_certificate_download_url)))
+            }
+            
+            val result = networkRepository.generateAndSubmitCSR(network, commonName)
+            
+            if (result.isSuccess) {
+                Log.d("MainController", "Successfully generated CSR and obtained certificates for: ${network.network_common_name}")
+            }
+            
+            result
+        } catch (e: Exception) {
+            Log.e("MainController", "Error generating and submitting CSR: ${e.message}")
+            Result.failure(Exception(context.getString(R.string.failed_to_generate_and_submit_csr) + ": ${e.message}"))
         }
     }
 }

@@ -156,4 +156,14 @@
 
     <string name="loginText">Login as validator</string>
 
+    <!-- CSR-related strings -->
+    <string name="common_name_cannot_be_empty">Common name cannot be empty</string>
+    <string name="failed_to_generate_and_submit_csr">Failed to generate and submit CSR</string>
+    <string name="invalid_csr_response_missing_certificates">Invalid CSR response: missing certificates</string>
+    <string name="invalid_certificate_format_from_csr">Invalid certificate format received from CSR</string>
+    <string name="failed_to_update_network_with_csr_certificates">Failed to update network with CSR certificates</string>
+    <string name="csr_generated_and_certificates_obtained_successfully">CSR generated and certificates obtained successfully</string>
+    <string name="failed_to_receive_csr_response">Failed to receive CSR response</string>
+    <string name="csr_generation_failed">CSR generation failed</string>
+
 </resources>

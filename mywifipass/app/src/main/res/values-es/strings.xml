@@ -153,4 +153,14 @@
     <string name="failed_to_validate_network">Error al validar red</string>
 
     <string name="loginText">Iniciar sesión como validador</string>
+
+    <!-- CSR-related strings -->
+    <string name="common_name_cannot_be_empty">El nombre común no puede estar vacío</string>
+    <string name="failed_to_generate_and_submit_csr">Error al generar y enviar CSR</string>
+    <string name="invalid_csr_response_missing_certificates">Respuesta CSR inválida: faltan certificados</string>
+    <string name="invalid_certificate_format_from_csr">Formato de certificado inválido recibido de CSR</string>
+    <string name="failed_to_update_network_with_csr_certificates">Error al actualizar red con certificados CSR</string>
+    <string name="csr_generated_and_certificates_obtained_successfully">CSR generado y certificados obtenidos exitosamente</string>
+    <string name="failed_to_receive_csr_response">Error al recibir respuesta CSR</string>
+    <string name="csr_generation_failed">Generación de CSR falló</string>
 </resources>
