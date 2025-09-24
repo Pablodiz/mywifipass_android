@@ -3,16 +3,14 @@ package app.mywifipass
 import androidx.activity.ComponentActivity
 import android.os.Bundle
 import android.content.Intent
-import android.net.Uri
+import app.mywifipass.backend.extractURLFromParameter
 
 class DeepLinkActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Obtener la URL que activó esta Activity
-        val incomingUri = intent.data?.toString() ?: ""
-        val parsedUri = Uri.parse(incomingUri)
-        val wifipassUrl = parsedUri.getQueryParameter("url")
+        val wifipassUrl = extractURLFromParameter(intent.data?.toString() ?: "")
         
         // Crear Intent para MainActivity
         val mainIntent = Intent(this, MainActivity::class.java).apply {

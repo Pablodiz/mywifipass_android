@@ -26,6 +26,8 @@ import androidx.compose.ui.platform.LocalContext
 import java.util.Base64
 import app.mywifipass.R
 
+import app.mywifipass.backend.extractURLFromParameter
+
 /**
  * Repository for handling network data operations
  * Implements database operations, certificate downloads, and QR network parsing
@@ -63,11 +65,10 @@ class NetworkRepository(private val context: Context) {
                     return@withContext Result.failure(parseResult.exceptionOrNull()!!)
                 }
                 
-                val qrData = parseResult.getOrNull()!!
-                val validationUrl = qrData.validation_url
+                val url = parseResult.getOrNull()!!
                 
                 // Now use the URL to add the network
-                addNetworkFromUrl(validationUrl)
+                addNetworkFromUrl(url)
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error processing QR code: ${e.message}")
@@ -293,11 +294,12 @@ class NetworkRepository(private val context: Context) {
     * @param context Android context for string resources
     * @return Result containing QrData or error
     */
-    private fun parseQRNetworkData(qrCode: String, context: Context): Result<QrData> {
+    private fun parseQRNetworkData(qrCode: String, context: Context): Result<String> {
         return try {
             val url = qrCode.trim()
             if (url.startsWith("http://") || url.startsWith("https://")) {
-                Result.success(QrData(validation_url = url))
+                val result = extractURLFromParameter(url)
+                Result.success(result)
             } else {
                 Result.failure(Exception(context.getString(R.string.qr_code_invalid_url)))
             }

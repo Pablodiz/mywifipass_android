@@ -6,6 +6,8 @@ import java.net.URL
 import android.content.Context
 import androidx.compose.ui.res.stringResource
 import app.mywifipass.R
+import android.net.Uri  
+
 
 data class HttpResponse(val statusCode: Int, val body: String)
 
@@ -39,4 +41,10 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null, token: 
     } catch (e: Exception) {
         HttpResponse(500, e.message ?: context.getString(R.string.unknown_error)) // Return 500 on exception
     }
+}
+
+
+fun extractURLFromParameter(incomingUri: String): String {
+    val parsedUri = Uri.parse(incomingUri)
+    return parsedUri.getQueryParameter("url") ?: ""
 }
