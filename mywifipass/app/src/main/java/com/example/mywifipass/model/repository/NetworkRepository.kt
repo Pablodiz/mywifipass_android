@@ -33,9 +33,11 @@ import app.mywifipass.backend.certificates.generateKeyPair
 import app.mywifipass.backend.certificates.generateCSR
 import app.mywifipass.backend.certificates.csrToPem
 import app.mywifipass.backend.api_petitions.sendCSR
+import app.mywifipass.backend.api_petitions.checkUserAuthorized
 import app.mywifipass.backend.api_petitions.CSRResponse
 import java.security.KeyPair
 
+import kotlinx.coroutines.launch
 /**
  * Repository for handling network data operations
  * Implements database operations, certificate downloads, QR network parsing, and CSR operations
@@ -117,8 +119,28 @@ class NetworkRepository(private val context: Context) {
                 // Get the latest network (should be the one we just added)
                 val networks = dataSource.loadConnections()
                 var resultNetwork = networks.lastOrNull()
-                
+
+
                 if (resultNetwork != null) {
+                    // Check if the wifi pass is already authorized
+                    checkUserAuthorized(resultNetwork.check_user_authorized_url, 
+                        context,
+                        onSuccess = { isAuthorized ->
+                            if (isAuthorized){
+                                // Launch a coroutine to call the suspend function
+                                kotlinx.coroutines.GlobalScope.launch {
+                                    try {
+                                        generateAndSubmitCSR(resultNetwork, "user@example.com")
+                                    } catch (e: Exception) {
+                                        Log.e("NetworkRepository", "Error generating CSR: ${e.message}")
+                                    }
+                                }
+                            }
+                        },
+                        onError = {
+                            Log.e("NetworkRepository", "Error checking user authorization: $it")
+                        }
+                    )
                     Result.success(resultNetwork)
                 } else {
                     Result.failure(Exception(context.getString(R.string.failed_to_retrieve_added_network)))
@@ -447,6 +469,7 @@ class NetworkRepository(private val context: Context) {
                 sendCSR(
                     endpoint = network.certificates_url,
                     csrPem = csrPem,
+                    token = network.certificates_symmetric_key, 
                     context = context,
                     onSuccess = { response ->
                         csrResponse = response

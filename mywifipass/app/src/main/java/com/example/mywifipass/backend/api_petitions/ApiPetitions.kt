@@ -20,16 +20,38 @@ import android.util.Base64
 import java.io.ByteArrayInputStream
 import java.security.KeyStore
 import app.mywifipass.R
+import android.util.Log
 
 fun parseReply(string: String, context: Context): Network{
     return try{
-        val constructor_json = Json { 
+        Log.d("ApiPetitions", "Parsing response body: $string")
+        
+        // First try to parse as JSON to see if it's valid JSON
+        val json = Json { 
             ignoreUnknownKeys = true
             coerceInputValues = true
+            isLenient = true
         }
-        constructor_json.decodeFromString<Network>(string)
+        
+        // Try to parse as JSON object first to understand the structure
+        try {
+            val jsonElement = json.parseToJsonElement(string)
+            Log.d("ApiPetitions", "JSON structure: $jsonElement")
+        } catch (jsonException: Exception) {
+            Log.e("ApiPetitions", "Not valid JSON: $string", jsonException)
+            throw Exception("Invalid JSON format: ${jsonException.message}")
+        }
+        
+        json.decodeFromString<Network>(string)
     } catch (e: Exception){
-        throw Exception(context.getString(R.string.unrecognized_response_format))
+        Log.e("ApiPetitions", "Failed to parse response: $string", e)
+        
+        // Check if the response might be HTML (404 page)
+        if (string.contains("<html>") || string.contains("<!DOCTYPE")) {
+            throw Exception("Server returned HTML page instead of JSON. Check if the URL is correct.")
+        }
+        
+        throw Exception(context.getString(R.string.unrecognized_response_format) + ": ${e.message}")
     }
 }
 
@@ -73,9 +95,11 @@ suspend fun makePetitionAndAddToDatabase(
 ):List<Network> {
     withContext(Dispatchers.IO) {
         try{
+            Log.d("ApiPetitions", "Making request to: $enteredText")
             val reply = httpPetition(enteredText, context = context)
             val body = reply.body
             val statusCode = reply.statusCode
+            Log.d("ApiPetitions", "Response status: $statusCode, body: $body")
             when (statusCode) {
                 200 -> {
                     val network = parseReply(body, context)
@@ -96,7 +120,7 @@ suspend fun makePetitionAndAddToDatabase(
                     onError(context.getString(R.string.error_404))
                 }
                 500 -> {
-                    onError(context.getString(R.string.error_500))
+                    onError(context.getString(R.string.error_500) + ": $body")
                 }
                 else -> {
                     onError(context.getString(R.string.unexpected_error) + ": $body")
@@ -346,13 +370,14 @@ data class CSRResponse(
 suspend fun sendCSR(
     endpoint: String,
     csrPem: String,
+    token: String,
     context: Context,
     onError: (String) -> Unit = {},
     onSuccess: (CSRResponse) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val jsonBody = Json.encodeToString(mapOf("csr" to csrPem))
+            val jsonBody = Json.encodeToString(mapOf("csr" to csrPem, "token" to token))
             val httpResponse = httpPetition(endpoint, jsonBody, context = context)
             val statusCode = httpResponse.statusCode
             val body = httpResponse.body
@@ -366,6 +391,7 @@ suspend fun sendCSR(
                     onError(context.getString(R.string.error_400) + ": ${extractErrorMessage(body, context)}")
                 }
                 403 -> {
+                    Log.d("ApiPetitions", "CSR response error: ${extractErrorMessage(body, context)}")
                     onError(context.getString(R.string.error_403) + ": ${extractErrorMessage(body, context)}")
                 }
                 else -> {
@@ -378,3 +404,29 @@ suspend fun sendCSR(
     }
 }
 
+
+
+suspend fun checkUserAuthorized(
+    endpoint: String,
+    context: Context,
+    onError: (String) -> Unit = {},
+    onSuccess: (Boolean) -> Unit = {}
+){
+    val httpResponse = httpPetition(endpoint, context = context)
+    val statusCode = httpResponse.statusCode
+    val body = httpResponse.body
+    when (statusCode) {
+        200 -> {
+            val constructor_json = Json { ignoreUnknownKeys = true }
+            val authorized = true 
+            onSuccess(authorized)
+        }
+        403 -> {
+            val authorized = false 
+            onSuccess(authorized)
+        }
+        else -> {
+            onError(context.getString(R.string.unexpected_error) + ": $body")
+        }
+    }
+}

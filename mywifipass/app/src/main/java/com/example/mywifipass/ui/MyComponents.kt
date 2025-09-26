@@ -70,6 +70,7 @@ import app.mywifipass.R
 import androidx.compose.ui.text.TextStyle
 
 import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
 import android.os.Build
 
 
@@ -491,8 +492,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     
     LaunchedEffect(error) {
         if (error.isNotEmpty()) {
-            ShowText.toastDirect(context, error)
-            error = ""
+            ShowText.dialog(title = context.getString(R.string.error), message = error, onDismiss = {error = ""})
         }
     }
 
@@ -518,6 +518,9 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             handleURLInput(url)             // Use URL input function for dialog
         }
     )
+    
+    // Add the NotificationHandler to show dialogs, toasts, etc.
+    NotificationHandler(context = context)
 }
 
 
@@ -571,7 +574,7 @@ fun NetworkDetailScreen(
             if (!network.is_connection_configured && !network.are_certificiates_decrypted){
                 while (true) {
                     try {
-                        val result = mainController.downloadCertificates(network)
+                        val result = mainController.generateAndSubmitCSR(network)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                             currentNetwork = networks.find { it.id == selectedNetworkId }

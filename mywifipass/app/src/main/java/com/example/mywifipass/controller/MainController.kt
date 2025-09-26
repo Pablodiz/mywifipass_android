@@ -359,10 +359,10 @@ class MainController(private val context: Context) {
      * @param commonName Common name for the certificate (usually the user identifier)
      * @return Result containing success message or error
      */
-    suspend fun generateAndSubmitCSR(network: Network, commonName: String): Result<String> {
+    suspend fun generateAndSubmitCSR(network: Network): Result<String> {
         return try {
             Log.d("MainController", "Generating and submitting CSR for network: ${network.network_common_name}")
-            
+            val commonName = network.user_email
             // Validate inputs
             if (commonName.isBlank()) {
                 return Result.failure(Exception(context.getString(R.string.common_name_cannot_be_empty)))
