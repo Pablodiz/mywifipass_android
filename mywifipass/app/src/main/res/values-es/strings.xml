@@ -153,7 +153,7 @@
     <string name="failed_to_validate_network">Error al validar red</string>
 
     <string name="loginText">Iniciar sesión como validador</string>
-
+    <string name="login_help_text">Una vez iniciado sesión, podrás escanear los pases Wifi de los usuarios de tu red.</string>
     <!-- CSR-related strings -->
     <string name="common_name_cannot_be_empty">El nombre común no puede estar vacío</string>
     <string name="failed_to_generate_and_submit_csr">Error al generar y enviar CSR</string>
