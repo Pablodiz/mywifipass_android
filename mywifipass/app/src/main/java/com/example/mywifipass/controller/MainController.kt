@@ -41,9 +41,21 @@ class MainController(private val context: Context) {
     * @param qrCode QR code string containing network validation URL
     * @return Result containing the added Network or error
     */
-    suspend fun addNetworkFromQR(qrCode: String): Result<Network> {
+    suspend fun addNetworkFromQR(qrCode: String, wifiManager: WifiManager): Result<Network> {
         return try {
-            networkRepository.addNetworkFromQR(qrCode)
+            val networkResult = networkRepository.addNetworkFromQR(qrCode)
+            if (networkResult.isFailure) {
+                return networkResult
+            }
+            
+            val network = networkResult.getOrThrow()
+            try {
+                checkAuthorizedAndConnect(network, wifiManager)
+            } catch (e: Exception) {
+                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
+            }
+            
+            Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from QR: ${e.message}")
             Result.failure(Exception(context.getString(R.string.failed_to_add_network_from_qr) + ": ${e.message}"))
@@ -55,9 +67,21 @@ class MainController(private val context: Context) {
     * @param url Validation URL for the network
     * @return Result containing the added Network or error
     */
-    suspend fun addNetworkFromUrl(url: String): Result<Network> {
+    suspend fun addNetworkFromUrl(url: String, wifiManager: WifiManager): Result<Network> {
         return try {
-            networkRepository.addNetworkFromUrl(url)
+            val networkResult = networkRepository.addNetworkFromUrl(url)
+            if (networkResult.isFailure) {
+                return networkResult
+            }
+            
+            val network = networkResult.getOrThrow()
+            try {
+                checkAuthorizedAndConnect(network, wifiManager)
+            } catch (e: Exception) {
+                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
+            }
+            
+            Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from URL: ${e.message}")
             Result.failure(Exception(context.getString(R.string.failed_to_add_network_from_url) + ": ${e.message}"))
@@ -382,6 +406,59 @@ class MainController(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MainController", "Error generating and submitting CSR: ${e.message}")
             Result.failure(Exception(context.getString(R.string.failed_to_generate_and_submit_csr) + ": ${e.message}"))
+        }
+    }
+
+    suspend fun checkAuthorizedAndSendCSR(network: Network): Result<String> {
+        return try {
+            Log.d("MainController", "Checking if user is authorized for network: ${network.network_common_name}")
+            
+            // Use the function from the NetworkRepository
+            val result = networkRepository.checkAuthorizedAndSendCSR(network)
+            
+            if (result.isSuccess) {
+                Log.d("MainController", "Successfully checked if user is authorized for: ${network.network_common_name}")
+                Result.success(context.getString(R.string.network_is_ready_for_connection))
+            } else {
+                result.map { context.getString(R.string.network_is_ready_for_connection) }
+            }
+            
+        } catch (e: Exception) {
+            Log.e("MainController", "Error checking if user is authorized: ${e.message}")
+            Result.failure(Exception("${e.message}"))
+        }
+    }
+
+    suspend fun checkAuthorizedAndConnect(network: Network, wifiManager: WifiManager): Result<String> {
+        return try{
+            // Check if the wifi pass is already authorized, if so send CSR
+            val csrResult = checkAuthorizedAndSendCSR(network)
+            
+            if (csrResult.isFailure) {
+                Log.d("MainController", "Failed to check if user is authorized: ${csrResult.exceptionOrNull()?.message}")
+                return Result.failure(Exception(csrResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)))
+            }
+            
+            Log.d("MainController", "CSR completed successfully, retrieving updated network from database")
+            
+            // Get the updated network from database (should now have certificates)
+            val updatedNetworks = networkRepository.getNetworksFromDatabase()
+            val updatedNetwork = updatedNetworks.find { it.id == network.id } ?: network
+            
+            Log.d("MainController", "Retrieved updated network. Certificates decrypted: ${updatedNetwork.are_certificiates_decrypted}")
+            
+            // Now connect with the updated network that should have certificates
+            val result = connectToNetwork(updatedNetwork, wifiManager)
+            if (result.isSuccess) {
+                Log.d("MainController", "Successfully configured connection to network: ${updatedNetwork.network_common_name}")
+                Result.success(context.getString(R.string.network_connection_configured_successfully))
+            } else {
+                Log.d("MainController", "Failed to connect to network: ${result.exceptionOrNull()?.message}")
+                Result.failure(Exception(context.getString(R.string.failed_to_connect_to_network)))
+            }
+        } catch (e: Exception) {
+            Log.e("MainController", "Error checking if user is authorized: ${e.message}")
+            Result.failure(Exception("${e.message}"))
         }
     }
 }

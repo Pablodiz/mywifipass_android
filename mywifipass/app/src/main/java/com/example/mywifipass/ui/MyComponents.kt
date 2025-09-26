@@ -443,7 +443,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         if (!initialWifiPassUrl.isNullOrEmpty()) {
             isLoading = true
             scope.launch {
-                val result = mainController.addNetworkFromUrl(initialWifiPassUrl)
+                val result = mainController.addNetworkFromUrl(initialWifiPassUrl, wifiManager)
                 if (result.isSuccess) {
                     // Recargar la lista de redes después de añadir una nueva
                     val networksResult = mainController.getNetworks()
@@ -462,7 +462,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     val handleQRResult: (String) -> Unit = { qrCodeText ->
         scope.launch {
             isLoading = true
-            val result = mainController.addNetworkFromQR(qrCodeText) // This parses QR and extracts URL
+            val result = mainController.addNetworkFromQR(qrCodeText, wifiManager) // This parses QR and extracts URL
             
             if (result.isSuccess) {
                 refreshNetworks()
@@ -478,7 +478,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     val handleURLInput: (String) -> Unit = { url ->
         scope.launch {
             isLoading = true
-            val result = mainController.addNetworkFromUrl(url) // This uses URL directly
+            val result = mainController.addNetworkFromUrl(url, wifiManager) // This uses URL directly
             
             if (result.isSuccess) {
                 refreshNetworks()
@@ -574,7 +574,7 @@ fun NetworkDetailScreen(
             if (!network.is_connection_configured && !network.are_certificiates_decrypted){
                 while (true) {
                     try {
-                        val result = mainController.generateAndSubmitCSR(network)
+                        val result = mainController.checkAuthorizedAndSendCSR(network)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                             currentNetwork = networks.find { it.id == selectedNetworkId }

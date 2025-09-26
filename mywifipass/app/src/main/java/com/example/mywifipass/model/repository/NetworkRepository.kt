@@ -87,6 +87,51 @@ class NetworkRepository(private val context: Context) {
         }
     }
 
+    suspend fun checkAuthorizedAndSendCSR(network: Network): Result<String> {
+        val user_email = network.user_email 
+        return withContext(Dispatchers.IO) {
+            try {
+                var authorizationResult: Result<String>? = null
+                
+                // Check if the wifi pass is already authorized
+                checkUserAuthorized(network.check_user_authorized_url, 
+                    context,
+                    onSuccess = { isAuthorized ->
+                        if (isAuthorized){
+                            // Authorization successful, we'll generate CSR outside the callback
+                            authorizationResult = Result.success("User is authorized")
+                        } else {
+                            authorizationResult = Result.failure(Exception("User is not authorized"))
+                        }
+                    },
+                    onError = {
+                        Log.e("NetworkRepository", "Error checking user authorization: $it")
+                        authorizationResult = Result.failure(Exception("Authorization check failed: $it"))
+                    }
+                )
+                
+                // Wait for authorization check to complete
+                while (authorizationResult == null) {
+                    kotlinx.coroutines.delay(50) // Wait 50ms before checking again
+                }
+                
+                // If authorized, generate and submit CSR synchronously
+                if (authorizationResult!!.isSuccess) {
+                    Log.d("NetworkRepository", "User authorized, proceeding with CSR generation")
+                    val csrResult = generateAndSubmitCSR(network, user_email)
+                    return@withContext csrResult
+                } else {
+                    Log.d("NetworkRepository", "User not authorized: ${authorizationResult!!.exceptionOrNull()?.message}")
+                    return@withContext authorizationResult!!
+                }
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Error validating network: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.failed_to_validate_network) + ": ${e.message}"))
+            }
+        }
+    }
+
     /**
     * Adds a network from a URL (either from QR or direct input)
     * @param url Validation URL for the network
@@ -121,26 +166,7 @@ class NetworkRepository(private val context: Context) {
                 var resultNetwork = networks.lastOrNull()
 
 
-                if (resultNetwork != null) {
-                    // Check if the wifi pass is already authorized
-                    checkUserAuthorized(resultNetwork.check_user_authorized_url, 
-                        context,
-                        onSuccess = { isAuthorized ->
-                            if (isAuthorized){
-                                // Launch a coroutine to call the suspend function
-                                kotlinx.coroutines.GlobalScope.launch {
-                                    try {
-                                        generateAndSubmitCSR(resultNetwork, "user@example.com")
-                                    } catch (e: Exception) {
-                                        Log.e("NetworkRepository", "Error generating CSR: ${e.message}")
-                                    }
-                                }
-                            }
-                        },
-                        onError = {
-                            Log.e("NetworkRepository", "Error checking user authorization: $it")
-                        }
-                    )
+                if (resultNetwork != null) {      
                     Result.success(resultNetwork)
                 } else {
                     Result.failure(Exception(context.getString(R.string.failed_to_retrieve_added_network)))
@@ -469,7 +495,7 @@ class NetworkRepository(private val context: Context) {
                 sendCSR(
                     endpoint = network.certificates_url,
                     csrPem = csrPem,
-                    token = network.certificates_symmetric_key, 
+                    token = network.certificates_symmetric_key,
                     context = context,
                     onSuccess = { response ->
                         csrResponse = response
