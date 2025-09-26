@@ -116,31 +116,22 @@ fun AdminScreen(
                     onClick = { 
                         if(!failed && lastAuthorizeUrl.isNotEmpty()){
                             scope.launch {
-                                isLoading = true
                                 val authResult = adminController.authorizeAttendee(lastAuthorizeUrl)
                                 
                                 if (authResult.isSuccess) {
                                     response = authResult.getOrNull() ?: "Authorization successful"
+                                    
                                     ShowText.toast(response)
                                 } else {
                                     val errorMsg = authResult.exceptionOrNull()?.message ?: "Authorization failed"
                                     ShowText.dialog("Authorization Failed", errorMsg)
                                 }
-                                isLoading = false
                             }
                         } 
                         showValidatedUserDialog = false
                     },
-                    enabled = !isLoading
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        stringResource(R.string.ok)
-                    }
+                    Text(stringResource(R.string.ok))
                 }
             }
         )

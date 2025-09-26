@@ -35,6 +35,7 @@ import app.mywifipass.ui.components.NotificationHandler
 
 // i18n
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import app.mywifipass.R
 
 @Composable
@@ -68,7 +69,8 @@ fun LoginScreen() {
             .fillMaxSize()
             .padding(horizontal = 30.dp)
     ) {
-        Text(getString(R.string.login_help_text)) 
+        Text(stringResource(R.string.login_help_text), textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(16.dp))
         LoginField(
             value = credentials.url,
             onChange = { it -> credentials = credentials.copy(url = it) },

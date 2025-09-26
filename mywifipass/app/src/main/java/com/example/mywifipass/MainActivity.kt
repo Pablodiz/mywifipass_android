@@ -26,21 +26,24 @@ import app.mywifipass.ui.components.TopBar
 import androidx.compose.ui.res.stringResource
 import app.mywifipass.R 
 
+import app.mywifipass.controller.RoleController
+import androidx.compose.ui.platform.LocalContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // Obtener la URL del pase WiFi si viene del deep link
         val wifiPassUrl = intent.getStringExtra("wifi_pass_url")
-        
         setContent {
             MyWifiPassTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize().padding(top = 20.dp),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    val context = LocalContext.current
                     val scope = rememberCoroutineScope()
                     var menuExpanded by remember { mutableStateOf(false) }
+                    val roleController = remember { RoleController(context) }
 
                     Box(modifier = Modifier.fillMaxSize()) {
                         TopBar(
@@ -62,7 +65,12 @@ class MainActivity : ComponentActivity() {
                                                 menuExpanded = false
                                                 scope.launch {
                                                     // Navigate to LoginActivity
-                                                    startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                                                    val intent: Intent = if (roleController.hasStoredAuthToken()) {
+                                                                        Intent(context, AdminActivity::class.java)
+                                                                    } else {
+                                                                        Intent(context, LoginActivity::class.java)
+                                                                    }   
+                                                    context.startActivity(intent)
                                                 }
                                             }
                                         )
