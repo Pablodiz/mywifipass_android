@@ -51,6 +51,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -626,7 +628,7 @@ fun NetworkDetailScreen(
                                 scope.launch {
                                     val result = mainController.deleteNetwork(network, wifiManager)
                                     if (result.isSuccess) {
-                                        ShowText.toastDirect(context, networkDeletedSuccessfullyText)
+                                        // ShowText.toastDirect(context, networkDeletedSuccessfullyText)
                                         // Go back after deleting the network
                                         onNavigateBack()
                                     } else {
@@ -670,6 +672,30 @@ fun NetworkDetailScreen(
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Icons row: WiFi + Check
+                    Row(
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Wifi,
+                            contentDescription = "WiFi",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Success",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
             
