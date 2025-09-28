@@ -155,7 +155,7 @@ class MainController(private val context: Context) {
                 eapTLSConnection.connect(wifiManager, context)
                 
                 // Update network status
-                val updatedNetwork = network.copy(is_connection_configured = true)
+                val updatedNetwork = network.copy(is_connection_configured = true, is_user_authorized = true)
                 val updateResult = networkRepository.updateNetwork(updatedNetwork)
                 
                 if (updateResult.isFailure) {

@@ -62,8 +62,8 @@
 
     <!-- Network Detail Screen -->
     <string name="configure_connection">Configure connection</string>
-    <string name="connected">Connected</string>
-    <string name="not_connected_yet">Not connected yet</string>
+    <string name="connected">WiFi connection configured</string>
+    <string name="not_connected_yet">WiFi connection not configured</string>
     <string name="delete">Delete</string>
     <string name="more_options">More options</string>
     
@@ -118,6 +118,10 @@
     <string name="no_certificates_symmetric_key_available">No certificates symmetric key available</string>
     <string name="certificates_downloaded_and_decrypted_successfully">Certificates downloaded and decrypted successfully</string>
     <string name="failed_to_download_certificates">Failed to download certificates</string>
+    <string name="wifi_network_configured_successfully">WiFi network configured successfully</string>
+    <string name="having_problems_reconfigure">Having problems? Click here to reconfigure</string>
+    <string name="network_configuration_reset_successfully">Network configuration reset successfully</string>
+    <string name="failed_to_reset_network_configuration">Failed to reset network configuration</string>
     <string name="certificate_download_failed">Certificate download failed</string>
     <string name="failed_to_delete_network">Failed to delete network</string>
     <string name="failed_to_update_network">Failed to update network</string>
@@ -166,5 +170,7 @@
     <string name="csr_generated_and_certificates_obtained_successfully">CSR generated and certificates obtained successfully</string>
     <string name="failed_to_receive_csr_response">Failed to receive CSR response</string>
     <string name="csr_generation_failed">CSR generation failed</string>
+
+    <string name="show_qr_code_validator">Show the following QR code to a validator to authorize the WiFi network:</string>
 
 </resources>

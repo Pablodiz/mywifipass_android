@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 
 // Imports for Network Detail Screen
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.MoreVert
@@ -61,7 +62,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.ClickableText
@@ -640,13 +640,38 @@ fun NetworkDetailScreen(
                 }
             )
 
-            // QR Code section
-            QrCode(
-                data = QrInfo(network = network),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
+            if (!network.is_user_authorized){
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                {   
+                    Text(stringResource(R.string.show_qr_code_validator))
+                    // QR Code section
+                    QrCode(
+                        data = QrInfo(network = network),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                }
+            } else {
+                // Success message when network is authorized
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.wifi_network_configured_successfully),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -661,6 +686,32 @@ fun NetworkDetailScreen(
                 ) {
                     NetworkDialogEventInfo(network = network)
                 }
+            }
+            
+            if (network.is_connection_configured) {
+                Text(
+                    text = stringResource(R.string.having_problems_reconfigure),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable {
+                            // Reconfigure the network
+                            scope.launch {
+                                val result = mainController.connectToNetwork(network, wifiManager)
+                                if (result.isSuccess) {
+                                    // Reload the network to get updated state
+                                    val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                                    currentNetwork = networks.find { it.id == selectedNetworkId }
+                                } else {
+                                    ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Failed to reset configuration")
+                                }
+                            }
+                        }
+                )
             }
             
             // Action button for connecting/configuring network - always at bottom
