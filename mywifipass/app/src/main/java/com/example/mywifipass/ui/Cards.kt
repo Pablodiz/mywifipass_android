@@ -11,6 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.ui.Alignment
 import app.mywifipass.model.data.Network
 
 // i18n
@@ -46,16 +50,39 @@ fun MyCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = data.location_name,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Contenido principal de la card (izquierda)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = data.location_name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                NetworkCardInfo(network = data)
+            }
+            
+            // Icono de estado (derecha)
+            Icon(
+                imageVector = if (data.is_connection_configured) Icons.Default.Wifi else Icons.Default.WifiOff,
+                contentDescription = if (data.is_connection_configured) 
+                    stringResource(R.string.network_configured) 
+                else 
+                    stringResource(R.string.network_not_configured),
+                modifier = Modifier.size(32.dp),
+                tint = if (data.is_connection_configured) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            NetworkCardInfo(network = data)
         }
     }
 }

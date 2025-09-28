@@ -169,4 +169,8 @@
     <string name="having_problems_reconfigure">¿Algún problema? Vuelva a configurar presionando aquí</string>
     <string name="network_configuration_reset_successfully">Configuración de red restablecida exitosamente</string>
     <string name="failed_to_reset_network_configuration">Error al restablecer la configuración de red</string>
+    
+    <!-- Network status icons -->
+    <string name="network_configured">Red configurada</string>
+    <string name="network_not_configured">Red no configurada</string>
 </resources>
