@@ -417,7 +417,6 @@ suspend fun checkUserAuthorized(
     val body = httpResponse.body
     when (statusCode) {
         200 -> {
-            val constructor_json = Json { ignoreUnknownKeys = true }
             val authorized = true 
             onSuccess(authorized)
         }

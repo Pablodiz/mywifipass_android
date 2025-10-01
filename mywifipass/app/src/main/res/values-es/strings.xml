@@ -11,7 +11,7 @@
     <!-- Main Screen -->
     <string name="no_networks_message">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
     <string name="add_wifi_pass">Añadir un nuevo pase de Wifi</string>
-    <string name="processing">Procesando...</string>
+    <string name="processing">Procesando&#8230;</string>
 
     <!-- Dialog title -->
     <string name="default_dialog_title">MyWifiPass</string>

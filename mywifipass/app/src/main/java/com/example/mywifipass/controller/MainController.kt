@@ -89,37 +89,6 @@ class MainController(private val context: Context) {
     }
     
     /**
-     * Downloads and processes certificates for a network
-     * @param network Network to download certificates for
-     * @return Result containing success message or error
-     */
-    suspend fun downloadCertificates(network: Network): Result<String> {
-        return try {
-            Log.d("MainController", "Downloading certificates for network: ${network.network_common_name}")
-            
-            // Validate network has required data
-            if (network.certificates_url.isEmpty()) {
-                return Result.failure(Exception(context.getString(R.string.network_has_no_certificate_download_url)))
-            }
-            
-            if (network.certificates_symmetric_key.isEmpty()) {
-                return Result.failure(Exception(context.getString(R.string.network_has_no_certificate_symmetric_key)))
-            }
-            
-            val result = networkRepository.downloadCertificates(network)
-            
-            if (result.isSuccess) {
-                Log.d("MainController", "Successfully downloaded certificates for: ${network.network_common_name}")
-            }
-            
-            result
-        } catch (e: Exception) {
-            Log.e("MainController", "Error downloading certificates: ${e.message}")
-            Result.failure(Exception(context.getString(R.string.failed_to_download_certificates) + ": ${e.message}"))
-        }
-    }
-    
-    /**
      * Connects to a WiFi network using EAP-TLS configuration
      * @param network Network to connect to
      * @param wifiManager Android WifiManager instance

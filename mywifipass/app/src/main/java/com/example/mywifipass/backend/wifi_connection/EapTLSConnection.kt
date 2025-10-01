@@ -70,7 +70,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
     fun disconnect(wifiManager: WifiManager, context: Context) {
          when {
             // Android 10-: Remove suggestion directly
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && context != null -> {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R -> {
                 wifiManager.removeNetworkSuggestions(listOf(suggestion))
                 Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
             }

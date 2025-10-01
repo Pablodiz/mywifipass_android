@@ -247,52 +247,10 @@ fun MainScreen(
     isLoading: Boolean = false,
     onNetworkClick: (Network) -> Unit = {},
     onScanQRClick: () -> Unit = {},
-    onEnterURLClick: () -> Unit = {},
     onQRResult: (String) -> Unit = {},
-    onURLEntered: (String) -> Unit = {},
     showQrScanner: Boolean = false,
     onQRScannerDismiss: () -> Unit = {},
-    showUrlDialog: Boolean = false,
-    onUrlDialogDismiss: () -> Unit = {},
-    onUrlDialogAccept: (String) -> Unit = {}
 ){
-    // Variables for the URL dialog
-    // var enteredText by remember { mutableStateOf("") }
-
-    // #DEPRECATED 
-    //AddEventButton(
-    //     speedDialItems = listOf(
-    //         SpeedDialItem(
-    //             label = "Scan QR",
-    //             icon = { Icon(Icons.Filled.QrCode, contentDescription="Scan QR" ) },
-    //             onClick = onScanQRClick
-    //         ),
-    //         SpeedDialItem(
-    //             label = "Enter URL",
-    //             icon = { Icon(Icons.Filled.Link, contentDescription="Enter URL") },
-    //             onClick = onEnterURLClick
-    //         )
-    //     ),
-    //     content = { paddingValues ->
-    //         Column(modifier = modifier.padding(paddingValues)) {
-    //             if (isLoading) {
-    //                 Box(
-    //                     modifier = Modifier.fillMaxSize(),
-    //                     contentAlignment = Alignment.Center
-    //                 ) {
-    //                     CircularProgressIndicator()
-    //                 }
-    //             } else {
-    //                 MyCardList(
-    //                     dataList = networks,
-    //                     onItemClick = onNetworkClick
-    //                 )
-    //             }
-    //         }
-    //     }
-    // )   
-    
-    
     // Main layout with button at bottom
     Column(modifier = modifier.fillMaxSize()) {
         // Networks list takes all available space
@@ -395,7 +353,6 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     
     // Variables for the UI state
     var error by remember { mutableStateOf("") }
-    var showUrlDialog by remember { mutableStateOf(false) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
@@ -476,22 +433,6 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         }
     }
 
-    // Function to handle direct URL input
-    val handleURLInput: (String) -> Unit = { url ->
-        scope.launch {
-            isLoading = true
-            val result = mainController.addNetworkFromUrl(url, wifiManager) // This uses URL directly
-            
-            if (result.isSuccess) {
-                refreshNetworks()
-                ShowText.toastDirect(context, context.getString(R.string.network_added_successfully))
-            } else {
-                error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network)
-            }
-            isLoading = false
-        }
-    }
-    
     LaunchedEffect(error) {
         if (error.isNotEmpty()) {
             ShowText.dialog(title = context.getString(R.string.error), message = error, onDismiss = {error = ""})
@@ -508,17 +449,9 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
             NetworkDetailActivity.start(context, network.id)
         },
         onScanQRClick = { showQrScanner = true },
-        onEnterURLClick = { showUrlDialog = true },
         onQRResult = handleQRResult,        // For QR scanning
-        onURLEntered = handleURLInput,      // For direct URL input (not used anymore)
         showQrScanner = showQrScanner,
         onQRScannerDismiss = { showQrScanner = false },
-        showUrlDialog = showUrlDialog,
-        onUrlDialogDismiss = { showUrlDialog = false },
-        onUrlDialogAccept = { url ->
-            showUrlDialog = false
-            handleURLInput(url)             // Use URL input function for dialog
-        }
     )
     
     // Add the NotificationHandler to show dialogs, toasts, etc.
@@ -554,7 +487,6 @@ fun NetworkDetailScreen(
         val connectedText = stringResource(R.string.connected)
         val notConnectedYetText = stringResource(R.string.not_connected_yet)
         val deleteText = stringResource(R.string.delete)
-        val networkDeletedSuccessfullyText = stringResource(R.string.network_deleted_successfully)
         val deleteFailedText = stringResource(R.string.delete_failed)
         val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
         val connectionFailedText = stringResource(R.string.connection_failed)
