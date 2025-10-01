@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+
 plugins {
     id("com.android.application") 
     id("org.jetbrains.kotlin.android")
@@ -6,6 +10,25 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            val envFile = rootProject.file(".env")
+            val props = Properties()
+            if (envFile.exists()) {
+                props.load(FileInputStream(envFile))
+            }
+            val storePass = props.getProperty("STORE_PASSWORD") ?: ""
+            
+            keyAlias = "pablo"
+            keyPassword = storePass
+            storeFile = file("mi-release-key.jks")
+            storePassword = storePass
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
+
     namespace = "app.mywifipass"
     compileSdk = 35
 
@@ -28,10 +51,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
