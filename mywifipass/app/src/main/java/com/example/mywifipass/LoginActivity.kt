@@ -6,6 +6,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -39,7 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import app.mywifipass.R
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(modifier: Modifier = Modifier) {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -65,9 +67,9 @@ fun LoginScreen() {
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .padding(horizontal = 30.dp)
+            .imePadding()
     ) {
         Text(stringResource(R.string.login_help_text), textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
@@ -124,7 +126,7 @@ class LoginActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var showQrScanner by remember { mutableStateOf(false) }
@@ -133,7 +135,7 @@ class LoginActivity : ComponentActivity() {
                     // Add NotificationHandler to handle loading dialogs
                     NotificationHandler(context = this@LoginActivity)
                     
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                         TopBar(
                             title = stringResource(R.string.login),
                             onBackClick = { finish() },
@@ -148,7 +150,7 @@ class LoginActivity : ComponentActivity() {
                                 }
                             }
                         )
-                        LoginScreen()
+                        LoginScreen(modifier = Modifier.weight(1f))
                     }
                     if (showQrScanner) {
                         QRScannerDialog(

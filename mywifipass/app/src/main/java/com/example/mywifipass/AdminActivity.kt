@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -143,7 +144,8 @@ fun AdminScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .statusBarsPadding()
+            .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -168,7 +170,7 @@ class AdminActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current

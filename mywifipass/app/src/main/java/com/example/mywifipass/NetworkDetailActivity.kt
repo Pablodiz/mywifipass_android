@@ -35,7 +35,7 @@ class NetworkDetailActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val wifiManager = remember { applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager }

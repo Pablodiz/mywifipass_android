@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
@@ -203,6 +204,7 @@ fun TopBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
+            .statusBarsPadding()
             .height(56.dp)
     ) {
         // Apply color and text styles
@@ -315,29 +317,7 @@ fun MainScreen(
             onDismiss = onQRScannerDismiss,
             barcodeText = stringResource(R.string.user_qr_code)
         )
-    }
-
-    // #DEPRECATED
-    // Dialog for adding a new network entering an URL
-    // MyDialog(
-    //     showDialog = showUrlDialog, 
-    //     onDismiss = onUrlDialogDismiss, 
-    //     onAccept = { 
-    //         onUrlDialogAccept(enteredText)
-    //         enteredText = ""
-    //     },
-    //     content = {
-    //         Column{
-    //             TextField(
-    //                 value = enteredText,
-    //                 onValueChange = { enteredText = it },
-    //                 label = {Text("Enter URL")},
-    //                 placeholder = {Text("https://example.com")}
-    //             )
-    //         }
-    //     },
-    //     dialogTitle = "Add new network",
-    // )   
+    } 
 }
 
 // MainScreen Container that handles business logic

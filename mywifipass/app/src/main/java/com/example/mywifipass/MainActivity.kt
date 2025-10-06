@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -37,7 +38,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
                         MainScreenContainer(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .statusBarsPadding()
                                 .padding(top = 56.dp),
                             initialWifiPassUrl = wifiPassUrl
                         )
