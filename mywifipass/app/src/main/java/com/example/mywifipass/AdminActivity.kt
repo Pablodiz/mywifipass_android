@@ -68,7 +68,7 @@ fun AdminScreen(
                         lastAuthorizeUrl = attendeeResult.authorizeUrl
                         showValidatedUserDialog = true
                     } else {
-                        response = validationResult.exceptionOrNull()?.message ?: "Validation failed"
+                        response = validationResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)
                         failed = true
                         showValidatedUserDialog = true
                     }
@@ -120,12 +120,11 @@ fun AdminScreen(
                                 val authResult = adminController.authorizeAttendee(lastAuthorizeUrl)
                                 
                                 if (authResult.isSuccess) {
-                                    response = authResult.getOrNull() ?: "Authorization successful"
-                                    
+                                    response = authResult.getOrNull() ?: context.getString(R.string.authorization_successful)
                                     ShowText.toast(response)
                                 } else {
-                                    val errorMsg = authResult.exceptionOrNull()?.message ?: "Authorization failed"
-                                    ShowText.dialog("Authorization Failed", errorMsg)
+                                    val errorMsg = authResult.exceptionOrNull()?.message ?: context.getString(R.string.authorization_failed)
+                                    ShowText.dialog(context.getString(R.string.authorization_failed), errorMsg)
                                 }
                             }
                         } 

@@ -10,6 +10,7 @@ import app.mywifipass.model.data.QrData
 import app.mywifipass.model.repository.AuthRepository
 import app.mywifipass.backend.api_petitions.checkAttendee
 import app.mywifipass.backend.api_petitions.authorizeAttendee
+import app.mywifipass.R
 
 /**
  * AdminController handles admin-specific business logic
@@ -52,7 +53,7 @@ class AdminController(private val context: Context) {
                 // Get stored auth token
                 val token = authRepository.getStoredToken()
                 if (token.isNullOrEmpty()) {
-                    return@withContext Result.failure(Exception("Authentication token is missing"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.auth_token_missing)))
                 }
                 
                 // Validate attendee using API
@@ -71,9 +72,9 @@ class AdminController(private val context: Context) {
                         )
                         Log.d("AdminController", "QR validation successful: $message")
                     },
-                    onError = { error -> 
-                        errorMessage = error
-                        Log.e("AdminController", "QR validation failed: $error")
+                    onError = { apiResult -> 
+                        errorMessage = apiResult.message
+                        Log.e("AdminController", "QR validation failed: ${apiResult.message}")
                     }
                 )
                 
@@ -106,13 +107,13 @@ class AdminController(private val context: Context) {
                 Log.d("AdminController", "Authorizing attendee")
                 
                 if (authorizeUrl.isEmpty()) {
-                    return@withContext Result.failure(Exception("Authorization URL is empty"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.authorization_url_empty)))
                 }
                 
                 // Get stored auth token
                 val token = authRepository.getStoredToken()
                 if (token.isNullOrEmpty()) {
-                    return@withContext Result.failure(Exception("Authentication token is missing"))
+                    return@withContext Result.failure(Exception(context.getString(R.string.auth_token_missing)))
                 }
                 
                 // Authorize attendee using API
@@ -123,13 +124,13 @@ class AdminController(private val context: Context) {
                     endpoint = authorizeUrl,
                     token = token,
                     context = context,
-                    onSuccess = { message -> 
-                        authorizationResult = message
-                        Log.d("AdminController", "Attendee authorization successful: $message")
+                    onSuccess = { apiResult -> 
+                        authorizationResult = apiResult.message
+                        Log.d("AdminController", "Attendee authorization successful: ${apiResult.message}")
                     },
-                    onError = { error -> 
-                        errorMessage = error
-                        Log.e("AdminController", "Attendee authorization failed: $error")
+                    onError = { apiResult -> 
+                        errorMessage = apiResult.message
+                        Log.e("AdminController", "Attendee authorization failed: ${apiResult.message}")
                     }
                 )
                 
@@ -138,7 +139,7 @@ class AdminController(private val context: Context) {
                     Result.failure(Exception(it))
                 } ?: authorizationResult?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Unknown authorization error"))
+                } ?: Result.failure(Exception(context.getString(R.string.unknown_authorization_error)))
                 
             } catch (e: Exception) {
                 Log.e("AdminController", "Error authorizing attendee: ${e.message}")
@@ -181,25 +182,25 @@ class AdminController(private val context: Context) {
     fun validateQRFormat(qrCode: String): Result<String> {
         return try {
             if (qrCode.isEmpty()) {
-                return Result.failure(Exception("QR code is empty"))
+                return Result.failure(Exception(context.getString(R.string.qr_code_is_empty)))
             }
-            
+
             // Try to parse as QrData to validate format
             val parseResult = parseQRCode(qrCode)
             if (parseResult.isFailure) {
-                return parseResult.map { "QR code format is valid" }
+                return parseResult.map { context.getString(R.string.qr_code_format_valid) }
             }
-            
+
             val qrData = parseResult.getOrNull()!!
             if (qrData.validation_url.isEmpty()) {
-                return Result.failure(Exception("QR code missing validation URL"))
+                return Result.failure(Exception(context.getString(R.string.qr_code_missing_validation_url)))
             }
-            
-            Result.success("QR code format is valid")
-            
+
+            Result.success(context.getString(R.string.qr_code_format_valid))
+
         } catch (e: Exception) {
             Log.e("AdminController", "QR format validation error: ${e.message}")
-            Result.failure(Exception("Invalid QR code format: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.invalid_qr_code_format) + ": ${e.message}"))
         }
     }
     
@@ -217,11 +218,11 @@ class AdminController(private val context: Context) {
             if (qrData.validation_url.isNotEmpty()) {
                 Result.success(qrData)
             } else {
-                Result.failure(Exception("QR code contains empty validation URL"))
+                Result.failure(Exception(context.getString(R.string.qr_code_missing_validation_url)))
             }
             
         } catch (e: Exception) {
-            Result.failure(Exception("Invalid QR code format: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.invalid_qr_code_format) + ": ${e.message}"))
         }
     }
 }
