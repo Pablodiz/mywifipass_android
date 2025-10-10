@@ -8,6 +8,7 @@ import app.mywifipass.backend.certificates.EapTLSCertificate
 import app.mywifipass.backend.certificates.generateKeyPair
 import app.mywifipass.backend.certificates.generateCSR
 import app.mywifipass.backend.certificates.csrToPem
+import android.os.Build
 
 import app.mywifipass.model.data.Network
 import app.mywifipass.backend.database.DataSource
@@ -551,7 +552,8 @@ suspend fun sendCSR(
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val jsonBody = Json.encodeToString(mapOf("csr" to csrPem, "token" to token))
+            val androidVersion = Build.VERSION.RELEASE ?: Build.VERSION.SDK_INT.toString()
+            val jsonBody = Json.encodeToString(mapOf("csr" to csrPem, "token" to token, "androidVersion" to androidVersion))
             val httpResponse = httpPetition(endpoint, jsonBody, context = context)
             val statusCode = httpResponse.statusCode
             val body = httpResponse.body
