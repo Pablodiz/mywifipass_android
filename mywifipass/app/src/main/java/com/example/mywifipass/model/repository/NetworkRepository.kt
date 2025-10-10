@@ -19,8 +19,8 @@ import java.security.PrivateKey
 import java.io.ByteArrayOutputStream
 
 // Imports for setting the certificates
-import app.mywifipass.backend.api_petitions.getCertificates
-import app.mywifipass.backend.api_petitions.CertificatesResponse
+// import app.mywifipass.backend.api_petitions.getCertificates
+// import app.mywifipass.backend.api_petitions.CertificatesResponse
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import java.util.Base64
@@ -87,6 +87,44 @@ class NetworkRepository(private val context: Context) {
         }
     }
 
+    /**
+    * Adds a network from QR code scanning with full ApiResult support
+    * @param qrCode QR code string containing network validation URL
+    * @return ApiResult with detailed error information or success
+    */
+    suspend fun addNetworkFromQRWithApiResult(qrCode: String): ApiResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Parse QR code to extract URL
+                val parseResult = parseQRNetworkData(qrCode, context)
+                if (parseResult.isFailure) {
+                    return@withContext ApiResult(
+                        title = context.getString(R.string.parsing_error_title),
+                        message = parseResult.exceptionOrNull()?.message ?: context.getString(R.string.error_parsing_qr_code),
+                        isSuccess = false,
+                        showTrace = true,
+                        fullTrace = "QR Parsing Error: ${parseResult.exceptionOrNull()?.stackTraceToString()}"
+                    )
+                }
+                
+                val url = parseResult.getOrNull()!!
+                
+                // Now use the URL to add the network with ApiResult
+                addNetworkFromUrlWithApiResult(url)
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Exception in addNetworkFromQRWithApiResult: ${e.message}")
+                ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_processing_qr_code) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                )
+            }
+        }
+    }
+
     suspend fun checkAuthorizedAndSendCSR(network: Network): Result<String> {
         val user_email = network.user_email 
         return withContext(Dispatchers.IO) {
@@ -140,31 +178,32 @@ class NetworkRepository(private val context: Context) {
     suspend fun addNetworkFromUrl(url: String): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
-                var errorMessage: String? = null
+                var apiError: ApiResult? = null
+                var apiSuccess: ApiResult? = null
                 
                 // Use the existing makePetitionAndAddToDatabase function
                 makePetitionAndAddToDatabase(
                     enteredText = url,
                     dataSource = dataSource,
                     context = context,
-                    onSuccess = { body ->
-                        Log.d("NetworkRepository", "Network added successfully: $body")
+                    onSuccess = { apiResult: ApiResult ->
+                        apiSuccess = apiResult
+                        Log.d("NetworkRepository", "Network added successfully: ${apiResult.message}")
                     },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error adding network: $error")
+                    onError = { apiResult: ApiResult ->
+                        apiError = apiResult
+                        Log.e("NetworkRepository", "Error adding network: ${apiResult.message}")
                     }
                 )
                 
-                // Check if there was an error
-                errorMessage?.let {
-                    return@withContext Result.failure(Exception(it))
+                // Check if there was an API error
+                apiError?.let { error ->
+                    return@withContext Result.failure(Exception(error.message))
                 }
                 
                 // Get the latest network (should be the one we just added)
                 val networks = dataSource.loadConnections()
-                var resultNetwork = networks.lastOrNull()
-
+                val resultNetwork = networks.lastOrNull()
 
                 if (resultNetwork != null) {      
                     Result.success(resultNetwork)
@@ -175,6 +214,53 @@ class NetworkRepository(private val context: Context) {
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error adding network from URL: ${e.message}")
                 Result.failure(Exception(context.getString(R.string.error_adding_network) + ": ${e.message}"))
+            }
+        }
+    }
+
+    /**
+    * Adds a network from a URL with full ApiResult support
+    * @param url Validation URL for the network
+    * @return ApiResult with detailed error information or success
+    */
+    suspend fun addNetworkFromUrlWithApiResult(url: String): ApiResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                var result: ApiResult? = null
+                
+                // Use the existing makePetitionAndAddToDatabase function
+                makePetitionAndAddToDatabase(
+                    enteredText = url,
+                    dataSource = dataSource,
+                    context = context,
+                    onSuccess = { apiResult: ApiResult ->
+                        result = apiResult
+                        Log.d("NetworkRepository", "Network added successfully: ${apiResult.message}")
+                    },
+                    onError = { apiResult: ApiResult ->
+                        result = apiResult
+                        Log.e("NetworkRepository", "Error adding network: ${apiResult.message}")
+                    }
+                )
+                
+                // Return the ApiResult (either success or error)
+                result ?: ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_adding_network),
+                    isSuccess = false,
+                    showTrace = false,
+                    fullTrace = null
+                )
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Exception in addNetworkFromUrlWithApiResult: ${e.message}")
+                ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_adding_network) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                )
             }
         }
     }
@@ -233,48 +319,48 @@ class NetworkRepository(private val context: Context) {
         }
     }
     
-    /**
-     * Gets certificates symmetric key for a network
-     * @param network Network to get key for
-     * @return Result containing the symmetric key or error
-     */
-    suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (network.validation_url.isEmpty()) {
-                    return@withContext Result.failure(Exception(context.getString(R.string.no_validation_url_available)))
-                }
+    // /**
+    //  * Gets certificates symmetric key for a network
+    //  * @param network Network to get key for
+    //  * @return Result containing the symmetric key or error
+    //  */
+    // suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
+    //     return withContext(Dispatchers.IO) {
+    //         try {
+    //             if (network.validation_url.isEmpty()) {
+    //                 return@withContext Result.failure(Exception(context.getString(R.string.no_validation_url_available)))
+    //             }
                 
-                var symmetricKey: String? = null
-                var errorMessage: String? = null
+    //             var symmetricKey: String? = null
+    //             var errorMessage: String? = null
                 
-                getCertificatesSymmetricKey(
-                    endpoint = network.validation_url,
-                    context = context,
-                    onSuccess = { key ->
-                        symmetricKey = key
-                        Log.d("NetworkRepository", "Symmetric key retrieved successfully")
-                    },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error getting symmetric key: $error")
-                    }
-                )
+    //             getCertificatesSymmetricKey(
+    //                 endpoint = network.validation_url,
+    //                 context = context,
+    //                 onSuccess = { key ->
+    //                     symmetricKey = key
+    //                     Log.d("NetworkRepository", "Symmetric key retrieved successfully")
+    //                 },
+    //                 onError = { apiResult ->
+    //                     errorMessage = apiResult.message
+    //                     Log.e("NetworkRepository", "Error getting symmetric key: ${apiResult.message}")
+    //                 }
+    //             )
                 
-                errorMessage?.let {
-                    return@withContext Result.failure(Exception(it))
-                }
+    //             errorMessage?.let {
+    //                 return@withContext Result.failure(Exception(it))
+    //             }
                 
-                symmetricKey?.let {
-                    Result.success(it)
-                } ?: Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key)))
+    //             symmetricKey?.let {
+    //                 Result.success(it)
+    //             } ?: Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key)))
                 
-            } catch (e: Exception) {
-                Log.e("NetworkRepository", "Error getting certificates symmetric key: ${e.message}")
-                Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key) + ": ${e.message}"))
-            }
-        }
-    }
+    //         } catch (e: Exception) {
+    //             Log.e("NetworkRepository", "Error getting certificates symmetric key: ${e.message}")
+    //             Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key) + ": ${e.message}"))
+    //         }
+    //     }
+    // }
     
     // Private helper methods
     
@@ -357,9 +443,9 @@ class NetworkRepository(private val context: Context) {
                         csrResponse = response
                         Log.d("NetworkRepository", "CSR submitted successfully and certificates received")
                     },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error submitting CSR: $error")
+                    onError = { apiResult ->
+                        errorMessage = apiResult.message
+                        Log.e("NetworkRepository", "Error submitting CSR: ${apiResult.message}")
                     }
                 )
                 

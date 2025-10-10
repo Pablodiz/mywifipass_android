@@ -22,6 +22,50 @@ import java.security.KeyStore
 import app.mywifipass.R
 import android.util.Log
 
+// Data classes for structured error/success callbacks
+data class ApiResult(
+    val title: String,
+    val message: String,
+    val isSuccess: Boolean = true,
+    val errorCode: Int? = null,
+    val showTrace: Boolean = false,
+    val fullTrace: String? = null
+)
+
+// Callback types for API responses
+typealias ApiSuccessCallback = (ApiResult) -> Unit
+typealias ApiErrorCallback = (ApiResult) -> Unit
+
+// Functions for handling different types of errors
+
+private fun handleUnexpectedError(statusCode: Int, body: String, context: Context, operation: String): ApiResult {
+    val fullTrace = "Operation: $operation\nStatus Code: $statusCode\nResponse Body: $body\nTimestamp: ${System.currentTimeMillis()}"
+    
+    
+    
+    return ApiResult(
+        title = context.getString(R.string.unexpected_error_title),
+        message = context.getString(R.string.server_error_message),
+        isSuccess = false,
+        errorCode = statusCode,
+        showTrace = true,
+        fullTrace = fullTrace
+    )
+}
+
+private fun handleNetworkException(exception: Exception, context: Context, operation: String): ApiResult {
+    val fullTrace = "Operation: $operation\nException: ${exception.javaClass.simpleName}\nMessage: ${exception.message}\nStackTrace: ${exception.stackTraceToString()}\nTimestamp: ${System.currentTimeMillis()}"
+    
+    return ApiResult(
+        title = context.getString(R.string.network_error_title), 
+        message = context.getString(R.string.network_connection_error),
+        isSuccess = false,
+        errorCode = null,
+        showTrace = true,
+        fullTrace = fullTrace
+    )
+}
+
 fun parseReply(string: String, context: Context): Network{
     return try{
         Log.d("ApiPetitions", "Parsing response body: $string")
@@ -39,7 +83,7 @@ fun parseReply(string: String, context: Context): Network{
             Log.d("ApiPetitions", "JSON structure: $jsonElement")
         } catch (jsonException: Exception) {
             Log.e("ApiPetitions", "Not valid JSON: $string", jsonException)
-            throw Exception("Invalid JSON format: ${jsonException.message}")
+            throw Exception(context.getString(R.string.invalid_json_format_error) + ": ${jsonException.message}")
         }
         
         json.decodeFromString<Network>(string)
@@ -48,7 +92,7 @@ fun parseReply(string: String, context: Context): Network{
         
         // Check if the response might be HTML (404 page)
         if (string.contains("<html>") || string.contains("<!DOCTYPE")) {
-            throw Exception("Server returned HTML page instead of JSON. Check if the URL is correct.")
+            throw Exception(context.getString(R.string.server_returned_html_error))
         }
         
         throw Exception(context.getString(R.string.unrecognized_response_format) + ": ${e.message}")
@@ -58,8 +102,8 @@ fun parseReply(string: String, context: Context): Network{
 suspend fun confirmDownload(
     has_downloaded_url: String,
     context: Context,
-    onError: (String) -> Unit = {},
-    onSuccess: (String) -> Unit = {}
+    onError: ApiErrorCallback = {},
+    onSuccess: ApiSuccessCallback = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
@@ -68,20 +112,49 @@ suspend fun confirmDownload(
             val body = httpResponse.body
             when (statusCode) {
                 200 -> {
-                    onSuccess(body)
+                    onSuccess(ApiResult(
+                        title = context.getString(R.string.success_200_confirm_download_title),
+                        message = context.getString(R.string.success_200_confirm_download_message)
+                    ))
                 }
                 400 -> {
-                    onError(context.getString(R.string.error_400))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_confirm_download_title),
+                        message = context.getString(R.string.error_400_confirm_download_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
                 }
                 401 -> {
-                    onError(context.getString(R.string.error_401))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_confirm_download_title),
+                        message = context.getString(R.string.error_401_confirm_download_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
+                }
+                403 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_confirm_download_title),
+                        message = context.getString(R.string.error_403_confirm_download_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
+                }
+                404 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_confirm_download_title),
+                        message = context.getString(R.string.error_404_confirm_download_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $body")
+                    onError(handleUnexpectedError(statusCode, body, context, "Download Confirmation"))
                 }
             }
         } catch (e: Exception) {
-            onError(e.message.toString())
+            onError(handleNetworkException(e, context, "Download Confirmation"))
         }
     }
 }
@@ -90,8 +163,8 @@ suspend fun makePetitionAndAddToDatabase(
     enteredText: String,
     dataSource: DataSource,
     context: Context, 
-    onSuccess: (String) -> Unit = {},
-    onError: (String) -> Unit = {}
+    onSuccess: ApiSuccessCallback = {},
+    onError: ApiErrorCallback = {}
 ):List<Network> {
     withContext(Dispatchers.IO) {
         try{
@@ -105,109 +178,132 @@ suspend fun makePetitionAndAddToDatabase(
                     val network = parseReply(body, context)
                     dataSource.insertNetwork(network)
                     confirmDownload(network.has_downloaded_url, context)
-                    onSuccess(body) 
+                    onSuccess(ApiResult(
+                        title = context.getString(R.string.success_200_add_network_title),
+                        message = context.getString(R.string.success_200_add_network_message)
+                    )) 
                 }
                 400 -> {
-                    onError(context.getString(R.string.error_400))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_add_network_title),
+                        message = context.getString(R.string.error_400_add_network_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
                 }
                 401 -> {
-                    onError(context.getString(R.string.error_401))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_add_network_title),
+                        message = context.getString(R.string.error_401_add_network_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
                 }
                 403 -> {
-                    onError(extractErrorMessage(body, context))
+                    val titleString = context.getString(R.string.error_403_add_network_title)
+                    val messageString = context.getString(R.string.error_403_add_network_message)
+                    Log.d("ApiPetitions", "String resources - Title: '$titleString', Message: '$messageString'")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_add_network_title),
+                        message = context.getString(R.string.error_403_add_network_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
                 }
                 404 -> {
-                    onError(context.getString(R.string.error_404))
-                }
-                500 -> {
-                    onError(context.getString(R.string.error_500) + ": $body")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_add_network_title),
+                        message = context.getString(R.string.error_404_add_network_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $body")
+                    onError(handleUnexpectedError(statusCode, body, context, "Add Network to Database"))
                 }
             }
 
         } catch (e:Exception){
-            onError(e.message.toString())
+            onError(handleNetworkException(e, context, "Add Network to Database"))
         }
     }
     return dataSource.loadConnections()
 }
 
-@Serializable
-data class CertificatesSymmetricKey(
-    val certificates_symmetric_key: String
-)
+// @Serializable
+// data class CertificatesSymmetricKey(
+//     val certificates_symmetric_key: String
+// )
 
-suspend fun getCertificatesSymmetricKey(
-    endpoint: String,
-    context: Context, 
-    onError: (String) -> Unit = {},
-    onSuccess: (String) -> Unit = {}
-) {
-    withContext(Dispatchers.IO) {
-        try {
-            val httpResponse = httpPetition(endpoint, context = context)
-            val statusCode = httpResponse.statusCode
-            val reply = httpResponse.body
-            when (statusCode) {
-                200 -> {
-                    val constructor_json = Json { ignoreUnknownKeys = true }
-                    val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
-                    onSuccess(symmetricKeyJSON.certificates_symmetric_key)
-                }
-                403 -> {
-                    onError(context.getString(R.string.error_403))
-                }
-                else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $statusCode")
-                }
-            }
-        } catch (e: Exception) {
-            onError(e.message.toString())
-        }
-    }
-}
+// suspend fun getCertificatesSymmetricKey(
+//     endpoint: String,
+//     context: Context, 
+//     onError: ApiErrorCallback = {},
+//     onSuccess: (String) -> Unit = {}
+// ) {
+//     withContext(Dispatchers.IO) {
+//         try {
+//             val httpResponse = httpPetition(endpoint, context = context)
+//             val statusCode = httpResponse.statusCode
+//             val reply = httpResponse.body
+//             when (statusCode) {
+//                 200 -> {
+//                     val constructor_json = Json { ignoreUnknownKeys = true }
+//                     val symmetricKeyJSON = constructor_json.decodeFromString<CertificatesSymmetricKey>(reply)
+//                     onSuccess(symmetricKeyJSON.certificates_symmetric_key)
+//                 }
+//                 in 400..404, 422 -> {
+//                     onError(handleExpectedError(statusCode, reply, context, "Get Certificates Symmetric Key"))
+//                 }
+//                 else -> {
+//                     onError(handleUnexpectedError(statusCode, reply, context, "Get Certificates Symmetric Key"))
+//                 }
+//             }
+//         } catch (e: Exception) {
+//             onError(handleNetworkException(e, context, "Get Certificates Symmetric Key"))
+//         }
+//     }
+// }
 
-@Serializable
-data class CertificatesResponse(
-    val pkcs12_b64: String,
-)
+// @Serializable
+// data class CertificatesResponse(
+//     val pkcs12_b64: String,
+// )
 
-suspend fun getCertificates(
-    endpoint: String,
-    context: Context,
-    onError: (String) -> Unit = {},
-    onSuccess: (KeyStore) -> Unit = {},
-    key: String 
-) {
-    withContext(Dispatchers.IO) {
-        try {
-            val httpResponse = httpPetition(endpoint, context = context)
-            val statusCode = httpResponse.statusCode
-            val reply = httpResponse.body
-            when (statusCode) {
-                200 -> {
-                    val json = Json { ignoreUnknownKeys = true }
-                    val certs = json.decodeFromString<CertificatesResponse>(reply)
-                    val pkcs12Bytes = Base64.decode(certs.pkcs12_b64, Base64.DEFAULT)
-                    val inputStream = ByteArrayInputStream(pkcs12Bytes)
-                    val keyStore = KeyStore.getInstance("PKCS12")
-                    keyStore.load(inputStream, key.toCharArray()) 
-                    onSuccess(keyStore)
-                }
-                403 -> {
-                    onError(context.getString(R.string.error_403))
-                }
-                else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $statusCode")
-                }
-            }
-        } catch (e: Exception) {
-            onError(e.message.toString())
-        }
-    }
-}
+// suspend fun getCertificates(
+//     endpoint: String,
+//     context: Context,
+//     onError: ApiErrorCallback = {},
+//     onSuccess: (KeyStore) -> Unit = {},
+//     key: String 
+// ) {
+//     withContext(Dispatchers.IO) {
+//         try {
+//             val httpResponse = httpPetition(endpoint, context = context)
+//             val statusCode = httpResponse.statusCode
+//             val reply = httpResponse.body
+//             when (statusCode) {
+//                 200 -> {
+//                     val json = Json { ignoreUnknownKeys = true }
+//                     val certs = json.decodeFromString<CertificatesResponse>(reply)
+//                     val pkcs12Bytes = Base64.decode(certs.pkcs12_b64, Base64.DEFAULT)
+//                     val inputStream = ByteArrayInputStream(pkcs12Bytes)
+//                     val keyStore = KeyStore.getInstance("PKCS12")
+//                     keyStore.load(inputStream, key.toCharArray()) 
+//                     onSuccess(keyStore)
+//                 }
+//                 in 400..404, 422 -> {
+//                     onError(handleExpectedError(statusCode, reply, context, "Get Certificates"))
+//                 }
+//                 else -> {
+//                     onError(handleUnexpectedError(statusCode, reply, context, "Get Certificates"))
+//                 }
+//             }
+//         } catch (e: Exception) {
+//             onError(handleNetworkException(e, context, "Get Certificates"))
+//         }
+//     }
+// }
 
 @Serializable
 data class CheckAttendeeResponse(
@@ -220,8 +316,8 @@ suspend fun authorizeAttendee(
     endpoint: String,
     token: String,
     context: Context,
-    onError: (String) -> Unit = {},
-    onSuccess: (String) -> Unit = {}
+    onError: ApiErrorCallback = {},
+    onSuccess: ApiSuccessCallback = {}
 ) {
     withContext(Dispatchers.IO) {
         try {
@@ -230,20 +326,49 @@ suspend fun authorizeAttendee(
             val body = httpResponse.body
             when (statusCode) {
                 200 -> {
-                    onSuccess(context.getString(R.string.attendee_authorized_successfully))
+                    onSuccess(ApiResult(
+                        title = context.getString(R.string.success_200_authorize_attendee_title),
+                        message = context.getString(R.string.success_200_authorize_attendee_message)
+                    ))
                 }
                 400 -> {
-                    onError(context.getString(R.string.error_400) + ": $body")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_authorize_attendee_title),
+                        message = context.getString(R.string.error_400_authorize_attendee_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
                 }
                 401 -> {
-                    onError(context.getString(R.string.error_401))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_authorize_attendee_title),
+                        message = context.getString(R.string.error_401_authorize_attendee_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
+                }
+                403 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_authorize_attendee_title),
+                        message = context.getString(R.string.error_403_authorize_attendee_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
+                }
+                404 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_authorize_attendee_title),
+                        message = context.getString(R.string.error_404_authorize_attendee_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": ${extractErrorMessage(body, context)}")
+                    onError(handleUnexpectedError(statusCode, body, context, "Authorize Attendee"))
                 }
             }
         } catch (e: Exception) {
-            onError(context.getString(R.string.error) + ": ${e.message}")
+            onError(handleNetworkException(e, context, "Authorize Attendee"))
         }       
     }
 }
@@ -261,7 +386,7 @@ suspend fun checkAttendee(
     endpoint: String,
     token: String,
     context: Context,
-    onError: (String) -> Unit = {},
+    onError: ApiErrorCallback = {},
     onSuccess: (String, String) -> Unit = {_,_ ->}
 ) {
     withContext(Dispatchers.IO) {
@@ -281,28 +406,48 @@ suspend fun checkAttendee(
                         )
 
                     } catch (e: Exception){
-                        onError(context.getString(R.string.error_parsing_response) + ": ${e.message}")
+                        onError(handleNetworkException(e, context, "Check Attendee - Parse Response"))
                         return@withContext
                     }
                 }
                 400 -> {
-                    onError(context.getString(R.string.error_400) + ": ${extractErrorMessage(response, context)}")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_check_attendee_title),
+                        message = context.getString(R.string.error_400_check_attendee_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
                 }
                 401 -> {
-                    onError(context.getString(R.string.error_401))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_check_attendee_title),
+                        message = context.getString(R.string.error_401_check_attendee_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
                 }
                 403 -> {
-                    onError(extractErrorMessage(response, context))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_check_attendee_title),
+                        message = context.getString(R.string.error_403_check_attendee_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
                 }
                 404 -> {
-                    onError(context.getString(R.string.no_attendee_found))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_check_attendee_title),
+                        message = context.getString(R.string.error_404_check_attendee_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": ${extractErrorMessage(response, context)}")
+                    onError(handleUnexpectedError(statusCode, response, context, "Check Attendee"))
                 }
             }
         } catch (e: Exception) {
-            onError(context.getString(R.string.error) + ": ${e.message}")
+            onError(handleNetworkException(e, context, "Check Attendee"))
         }
     }
 }
@@ -318,7 +463,7 @@ suspend fun loginPetition(
     pwd: String,
     context: Context, 
     onSuccess: (String) -> Unit = {},
-    onError: (String) -> Unit = {}, 
+    onError: ApiErrorCallback = {}, 
     usePassword: Boolean = true
 ) {
     withContext(Dispatchers.IO) {
@@ -347,14 +492,43 @@ suspend fun loginPetition(
                     onSuccess(token)
                 }
                 400 -> {
-                    onError(context.getString(R.string.incorrect_login_credentials))
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_login_petition_title),
+                        message = context.getString(R.string.error_400_login_petition_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
+                }
+                401 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_login_petition_title),
+                        message = context.getString(R.string.error_401_login_petition_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
+                }
+                403 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_login_petition_title),
+                        message = context.getString(R.string.error_403_login_petition_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
+                }
+                404 -> {
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_login_petition_title),
+                        message = context.getString(R.string.error_404_login_petition_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $responseBody")
+                    onError(handleUnexpectedError(statusCode, responseBody, context, "Login"))
                 }
             }
         } catch (e: Exception) {
-            onError(context.getString(R.string.error) + ": ${e.message}")
+            onError(handleNetworkException(e, context, "Login"))
         }
     }
 }
@@ -372,7 +546,7 @@ suspend fun sendCSR(
     csrPem: String,
     token: String,
     context: Context,
-    onError: (String) -> Unit = {},
+    onError: ApiErrorCallback = {},
     onSuccess: (CSRResponse) -> Unit = {}
 ) {
     withContext(Dispatchers.IO) {
@@ -388,18 +562,47 @@ suspend fun sendCSR(
                     onSuccess(cert)
                 }
                 400 -> {
-                    onError(context.getString(R.string.error_400) + ": ${extractErrorMessage(body, context)}")
+                    Log.d("ApiPetitions", "CSR response error: ${extractErrorMessage(body, context)}")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_400_send_csr_title),
+                        message = context.getString(R.string.error_400_send_csr_message),
+                        isSuccess = false,
+                        errorCode = 400
+                    ))
+                }
+                401 -> {
+                    Log.d("ApiPetitions", "CSR response error: ${extractErrorMessage(body, context)}")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_401_send_csr_title),
+                        message = context.getString(R.string.error_401_send_csr_message),
+                        isSuccess = false,
+                        errorCode = 401
+                    ))
                 }
                 403 -> {
                     Log.d("ApiPetitions", "CSR response error: ${extractErrorMessage(body, context)}")
-                    onError(context.getString(R.string.error_403) + ": ${extractErrorMessage(body, context)}")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_403_send_csr_title),
+                        message = context.getString(R.string.error_403_send_csr_message),
+                        isSuccess = false,
+                        errorCode = 403
+                    ))
+                }
+                404 -> {
+                    Log.d("ApiPetitions", "CSR response error: ${extractErrorMessage(body, context)}")
+                    onError(ApiResult(
+                        title = context.getString(R.string.error_404_send_csr_title),
+                        message = context.getString(R.string.error_404_send_csr_message),
+                        isSuccess = false,
+                        errorCode = 404
+                    ))
                 }
                 else -> {
-                    onError(context.getString(R.string.unexpected_error) + ": $body")
+                    onError(handleUnexpectedError(statusCode, body, context, "Send CSR"))
                 }
             }
         } catch (e: Exception) {
-            onError(e.message.toString())
+            onError(handleNetworkException(e, context, "Send CSR"))
         }
     }
 }
@@ -409,7 +612,7 @@ suspend fun sendCSR(
 suspend fun checkUserAuthorized(
     endpoint: String,
     context: Context,
-    onError: (String) -> Unit = {},
+    onError: ApiErrorCallback = {},
     onSuccess: (Boolean) -> Unit = {}
 ){
     val httpResponse = httpPetition(endpoint, context = context)
@@ -420,12 +623,36 @@ suspend fun checkUserAuthorized(
             val authorized = true 
             onSuccess(authorized)
         }
+        400 -> {
+            onError(ApiResult(
+                title = context.getString(R.string.error_400_check_user_authorized_title),
+                message = context.getString(R.string.error_400_check_user_authorized_message),
+                isSuccess = false,
+                errorCode = 400
+            ))
+        }
+        401 -> {
+            onError(ApiResult(
+                title = context.getString(R.string.error_401_check_user_authorized_title),
+                message = context.getString(R.string.error_401_check_user_authorized_message),
+                isSuccess = false,
+                errorCode = 401
+            ))
+        }
         403 -> {
             val authorized = false 
             onSuccess(authorized)
         }
+        404 -> {
+            onError(ApiResult(
+                title = context.getString(R.string.error_404_check_user_authorized_title),
+                message = context.getString(R.string.error_404_check_user_authorized_message),
+                isSuccess = false,
+                errorCode = 404
+            ))
+        }
         else -> {
-            onError(context.getString(R.string.unexpected_error) + ": $body")
+            onError(handleUnexpectedError(statusCode, body, context, "Check User Authorization"))
         }
     }
 }

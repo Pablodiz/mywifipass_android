@@ -28,6 +28,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.theme.MyWifiPassTheme
+import app.mywifipass.backend.api_petitions.ApiResult
 import app.mywifipass.model.data.Network
 import app.mywifipass.controller.MainController
 import app.mywifipass.NetworkDetailActivity
@@ -332,7 +333,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     val mainController = remember { MainController(context) }
     
     // Variables for the UI state
-    var error by remember { mutableStateOf("") }
+    var apiError by remember { mutableStateOf<app.mywifipass.backend.api_petitions.ApiResult?>(null) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
@@ -355,7 +356,15 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         if (result.isSuccess) {
             connections = result.getOrNull() ?: emptyList()
         } else {
-            error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_load_networks)
+            // Convert Result error to ApiResult for consistent error handling
+            val exception = result.exceptionOrNull()
+            apiError = ApiResult(
+                title = context.getString(R.string.network_error_title),
+                message = exception?.message ?: context.getString(R.string.failed_to_load_networks),
+                isSuccess = false,
+                showTrace = true,
+                fullTrace = "Load Networks Error: ${exception?.stackTraceToString()}"
+            )
         }
         isLoading = false
     }
@@ -381,19 +390,22 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     LaunchedEffect(initialWifiPassUrl) {
         if (!initialWifiPassUrl.isNullOrEmpty()) {
             isLoading = true
-            scope.launch {
-                val result = mainController.addNetworkFromUrl(initialWifiPassUrl, wifiManager)
-                if (result.isSuccess) {
-                    // Recargar la lista de redes después de añadir una nueva
-                    val networksResult = mainController.getNetworks()
-                    if (networksResult.isSuccess) {
-                        connections = networksResult.getOrNull() ?: emptyList()
-                    }
-                } else {
-                    error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network_from_url)
+            
+            val result = mainController.addNetworkFromUrlWithApiResult(initialWifiPassUrl)
+            
+            if (result.isSuccess == true) {
+                // Recargar la lista de redes después de añadir una nueva
+                val networksResult = mainController.getNetworks()
+                if (networksResult.isSuccess) {
+                    connections = networksResult.getOrNull() ?: emptyList()
                 }
-                isLoading = false
+                ShowText.toastDirect(context, context.getString(R.string.network_added_successfully))
+            } else {
+                // Set error to show the ApiErrorDialog
+                apiError = result
             }
+            
+            isLoading = false
         }
     }
 
@@ -401,21 +413,24 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     val handleQRResult: (String) -> Unit = { qrCodeText ->
         scope.launch {
             isLoading = true
-            val result = mainController.addNetworkFromQR(qrCodeText, wifiManager) // This parses QR and extracts URL
             
-            if (result.isSuccess) {
+            val result = mainController.addNetworkFromQRWithApiResult(qrCodeText)
+            
+            if (result.isSuccess == true) {
                 refreshNetworks()
                 ShowText.toastDirect(context, context.getString(R.string.network_added_successfully))
             } else {
-                error = result.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_add_network)
+                // Set error to show the ApiErrorDialog
+                apiError = result
             }
+            
             isLoading = false
         }
     }
 
-    LaunchedEffect(error) {
-        if (error.isNotEmpty()) {
-            ShowText.dialog(title = context.getString(R.string.error), message = error, onDismiss = {error = ""})
+    LaunchedEffect(apiError) {
+        apiError?.let { errorResult: ApiResult ->
+            ShowText.apiDialog(errorResult, onDismiss = { apiError = null })
         }
     }
 

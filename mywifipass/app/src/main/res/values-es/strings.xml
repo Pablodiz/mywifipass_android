@@ -37,7 +37,6 @@
     <string name="invalid_url_format">Formato de URL inválido</string>
     <string name="validation_passed">Validación exitosa</string>
     <string name="qr_code_empty_credentials">El código QR contiene credenciales vacías</string>
-    <string name="invalid_qr_code_format">Formato de código QR inválido</string>
 
     <!-- Admin Activity -->
     <string name="scanned_info">Información escaneada:</string>
@@ -58,7 +57,7 @@
     <string name="connection_configured_successfully">Conexión configurada exitosamente</string>
     <string name="connection_failed">Error de conexión</string>
     <string name="no_wifi_passes_added_yet">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
-    <string name="downloaded_wifi_passes">Pases de Wifi Descargados</string>
+    <string name="downloaded_wifi_passes">Pases Wi-Fi</string>
     
     <!-- Network Detail Screen -->
     <string name="configure_connection">Configurar conexión</string>
@@ -173,4 +172,45 @@
     <!-- Network status icons -->
     <string name="network_configured">Red configurada</string>
     <string name="network_not_configured">Red no configurada</string>
+    
+    <!-- AdminController / Dialog messages -->
+    <string name="auth_token_missing">Falta el token de autenticación</string>
+    <string name="authorization_url_empty">La URL de autorización está vacía</string>
+    <string name="unknown_authorization_error">Error desconocido durante la autorización</string>
+    <string name="unknown_validation_error">Error desconocido durante la validación</string>
+    <string name="qr_code_is_empty">El código QR está vacío</string>
+    <string name="qr_code_format_valid">El formato del código QR es válido</string>
+    <string name="qr_code_missing_validation_url">El código QR no contiene la URL de validación</string>
+    <string name="invalid_qr_code_format">Formato de código QR inválido</string>
+
+    <!-- API Dialog Titles -->
+    <string name="download_confirmation_title">Confirmación de descarga</string>
+    <string name="network_operation_title">Operación de red</string>
+    <string name="certificate_operation_title">Operación de certificado</string>
+    <string name="login_operation_title">Operación de inicio de sesión</string>
+    <string name="attendee_operation_title">Operación de asistente</string>
+    <string name="csr_operation_title">Solicitud de certificado</string>
+    <string name="authorization_check_title">Verificación de autorización</string>
+    <string name="api_error_title">Error de API</string>
+    <string name="network_error_title">Error de red</string>
+    <string name="parsing_error_title">Error de análisis de datos</string>
+    
+    <!-- Mensajes de error inesperados (genéricos) -->
+    <string name="unexpected_error_title">Error Inesperado</string>
+    
+    <!-- Mensajes de error inesperados -->
+    <string name="server_error_message">Ocurrió un error inesperado del servidor.</string>
+    <string name="network_connection_error">Ocurrió un problema de conexión.</string>
+    
+    <!-- Acciones del diálogo -->
+    <string name="show_technical_details">Ver Detalles</string>
+    <string name="technical_details_title">Detalles Técnicos</string>
+    <string name="copy_details">Copiar Detalles</string>
+    <string name="details_copied_to_clipboard">Detalles copiados al portapapeles</string>
+    
+    <!-- Enhanced API Error Messages -->
+    <string name="server_returned_html_error">El servidor devolvió una página HTML en lugar de JSON. Verifica si la URL es correcta.</string>
+    <string name="invalid_json_format_error">Formato JSON inválido recibido del servidor</string>
+    <string name="certificate_processing_error">Error procesando certificados</string>
+    <string name="authentication_error">Error de autenticación</string>
 </resources>

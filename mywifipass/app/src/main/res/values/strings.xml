@@ -37,7 +37,6 @@
     <string name="invalid_url_format">Invalid URL format</string>
     <string name="validation_passed">Validation passed</string>
     <string name="qr_code_empty_credentials">QR code contains empty credentials</string>
-    <string name="invalid_qr_code_format">Invalid QR code format</string>
     <string name="login_help_text">Once logged in, you can scan the Wifi Passes of the users of your network.</string>
 
     <!-- Admin Activity -->
@@ -58,7 +57,7 @@
     <string name="connection_configured_successfully">Connection configured successfully</string>
     <string name="connection_failed">Connection failed</string>
     <string name="no_wifi_passes_added_yet">"No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one."</string>
-    <string name="downloaded_wifi_passes">Downloaded Wifi Passes</string>   
+    <string name="downloaded_wifi_passes">Wi-Fi Passes</string>
 
     <!-- Network Detail Screen -->
     <string name="configure_connection">Configure connection</string>
@@ -176,5 +175,46 @@
     <!-- Network status icons -->
     <string name="network_configured">Network configured</string>
     <string name="network_not_configured">Network not configured</string>
+
+    <!-- AdminController / Dialog messages -->
+    <string name="auth_token_missing">Authentication token is missing</string>
+    <string name="authorization_url_empty">Authorization URL is empty</string>
+    <string name="unknown_authorization_error">Unknown authorization error</string>
+    <string name="unknown_validation_error">Unknown validation error</string>
+    <string name="qr_code_is_empty">QR code is empty</string>
+    <string name="qr_code_format_valid">QR code format is valid</string>
+    <string name="qr_code_missing_validation_url">QR code missing validation URL</string>
+    <string name="invalid_qr_code_format">Invalid QR code format</string>
+
+    <!-- API Dialog Titles -->
+    <string name="download_confirmation_title">Download Confirmation</string>
+    <string name="network_operation_title">Network Operation</string>
+    <string name="certificate_operation_title">Certificate Operation</string>
+    <string name="login_operation_title">Login Operation</string>
+    <string name="attendee_operation_title">Attendee Operation</string>
+    <string name="csr_operation_title">Certificate Request</string>
+    <string name="authorization_check_title">Authorization Check</string>
+    <string name="api_error_title">API Error</string>
+    <string name="network_error_title">Network Error</string>
+    <string name="parsing_error_title">Data Parsing Error</string>
+    
+    <!-- Unexpected error messages (generic) -->
+    <string name="unexpected_error_title">Unexpected Error</string>
+    
+    <!-- Unexpected error messages -->
+    <string name="server_error_message">An unexpected server error occurred. Technical details are available.</string>
+    <string name="network_connection_error">Connection problem occurred. Technical details are available.</string>
+    
+    <!-- Dialog actions -->
+    <string name="show_technical_details">Show Details</string>
+    <string name="technical_details_title">Technical Details</string>
+    <string name="copy_details">Copy Details</string>
+    <string name="details_copied_to_clipboard">Details copied to clipboard</string>
+    
+    <!-- Enhanced API Error Messages -->
+    <string name="server_returned_html_error">Server returned HTML page instead of JSON. Please check if the URL is correct.</string>
+    <string name="invalid_json_format_error">Invalid JSON format received from server</string>
+    <string name="certificate_processing_error">Error processing certificates</string>
+    <string name="authentication_error">Authentication failed</string>
 
 </resources>

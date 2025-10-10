@@ -46,7 +46,7 @@ import kotlinx.serialization.*
 // import androidx.compose.ui.viewinterop.AndroidView
 
 // Imports for setting the certificates
-import app.mywifipass.backend.api_petitions.getCertificates
+// import app.mywifipass.backend.api_petitions.getCertificates
 
 // Import for waiting x seconds
 import kotlinx.coroutines.delay

@@ -11,6 +11,10 @@ import app.mywifipass.model.data.Network
 import app.mywifipass.model.repository.NetworkRepository
 import app.mywifipass.backend.certificates.EapTLSCertificate
 import app.mywifipass.backend.wifi_connection.EapTLSConnection
+import app.mywifipass.backend.api_petitions.makePetitionAndAddToDatabase
+import app.mywifipass.backend.api_petitions.ApiResult
+
+import app.mywifipass.backend.database.DataSource
 import app.mywifipass.R
 
 /**
@@ -20,6 +24,7 @@ import app.mywifipass.R
 class MainController(private val context: Context) {
     
     private val networkRepository = NetworkRepository(context)
+    private val dataSource = app.mywifipass.backend.database.DataSource(context)
     
     /**
      * Retrieves all networks from the database
@@ -85,6 +90,94 @@ class MainController(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from URL: ${e.message}")
             Result.failure(Exception(context.getString(R.string.failed_to_add_network_from_url) + ": ${e.message}"))
+        }
+    }
+
+    /**
+    * Adds a network from URL with complete ApiResult error handling 
+    * @param url Validation URL for the network
+    * @param onSuccess Success callback with ApiResult
+    * @param onError Error callback with complete ApiResult including technical details
+    */
+    suspend fun addNetworkFromUrlWithApiResult(
+        url: String, 
+        onSuccess: (ApiResult) -> Unit, 
+        onError: (ApiResult) -> Unit
+    ) {
+        return withContext(Dispatchers.IO) {
+            try {
+                makePetitionAndAddToDatabase(
+                    enteredText = url,
+                    dataSource = dataSource,
+                    context = context,
+                    onSuccess = { apiResult: ApiResult ->
+                        Log.d("MainController", "Network added successfully with ApiResult")
+                        onSuccess(apiResult)
+                    },
+                    onError = { apiResult: ApiResult ->
+                        Log.e("MainController", "Error adding network with ApiResult: ${apiResult.message}")
+                        onError(apiResult)
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("MainController", "Exception in addNetworkFromUrlWithApiResult: ${e.message}")
+                onError(ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.failed_to_add_network_from_url) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                ))
+            }
+        }
+    }
+
+    /**
+    * Adds a network from QR with complete ApiResult error handling 
+    * @param qrCode QR code string containing network validation URL
+    * @param onSuccess Success callback with ApiResult
+    * @param onError Error callback with complete ApiResult including technical details
+    */
+    suspend fun addNetworkFromQRWithApiResult(
+        qrCode: String, 
+        onSuccess: (ApiResult) -> Unit, 
+        onError: (ApiResult) -> Unit
+    ) {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use NetworkRepository's addNetworkFromQR method which handles parsing internally
+                val result = networkRepository.addNetworkFromQR(qrCode)
+                
+                if (result.isSuccess) {
+                    val network = result.getOrNull()!!
+                    onSuccess(ApiResult(
+                        title = context.getString(R.string.network_operation_title),
+                        message = context.getString(R.string.network_added_successfully),
+                        isSuccess = true,
+                        showTrace = false,
+                        fullTrace = null
+                    ))
+                } else {
+                    val exception = result.exceptionOrNull()!!
+                    onError(ApiResult(
+                        title = context.getString(R.string.network_error_title),
+                        message = exception.message ?: context.getString(R.string.error_adding_network),
+                        isSuccess = false,
+                        showTrace = true,
+                        fullTrace = "Network Addition Error: ${exception.stackTraceToString()}"
+                    ))
+                }
+                
+            } catch (e: Exception) {
+                Log.e("MainController", "Exception in addNetworkFromQRWithApiResult: ${e.message}")
+                onError(ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.failed_to_add_network_from_qr) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                ))
+            }
         }
     }
     
@@ -242,20 +335,20 @@ class MainController(private val context: Context) {
         }
     }
     
-    /**
-     * Gets the certificate symmetric key for a network
-     * @param network Network to get key for
-     * @return Result containing the symmetric key or error
-     */
-    suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
-        return try {
-            Log.d("MainController", "Getting certificate symmetric key for: ${network.network_common_name}")
-            networkRepository.getCertificatesSymmetricKey(network)
-        } catch (e: Exception) {
-            Log.e("MainController", "Error getting certificate symmetric key: ${e.message}")
-            Result.failure(Exception(context.getString(R.string.failed_to_get_certificate_symmetric_key) + ": ${e.message}"))
-        }
-    }
+    // /**
+    //  * Gets the certificate symmetric key for a network
+    //  * @param network Network to get key for
+    //  * @return Result containing the symmetric key or error
+    //  */
+    // suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
+    //     return try {
+    //         Log.d("MainController", "Getting certificate symmetric key for: ${network.network_common_name}")
+    //         networkRepository.getCertificatesSymmetricKey(network)
+    //     } catch (e: Exception) {
+    //         Log.e("MainController", "Error getting certificate symmetric key: ${e.message}")
+    //         Result.failure(Exception(context.getString(R.string.failed_to_get_certificate_symmetric_key) + ": ${e.message}"))
+    //     }
+    // }
     
     /**
      * Validates if a network can be connected to
@@ -428,6 +521,47 @@ class MainController(private val context: Context) {
         } catch (e: Exception) {
             Log.e("MainController", "Error checking if user is authorized: ${e.message}")
             Result.failure(Exception("${e.message}"))
+        }
+    }
+    /**
+     * Adds a network from URL with full ApiResult support
+     * @param url Network validation URL
+     * @return ApiResult with detailed error information or success
+     */
+    suspend fun addNetworkFromUrlWithApiResult(url: String): ApiResult {
+        return try {
+            Log.d("MainController", "Adding network from URL with ApiResult: $url")
+            networkRepository.addNetworkFromUrlWithApiResult(url)
+        } catch (e: Exception) {
+            Log.e("MainController", "Error in addNetworkFromUrlWithApiResult: ${e.message}")
+            ApiResult(
+                title = context.getString(R.string.network_error_title),
+                message = e.message ?: context.getString(R.string.error_adding_network),
+                isSuccess = false,
+                showTrace = true,
+                fullTrace = "MainController Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+            )
+        }
+    }
+
+    /**
+     * Adds a network from QR code scanning with full ApiResult support
+     * @param qrCode QR code string containing network validation URL
+     * @return ApiResult with detailed error information or success
+     */
+    suspend fun addNetworkFromQRWithApiResult(qrCode: String): ApiResult {
+        return try {
+            Log.d("MainController", "Adding network from QR with ApiResult: $qrCode")
+            networkRepository.addNetworkFromQRWithApiResult(qrCode)
+        } catch (e: Exception) {
+            Log.e("MainController", "Error in addNetworkFromQRWithApiResult: ${e.message}")
+            ApiResult(
+                title = context.getString(R.string.network_error_title),
+                message = e.message ?: context.getString(R.string.error_adding_network),
+                isSuccess = false,
+                showTrace = true,
+                fullTrace = "MainController Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+            )
         }
     }
 }

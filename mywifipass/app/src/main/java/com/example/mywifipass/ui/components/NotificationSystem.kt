@@ -20,6 +20,7 @@ import app.mywifipass.R
 sealed class NotificationMessage {
     data class Toast(val message: String, val duration: Int = android.widget.Toast.LENGTH_SHORT) : NotificationMessage()
     data class Dialog(val title: String, val message: String, val onDismiss: () -> Unit = {}) : NotificationMessage()
+    data class ApiDialog(val apiResult: app.mywifipass.backend.api_petitions.ApiResult, val onDismiss: () -> Unit = {}) : NotificationMessage()
     data class Snackbar(val message: String, val actionLabel: String? = null, val onAction: () -> Unit = {}) : NotificationMessage()
     data class LoadingDialog(val message: String) : NotificationMessage()
     object HideLoadingDialog : NotificationMessage()
@@ -36,6 +37,10 @@ object NotificationManager {
 
     suspend fun showDialog(title: String, message: String, onDismiss: () -> Unit = {}) {
         _notifications.emit(NotificationMessage.Dialog(title, message, onDismiss))
+    }
+
+    suspend fun showApiDialog(apiResult: app.mywifipass.backend.api_petitions.ApiResult, onDismiss: () -> Unit = {}) {
+        _notifications.emit(NotificationMessage.ApiDialog(apiResult, onDismiss))
     }
 
     suspend fun showSnackbar(message: String, actionLabel: String? = null, onAction: () -> Unit = {}) {
@@ -59,6 +64,10 @@ object ShowText {
     
     suspend fun dialog(title: String, message: String, onDismiss: () -> Unit = {}) {
         NotificationManager.showDialog(title, message, onDismiss)
+    }
+    
+    suspend fun apiDialog(apiResult: app.mywifipass.backend.api_petitions.ApiResult, onDismiss: () -> Unit = {}) {
+        NotificationManager.showApiDialog(apiResult, onDismiss)
     }
     
     suspend fun snackbar(message: String, actionLabel: String? = null, onAction: () -> Unit = {}) {
@@ -86,6 +95,7 @@ fun NotificationHandler(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     var currentDialog by remember { mutableStateOf<NotificationMessage.Dialog?>(null) }
+    var currentApiDialog by remember { mutableStateOf<NotificationMessage.ApiDialog?>(null) }
     var currentLoadingDialog by remember { mutableStateOf<NotificationMessage.LoadingDialog?>(null) }
     
     // Listen to notifications
@@ -97,6 +107,9 @@ fun NotificationHandler(
                 }
                 is NotificationMessage.Dialog -> {
                     currentDialog = notification
+                }
+                is NotificationMessage.ApiDialog -> {
+                    currentApiDialog = notification
                 }
                 is NotificationMessage.LoadingDialog -> {
                     currentLoadingDialog = notification
@@ -164,6 +177,18 @@ fun NotificationHandler(
                 }
             },
             confirmButton = { } // No buttons for loading dialog
+        )
+    }
+    
+    // Show API dialog if there's one
+    currentApiDialog?.let { apiDialog ->
+        ApiErrorDialog(
+            apiResult = apiDialog.apiResult,
+            onDismiss = {
+                val dismiss = apiDialog.onDismiss
+                currentApiDialog = null
+                dismiss()
+            }
         )
     }
 }

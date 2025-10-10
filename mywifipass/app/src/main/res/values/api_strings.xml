@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- confirmDownload function -->
+    <string name="success_200_confirm_download_title">Download Confirmation</string>
+    <string name="success_200_confirm_download_message">Download confirmed successfully</string>
+    <string name="error_400_confirm_download_title">Invalid Download Request</string>
+    <string name="error_400_confirm_download_message">The download request is invalid. Please check the URL and try again.</string>
+    <string name="error_401_confirm_download_title">Authentication Required</string>
+    <string name="error_401_confirm_download_message">You need to authenticate before confirming the download.</string>
+    <string name="error_403_confirm_download_title">Download Not Allowed</string>
+    <string name="error_403_confirm_download_message">You don\'t have permission to confirm this download.</string>
+    <string name="error_404_confirm_download_title">Download Not Found</string>
+    <string name="error_404_confirm_download_message">The download confirmation URL was not found.</string>
+    
+    <!-- makePetitionAndAddToDatabase function -->
+    <string name="success_200_add_network_title">Network Operation</string>
+    <string name="success_200_add_network_message">Network added successfully to your WiFi passes</string>
+    <string name="error_400_add_network_title">Invalid Network Request</string>
+    <string name="error_400_add_network_message">The network request is invalid. Please check the QR code and try again.</string>
+    <string name="error_401_add_network_title">Authentication Required</string>
+    <string name="error_401_add_network_message">You need to authenticate to add networks.</string>
+    <string name="error_403_add_network_title">Network Access Denied</string>
+    <string name="error_403_add_network_message">You don\'t have permission to add this network.</string>
+    <string name="error_404_add_network_title">Network Not Found</string>
+    <string name="error_404_add_network_message">The requested network configuration was not found.</string>
+    
+    <!-- authorizeAttendee function -->
+    <string name="success_200_authorize_attendee_title">Authorization Successful</string>
+    <string name="success_200_authorize_attendee_message">Attendee has been authorized successfully</string>
+    <string name="error_400_authorize_attendee_title">Invalid Authorization Request</string>
+    <string name="error_400_authorize_attendee_message">The authorization request is malformed. Please scan the QR code again.</string>
+    <string name="error_401_authorize_attendee_title">Admin Authentication Required</string>
+    <string name="error_401_authorize_attendee_message">Your admin session has expired. Please log in again.</string>
+    <string name="error_403_authorize_attendee_title">Authorization Not Allowed</string>
+    <string name="error_403_authorize_attendee_message">You don\'t have permission to authorize this attendee.</string>
+    <string name="error_404_authorize_attendee_title">Attendee Not Found</string>
+    <string name="error_404_authorize_attendee_message">The attendee information was not found in the system.</string>
+    
+    <!-- checkAttendee function -->
+    <string name="success_200_check_attendee_title">Verified User</string>
+    <string name="success_200_check_attendee_message">The user\'s status has been verified successfully</string>
+    <string name="error_400_check_attendee_title">Invalid Check Request</string>
+    <string name="error_400_check_attendee_message">The attendee check request is invalid. Please scan the QR code again.</string>
+    <string name="error_401_check_attendee_title">Admin Authentication Required</string>
+    <string name="error_401_check_attendee_message">Your admin session has expired. Please log in again.</string>
+    <string name="error_403_check_attendee_title">Check Not Allowed</string>
+    <string name="error_403_check_attendee_message">You don\'t have permission to check this attendee.</string>
+    <string name="error_404_check_attendee_title">Attendee Not Found</string>
+    <string name="error_404_check_attendee_message">No attendee found with the provided information.</string>
+    
+    <!-- loginPetition function -->
+    <string name="success_200_login_petition_title">Login Successful</string>
+    <string name="success_200_login_petition_message">You have logged in successfully</string>
+    <string name="error_400_login_petition_title">Invalid Login Request</string>
+    <string name="error_400_login_petition_message">The login request is malformed. Please check your input.</string>
+    <string name="error_401_login_petition_title">Login Failed</string>
+    <string name="error_401_login_petition_message">Invalid username or password. Please check your credentials and try again.</string>
+    <string name="error_403_login_petition_title">Account Blocked</string>
+    <string name="error_403_login_petition_message">Your account has been temporarily blocked. Please contact the administrator.</string>
+    <string name="error_404_login_petition_title">Login Service Not Found</string>
+    <string name="error_404_login_petition_message">The login service is not available. Please check the server URL.</string>
+    
+    <!-- sendCSR function -->
+    <string name="success_200_send_csr_title">Certificate Generated</string>
+    <string name="success_200_send_csr_message">Your certificate has been generated successfully</string>
+    <string name="error_400_send_csr_title">Invalid Certificate Request</string>
+    <string name="error_400_send_csr_message">The certificate request is invalid. Please regenerate and try again.</string>
+    <string name="error_401_send_csr_title">Authentication Required</string>
+    <string name="error_401_send_csr_message">You need to authenticate before requesting certificates.</string>
+    <string name="error_403_send_csr_title">Certificate Request Not Allowed</string>
+    <string name="error_403_send_csr_message">You don\'t have permission to request certificates for this network.</string>
+    <string name="error_404_send_csr_title">Certificate Service Not Found</string>
+    <string name="error_404_send_csr_message">The certificate signing service was not found.</string>
+    
+    <!-- checkUserAuthorized function -->
+    <string name="success_200_check_user_authorized_title">User Authorized</string>
+    <string name="success_200_check_user_authorized_message">The user has the necessary permissions</string>
+    <string name="error_400_check_user_authorized_title">Invalid Authorization Check</string>
+    <string name="error_400_check_user_authorized_message">The authorization check request is malformed.</string>
+    <string name="error_401_check_user_authorized_title">Authentication Required</string>
+    <string name="error_401_check_user_authorized_message">You need to authenticate before checking authorization status.</string>
+    <string name="error_404_check_user_authorized_title">Authorization Service Not Found</string>
+    <string name="error_404_check_user_authorized_message">The authorization check service was not found.</string>
+</resources>

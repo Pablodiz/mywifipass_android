@@ -35,8 +35,8 @@ class AuthRepository(private val context: Context) {
                         authToken = token
                         saveToken(token)
                     },
-                    onError = { error ->
-                        loginError = error
+                    onError = { apiResult ->
+                        loginError = apiResult.message
                     }
                 )
                 
