@@ -391,7 +391,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         if (!initialWifiPassUrl.isNullOrEmpty()) {
             isLoading = true
             
-            val result = mainController.addNetworkFromUrlWithApiResult(initialWifiPassUrl)
+            val result = mainController.addNetworkFromUrlWithApiResult(initialWifiPassUrl, wifiManager)
             
             if (result.isSuccess == true) {
                 // Recargar la lista de redes después de añadir una nueva
@@ -414,7 +414,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         scope.launch {
             isLoading = true
             
-            val result = mainController.addNetworkFromQRWithApiResult(qrCodeText)
+            val result = mainController.addNetworkFromQRWithApiResult(qrCodeText, wifiManager)
             
             if (result.isSuccess == true) {
                 refreshNetworks()

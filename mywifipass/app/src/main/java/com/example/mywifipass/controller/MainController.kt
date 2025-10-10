@@ -93,93 +93,6 @@ class MainController(private val context: Context) {
         }
     }
 
-    /**
-    * Adds a network from URL with complete ApiResult error handling 
-    * @param url Validation URL for the network
-    * @param onSuccess Success callback with ApiResult
-    * @param onError Error callback with complete ApiResult including technical details
-    */
-    suspend fun addNetworkFromUrlWithApiResult(
-        url: String, 
-        onSuccess: (ApiResult) -> Unit, 
-        onError: (ApiResult) -> Unit
-    ) {
-        return withContext(Dispatchers.IO) {
-            try {
-                makePetitionAndAddToDatabase(
-                    enteredText = url,
-                    dataSource = dataSource,
-                    context = context,
-                    onSuccess = { apiResult: ApiResult ->
-                        Log.d("MainController", "Network added successfully with ApiResult")
-                        onSuccess(apiResult)
-                    },
-                    onError = { apiResult: ApiResult ->
-                        Log.e("MainController", "Error adding network with ApiResult: ${apiResult.message}")
-                        onError(apiResult)
-                    }
-                )
-            } catch (e: Exception) {
-                Log.e("MainController", "Exception in addNetworkFromUrlWithApiResult: ${e.message}")
-                onError(ApiResult(
-                    title = context.getString(R.string.network_error_title),
-                    message = context.getString(R.string.failed_to_add_network_from_url) + ": ${e.message}",
-                    isSuccess = false,
-                    showTrace = true,
-                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
-                ))
-            }
-        }
-    }
-
-    /**
-    * Adds a network from QR with complete ApiResult error handling 
-    * @param qrCode QR code string containing network validation URL
-    * @param onSuccess Success callback with ApiResult
-    * @param onError Error callback with complete ApiResult including technical details
-    */
-    suspend fun addNetworkFromQRWithApiResult(
-        qrCode: String, 
-        onSuccess: (ApiResult) -> Unit, 
-        onError: (ApiResult) -> Unit
-    ) {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Use NetworkRepository's addNetworkFromQR method which handles parsing internally
-                val result = networkRepository.addNetworkFromQR(qrCode)
-                
-                if (result.isSuccess) {
-                    val network = result.getOrNull()!!
-                    onSuccess(ApiResult(
-                        title = context.getString(R.string.network_operation_title),
-                        message = context.getString(R.string.network_added_successfully),
-                        isSuccess = true,
-                        showTrace = false,
-                        fullTrace = null
-                    ))
-                } else {
-                    val exception = result.exceptionOrNull()!!
-                    onError(ApiResult(
-                        title = context.getString(R.string.network_error_title),
-                        message = exception.message ?: context.getString(R.string.error_adding_network),
-                        isSuccess = false,
-                        showTrace = true,
-                        fullTrace = "Network Addition Error: ${exception.stackTraceToString()}"
-                    ))
-                }
-                
-            } catch (e: Exception) {
-                Log.e("MainController", "Exception in addNetworkFromQRWithApiResult: ${e.message}")
-                onError(ApiResult(
-                    title = context.getString(R.string.network_error_title),
-                    message = context.getString(R.string.failed_to_add_network_from_qr) + ": ${e.message}",
-                    isSuccess = false,
-                    showTrace = true,
-                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
-                ))
-            }
-        }
-    }
     
     /**
      * Connects to a WiFi network using EAP-TLS configuration
@@ -528,10 +441,28 @@ class MainController(private val context: Context) {
      * @param url Network validation URL
      * @return ApiResult with detailed error information or success
      */
-    suspend fun addNetworkFromUrlWithApiResult(url: String): ApiResult {
+    suspend fun addNetworkFromUrlWithApiResult(url: String, wifiManager: WifiManager): ApiResult {
         return try {
             Log.d("MainController", "Adding network from URL with ApiResult: $url")
-            networkRepository.addNetworkFromUrlWithApiResult(url)
+            val result = networkRepository.addNetworkFromUrlWithApiResult(url)
+            
+            if (result.isSuccess) {
+                // Get the added network from database to attempt auto-connection
+                val networks = networkRepository.getNetworksFromDatabase()
+                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
+                
+                if (addedNetwork != null) {
+                    try {
+                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
+                        Log.d("MainController", "Successfully added network and attempted auto-connection")
+                    } catch (e: Exception) {
+                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
+                        // Don't fail the whole operation if connection fails
+                    }
+                }
+            }
+            
+            result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromUrlWithApiResult: ${e.message}")
             ApiResult(
@@ -549,10 +480,28 @@ class MainController(private val context: Context) {
      * @param qrCode QR code string containing network validation URL
      * @return ApiResult with detailed error information or success
      */
-    suspend fun addNetworkFromQRWithApiResult(qrCode: String): ApiResult {
+    suspend fun addNetworkFromQRWithApiResult(qrCode: String, wifiManager: WifiManager): ApiResult {
         return try {
             Log.d("MainController", "Adding network from QR with ApiResult: $qrCode")
-            networkRepository.addNetworkFromQRWithApiResult(qrCode)
+            val result = networkRepository.addNetworkFromQRWithApiResult(qrCode)
+            
+            if (result.isSuccess) {
+                // Get the added network from database to attempt auto-connection
+                val networks = networkRepository.getNetworksFromDatabase()
+                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
+                
+                if (addedNetwork != null) {
+                    try {
+                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
+                        Log.d("MainController", "Successfully added network and attempted auto-connection")
+                    } catch (e: Exception) {
+                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
+                        // Don't fail the whole operation if connection fails
+                    }
+                }
+            }
+            
+            result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromQRWithApiResult: ${e.message}")
             ApiResult(
