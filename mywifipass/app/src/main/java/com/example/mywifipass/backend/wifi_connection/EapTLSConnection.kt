@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.backend.wifi_connection
 
 import android.content.Context
@@ -9,6 +18,12 @@ import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.provider.Settings
 import app.mywifipass.backend.certificates.EapTLSCertificate
+import android.util.Log
+import android.widget.Toast
+import android.os.Handler
+import android.os.Looper
+import app.mywifipass.ui.components.ShowText
+
 
 class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, identity: String, altSubjectMatch: String) {
     val suggestion: WifiNetworkSuggestion
@@ -21,7 +36,10 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
             caCertificate = eapTLSCertificate.caCertificate
             setClientKeyEntry(eapTLSCertificate.clientPrivateKey, eapTLSCertificate.clientCertificate)
             setIdentity(identity)
-            minimumTlsVersion = TLS_V1_2
+            // Only set minimum TLS version on Android 14+ (API 34+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                minimumTlsVersion = TLS_V1_2
+            }
             setAltSubjectMatch("DNS:"+altSubjectMatch)        
         }
 
@@ -53,14 +71,32 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         // Create intent to add network via Settings
         val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
             putParcelableArrayListExtra(Settings.EXTRA_WIFI_NETWORK_LIST, arrayListOf(suggestion))
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
         }
         context.startActivity(intent)
     }
     
-    fun disconnect(wifiManager: WifiManager, context: Context){
+    fun disconnect(wifiManager: WifiManager, context: Context) {
          when {
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && context != null -> {
+            // Android 10-: Remove suggestion directly
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R -> {
                 wifiManager.removeNetworkSuggestions(listOf(suggestion))
+                Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
+            }
+            else -> {
+                // Android 11+: Cannot remove suggestion added via Settings Intent
+                Log.d("EapTLSConnection", "Network must be removed manually from WiFi settings on Android 11+")
+                
+                // Show Toast on main thread
+                Handler(Looper.getMainLooper()).post {
+                    ShowText.toastDirect(context, context.getString(app.mywifipass.R.string.wifi_forget_message), Toast.LENGTH_LONG)
+                }
+
+                // Open WiFi settings for user to remove manually
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
+                }
+                context.startActivity(intent)
             }
          }
     }

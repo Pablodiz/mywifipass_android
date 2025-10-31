@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass
 
 import androidx.activity.ComponentActivity
@@ -6,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -16,22 +26,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 
-import app.mywifipass.ui.components.BackButton
+import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
-import app.mywifipass.ui.components.QrData
+import app.mywifipass.controller.AdminController
 import android.widget.Toast
-import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import app.mywifipass.backend.api_petitions.checkAttendee
-import app.mywifipass.backend.api_petitions.authorizeAttendee
-import kotlinx.coroutines.withContext
 
 
 import androidx.compose.material.icons.filled.Check 
 import androidx.compose.material.icons.filled.Close
 
+import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
+
+// i18n
+import app.mywifipass.R
+import androidx.compose.ui.res.stringResource
 
 @Composable 
 fun AdminScreen(
@@ -43,39 +54,34 @@ fun AdminScreen(
     var lastAuthorizeUrl by remember { mutableStateOf("") }
     var response by remember { mutableStateOf("") }
     var failed by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    
+    // Initialize AdminController
+    val adminController = remember { AdminController(context) }
     
     if (showScannerDialog) {
         QRScannerDialog(
+            barcodeText = stringResource(R.string.validator_qr_code),
             onDismiss = { 
                 showScannerDialog = false 
             },
             onResult = { result ->
                 scope.launch {
-                    withContext(Dispatchers.IO){
-                        try {
-                            val qrData = Json.decodeFromString<QrData>(result)
-                            val endpoint = qrData.validation_url
-                            val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                            val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
-                            checkAttendee(
-                                endpoint = endpoint,
-                                token = token,
-                                onSuccess = { message, authorize_url -> 
-                                    response = message
-                                    failed = false
-                                    lastAuthorizeUrl = authorize_url
-                                    showValidatedUserDialog = true
-                                },
-                                onError = { error -> 
-                                    response = error
-                                    failed = true
-                                    showValidatedUserDialog = true
-                                }
-                            )
-                        } catch (e: Exception) {
-                            response = "Error: ${e.message}"
-                        }
+                    isLoading = true
+                    val validationResult = adminController.validateQR(result)
+                    
+                    if (validationResult.isSuccess) {
+                        val attendeeResult = validationResult.getOrNull()!!
+                        response = attendeeResult.message
+                        failed = !attendeeResult.isSuccess
+                        lastAuthorizeUrl = attendeeResult.authorizeUrl
+                        showValidatedUserDialog = true
+                    } else {
+                        response = validationResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)
+                        failed = true
+                        showValidatedUserDialog = true
                     }
+                    isLoading = false
                 }
                 showScannerDialog = false
             }
@@ -85,7 +91,7 @@ fun AdminScreen(
     if (showValidatedUserDialog) {
         AlertDialog(
             onDismissRequest = { showValidatedUserDialog = false },
-            title = { Text("Scanned info:") },
+            title = { Text(stringResource(R.string.scanned_info)) },
             text = { 
                 Column (
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -98,14 +104,14 @@ fun AdminScreen(
                         if (failed) {
                             Icon(
                                 Icons.Filled.Close, 
-                                contentDescription = "Error", 
+                                contentDescription = stringResource(R.string.error), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         } else {
                             Icon(
                                 Icons.Filled.Check, 
-                                contentDescription = "Success", 
+                                contentDescription = stringResource(R.string.success), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -118,48 +124,50 @@ fun AdminScreen(
             confirmButton = {
                 Button(
                     onClick = { 
-                        if(!failed){
+                        if(!failed && lastAuthorizeUrl.isNotEmpty()){
                             scope.launch {
-                                withContext(Dispatchers.IO){
-                                    try {
-                                        val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                                        val token = sharedPreferences.getString("auth_token", null) ?: throw IllegalStateException("Auth token is missing")
-                                        authorizeAttendee(
-                                            endpoint = lastAuthorizeUrl,
-                                            token = token,
-                                            onSuccess = { message -> 
-                                                response = message
-                                            },
-                                            onError = { error -> 
-                                                response = error
-                                            }
-                                        )
-                                    } catch (e: Exception) {
-                                        response = "Error: ${e.message}"
-                                    }
+                                val authResult = adminController.authorizeAttendee(lastAuthorizeUrl)
+                                
+                                if (authResult.isSuccess) {
+                                    response = authResult.getOrNull() ?: context.getString(R.string.authorization_successful)
+                                    ShowText.toast(response)
+                                } else {
+                                    val errorMsg = authResult.exceptionOrNull()?.message ?: context.getString(R.string.authorization_failed)
+                                    ShowText.dialog(context.getString(R.string.authorization_failed), errorMsg)
                                 }
-                                Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
                             }
                         } 
                         showValidatedUserDialog = false
-
-                    }
+                    },
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
     }
 
+    // Add the notification handler to manage all notifications
+    NotificationHandler(context)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .statusBarsPadding()
+            .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(onClick = { showScannerDialog = true }) {
-            Text("Open QR Scanner")
+        if (isLoading) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(stringResource(R.string.processing))
+        } else {
+            Button(
+                onClick = { showScannerDialog = true },
+                modifier = Modifier.fillMaxWidth(0.8f)
+            ) {
+                Text(stringResource(R.string.open_qr_scanner))
+            }
         }
     }
 }
@@ -170,31 +178,32 @@ class AdminActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
                     Box(modifier = Modifier.fillMaxSize()) {
-                        IconButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopEnd), 
-                            onClick = { 
-                                // Handle logout action
-                                val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-                                sharedPreferences.edit().remove("auth_token").apply()
-                                finish() 
+                        TopBar(
+                            title = stringResource(R.string.admin_panel),
+                            onBackClick = { finish() },
+                            actions = {
+                                Box(){
+                                    IconButton(
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(40.dp)
+                                            .align(Alignment.TopEnd), 
+                                    onClick = { 
+                                        // Handle logout action using AdminController
+                                        val adminController = AdminController(context)
+                                        adminController.logout()
+                                        finish() 
+                                    }
+                                    ){
+                                        Icon(Icons.Filled.Logout, contentDescription = "Logout")   
+                                    }
+                                }
                             }
-                        ){
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout")   
-                        }
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart),
-                            onClick = { finish() }
                         )
                         AdminScreen(context)
                     }

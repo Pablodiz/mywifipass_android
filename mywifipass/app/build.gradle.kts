@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+
 plugins {
     id("com.android.application") 
     id("org.jetbrains.kotlin.android")
@@ -6,15 +10,34 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            val envFile = rootProject.file(".env")
+            val props = Properties()
+            if (envFile.exists()) {
+                props.load(FileInputStream(envFile))
+            }
+            val storePass = props.getProperty("STORE_PASSWORD") ?: ""
+            
+            keyAlias = "pablo"
+            keyPassword = storePass
+            storeFile = file("mi-release-key.jks")
+            storePassword = storePass
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
+
     namespace = "app.mywifipass"
     compileSdk = 35
 
     defaultConfig {
         applicationId = "app.mywifipass"
-        minSdk = 34
+        minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.3 - Cambiado logo y nombre de la app"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -28,10 +51,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -56,6 +77,8 @@ android {
 
 dependencies {
     val room_version = "2.6.1"
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
     implementation("androidx.room:room-runtime:$room_version") 
     ksp("androidx.room:room-compiler:$room_version") 
     implementation("androidx.room:room-ktx:$room_version") 

@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.backend.database
 
 import kotlinx.serialization.*
@@ -16,52 +25,18 @@ import android.util.Log
 import java.util.concurrent.Executors
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.mywifipass.model.data.Network
 
-@Serializable
-@Entity(tableName = "networks")
-data class Network(
-    @PrimaryKey(autoGenerate = true)
-    @Transient
-    val id: Int = 0,
-    
-    // @SerialName("name")
-    // val user_name: String,
-    
-    // @SerialName("email")
-    // val user_email: String,
-    
-    // @SerialName("id_document")
-    // val user_id_document: String,
-    
-    // val user_uuid: String, //useless
-    val network_common_name: String, 
-    val ssid: String,
-    val location: String="",
-    val start_date: String,
-    val end_date: String,
-    val description: String="",
-    val location_name: String,
-    // val location_uuid: String, // useless
-    val validation_url: String,
-    val certificates_url: String,
-    var has_downloaded_url: String,
-    val certificates_symmetric_key: String,
-    
-    @Transient
-    var ca_certificate: String = "",
-    @Transient
-    var certificate: String = "",
-    @Transient
-    var private_key: String = "",
-    @Transient
-    var is_connection_configured: Boolean = false,
-    @Transient
-    var is_certificates_key_set: Boolean = false,
-    @Transient
-    var are_certificiates_decrypted: Boolean = false,
-)
+// Migration from version 1 to version 2
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE networks ADD COLUMN user_email TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN check_user_authorized_url TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN is_user_authorized INTEGER NOT NULL DEFAULT 0")
+    }
+}
 
-@Database(entities = [Network::class], version = 1)
+@Database(entities = [Network::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -90,7 +65,9 @@ class DataSource(context: Context) {
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).build() 
+    )
+    .addMigrations(MIGRATION_1_2)
+    .build() 
 
     private val NetworkDao = db.networkDao()
 
