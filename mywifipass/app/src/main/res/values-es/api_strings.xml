@@ -1,30 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- confirmDownload strings -->
-    <string name="success_200_confirm_download_title">Descarga confirmada</string>
-    <string name="success_200_confirm_download_message">La descarga se ha confirmado correctamente</string>
-    <string name="error_400_confirm_download_title">Error de validación</string>
-    <string name="error_400_confirm_download_message">Los datos de confirmación no son válidos</string>
-    <string name="error_401_confirm_download_title">No autorizado</string>
-    <string name="error_401_confirm_download_message">No tienes permisos para confirmar esta descarga</string>
-    <string name="error_403_confirm_download_title">Acceso denegado</string>
-    <string name="error_403_confirm_download_message">No tienes acceso para confirmar descargas</string>
-    <string name="error_404_confirm_download_title">Descarga no encontrada</string>
-    <string name="error_404_confirm_download_message">La descarga solicitada no existe</string>
+    <string name="success_200_confirm_download_title">Pase Wi-Fi Descargado</string>
+    <string name="success_200_confirm_download_message">Tu pase Wi-Fi se ha guardado correctamente</string>
+    <string name="error_404_confirm_download_title">Pase Wi-Fi No Encontrado</string>
+    <string name="error_404_confirm_download_message">Este pase Wi-Fi ya no está disponible. Contacta con el organizador del evento.</string>
 
-    <!-- makePetitionAndAddToDatabase strings -->
-    <string name="success_200_add_network_title">Red añadida</string>
-    <string name="success_200_add_network_message">La red se ha añadido correctamente a la base de datos</string>
-    <string name="error_400_add_network_title">Error en la petición</string>
-    <string name="error_400_add_network_message">Los datos de la red no son válidos</string>
-    <string name="error_401_add_network_title">Sesión expirada</string>
-    <string name="error_401_add_network_message">Tu sesión ha expirado. Por favor, inicia sesión de nuevo</string>
+    <!-- downloadWifiPass strings -->
+    <string name="success_200_add_network_title">Pase Wi-Fi Añadido</string>
+    <string name="success_200_add_network_message">Tu pase Wi-Fi se ha añadido correctamente</string>
     <string name="error_403_add_network_title">Pase Wi-Fi Expirado</string>
-    <string name="error_403_add_network_message">Si no has sido tú, o necesitas un nuevo pase, ponte en contacto con el organizador del evento.</string>
-    <string name="error_404_add_network_title">Servicio no disponible</string>
-    <string name="error_404_add_network_message">El servicio de redes no está disponible</string>
+    <string name="error_403_add_network_message">Este pase Wi-Fi ya ha sido descargado. Si no has sido tú, o necesitas un nuevo pase, ponte en contacto con el organizador del evento.</string>
+    <string name="error_404_add_network_title">Pase Wi-Fi No Disponible</string>
+    <string name="error_404_add_network_message">Este pase Wi-Fi ya no está disponible. Contacta con el organizador del evento para obtener un nuevo código QR.</string>
 
-    <!-- authorizeAttendee strings -->
+    <!-- authorizeAttendee function -->
     <string name="success_200_authorize_attendee_title">Usuario autorizado</string>
     <string name="success_200_authorize_attendee_message">El usuario ha sido autorizado correctamente</string>
     <string name="error_400_authorize_attendee_title">Petición incorrecta</string>
@@ -36,7 +26,7 @@
     <string name="error_404_authorize_attendee_title">Usuario no encontrado</string>
     <string name="error_404_authorize_attendee_message">El usuario que intentas autorizar no existe</string>
 
-    <!-- checkAttendee strings -->
+    <!-- checkAttendee function -->
     <string name="success_200_check_attendee_title">Usuario verificado</string>
     <string name="success_200_check_attendee_message">El estado del usuario se ha verificado correctamente</string>
     <string name="error_400_check_attendee_title">Datos incorrectos</string>
@@ -48,7 +38,7 @@
     <string name="error_404_check_attendee_title">Usuario inexistente</string>
     <string name="error_404_check_attendee_message">El usuario que buscas no existe en el sistema</string>
 
-    <!-- loginPetition strings -->
+    <!-- loginPetition function -->
     <string name="success_200_login_petition_title">Acceso concedido</string>
     <string name="success_200_login_petition_message">Has iniciado sesión correctamente</string>
     <string name="error_400_login_petition_title">Credenciales incorrectas</string>
@@ -61,24 +51,20 @@
     <string name="error_404_login_petition_message">El servicio de autenticación no está disponible</string>
 
     <!-- sendCSR strings -->
-    <string name="success_200_send_csr_title">Certificado generado</string>
-    <string name="success_200_send_csr_message">El certificado se ha generado correctamente</string>
-    <string name="error_400_send_csr_title">CSR inválido</string>
-    <string name="error_400_send_csr_message">La solicitud de certificado no es válida</string>
-    <string name="error_401_send_csr_title">Token expirado</string>
-    <string name="error_401_send_csr_message">Tu token de acceso ha expirado</string>
-    <string name="error_403_send_csr_title">Sin permisos</string>
-    <string name="error_403_send_csr_message">No tienes permisos para generar certificados</string>
-    <string name="error_404_send_csr_title">Servicio no encontrado</string>
-    <string name="error_404_send_csr_message">El servicio de certificados no está disponible</string>
+    <string name="success_200_send_csr_title">Credenciales Wi-Fi Listas</string>
+    <string name="success_200_send_csr_message">Los certificados de seguridad Wi-Fi se han generado correctamente</string>
+    <string name="error_400_send_csr_title">Error de Certificado</string>
+    <string name="error_400_send_csr_message">Hubo un problema generando tus certificados Wi-Fi. Inténtalo de nuevo.</string>
+    <string name="error_401_send_csr_title">Autenticación Fallida</string>
+    <string name="error_401_send_csr_message">Tu sesión ha expirado. Escanea el código QR de nuevo.</string>
+    <string name="error_403_send_csr_title">Acceso Denegado</string>
+    <string name="error_403_send_csr_message">Tu token de acceso no es válido. Contacta con el organizador del evento para obtener un nuevo código QR.</string>
+    <string name="error_404_send_csr_title">Servicio No Disponible</string>
+    <string name="error_404_send_csr_message">El servicio de certificados no está disponible temporalmente. Inténtalo más tarde.</string>
 
     <!-- checkUserAuthorized strings -->
-    <string name="success_200_check_user_authorized_title">Usuario autorizado</string>
-    <string name="success_200_check_user_authorized_message">El usuario tiene los permisos necesarios</string>
-    <string name="error_400_check_user_authorized_title">Petición inválida</string>
-    <string name="error_400_check_user_authorized_message">Los datos de la petición no son válidos</string>
-    <string name="error_401_check_user_authorized_title">Sin autenticar</string>
-    <string name="error_401_check_user_authorized_message">Necesitas autenticarte para verificar autorización</string>
-    <string name="error_404_check_user_authorized_title">Usuario no encontrado</string>
-    <string name="error_404_check_user_authorized_message">El usuario solicitado no existe</string>
+    <string name="success_200_check_user_authorized_title">Acceso Concedido</string>
+    <string name="success_200_check_user_authorized_message">Tienes autorización para conectarte a esta red</string>
+    <string name="error_404_check_user_authorized_title">Usuario No Encontrado</string>
+    <string name="error_404_check_user_authorized_message">No se encontró tu información de usuario. Contacta con el organizador del evento.</string>
 </resources>

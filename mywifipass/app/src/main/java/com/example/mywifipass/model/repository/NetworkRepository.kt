@@ -181,8 +181,8 @@ class NetworkRepository(private val context: Context) {
                 var apiError: ApiResult? = null
                 var apiSuccess: ApiResult? = null
                 
-                // Use the existing makePetitionAndAddToDatabase function
-                makePetitionAndAddToDatabase(
+                // Use the existing downloadWifiPass function
+                downloadWifiPass(
                     enteredText = url,
                     dataSource = dataSource,
                     context = context,
@@ -228,8 +228,8 @@ class NetworkRepository(private val context: Context) {
             try {
                 var result: ApiResult? = null
                 
-                // Use the existing makePetitionAndAddToDatabase function
-                makePetitionAndAddToDatabase(
+                // Use the existing downloadWifiPass function
+                downloadWifiPass(
                     enteredText = url,
                     dataSource = dataSource,
                     context = context,
@@ -318,51 +318,6 @@ class NetworkRepository(private val context: Context) {
             }
         }
     }
-    
-    // /**
-    //  * Gets certificates symmetric key for a network
-    //  * @param network Network to get key for
-    //  * @return Result containing the symmetric key or error
-    //  */
-    // suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
-    //     return withContext(Dispatchers.IO) {
-    //         try {
-    //             if (network.validation_url.isEmpty()) {
-    //                 return@withContext Result.failure(Exception(context.getString(R.string.no_validation_url_available)))
-    //             }
-                
-    //             var symmetricKey: String? = null
-    //             var errorMessage: String? = null
-                
-    //             getCertificatesSymmetricKey(
-    //                 endpoint = network.validation_url,
-    //                 context = context,
-    //                 onSuccess = { key ->
-    //                     symmetricKey = key
-    //                     Log.d("NetworkRepository", "Symmetric key retrieved successfully")
-    //                 },
-    //                 onError = { apiResult ->
-    //                     errorMessage = apiResult.message
-    //                     Log.e("NetworkRepository", "Error getting symmetric key: ${apiResult.message}")
-    //                 }
-    //             )
-                
-    //             errorMessage?.let {
-    //                 return@withContext Result.failure(Exception(it))
-    //             }
-                
-    //             symmetricKey?.let {
-    //                 Result.success(it)
-    //             } ?: Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key)))
-                
-    //         } catch (e: Exception) {
-    //             Log.e("NetworkRepository", "Error getting certificates symmetric key: ${e.message}")
-    //             Result.failure(Exception(context.getString(R.string.failed_to_get_symmetric_key) + ": ${e.message}"))
-    //         }
-    //     }
-    // }
-    
-    // Private helper methods
     
     /**
     * Parses QR code string to extract network validation data

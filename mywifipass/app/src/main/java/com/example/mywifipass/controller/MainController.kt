@@ -11,7 +11,7 @@ import app.mywifipass.model.data.Network
 import app.mywifipass.model.repository.NetworkRepository
 import app.mywifipass.backend.certificates.EapTLSCertificate
 import app.mywifipass.backend.wifi_connection.EapTLSConnection
-import app.mywifipass.backend.api_petitions.makePetitionAndAddToDatabase
+import app.mywifipass.backend.api_petitions.downloadWifiPass
 import app.mywifipass.backend.api_petitions.ApiResult
 
 import app.mywifipass.backend.database.DataSource

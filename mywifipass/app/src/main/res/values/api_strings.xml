@@ -1,28 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- confirmDownload function -->
-    <string name="success_200_confirm_download_title">Download Confirmation</string>
-    <string name="success_200_confirm_download_message">Download confirmed successfully</string>
-    <string name="error_400_confirm_download_title">Invalid Download Request</string>
-    <string name="error_400_confirm_download_message">The download request is invalid. Please check the URL and try again.</string>
-    <string name="error_401_confirm_download_title">Authentication Required</string>
-    <string name="error_401_confirm_download_message">You need to authenticate before confirming the download.</string>
-    <string name="error_403_confirm_download_title">Download Not Allowed</string>
-    <string name="error_403_confirm_download_message">You don\'t have permission to confirm this download.</string>
-    <string name="error_404_confirm_download_title">Download Not Found</string>
-    <string name="error_404_confirm_download_message">The download confirmation URL was not found.</string>
+    <string name="success_200_confirm_download_title">Wi-Fi Pass Downloaded</string>
+    <string name="success_200_confirm_download_message">Your Wi-Fi pass has been saved successfully</string>
+    <string name="error_404_confirm_download_title">Wi-Fi Pass Not Found</string>
+    <string name="error_404_confirm_download_message">This Wi-Fi pass is no longer available. Please contact the event organizer.</string>
     
-    <!-- makePetitionAndAddToDatabase function -->
-    <string name="success_200_add_network_title">Network Operation</string>
-    <string name="success_200_add_network_message">Network added successfully to your WiFi passes</string>
-    <string name="error_400_add_network_title">Invalid Network Request</string>
-    <string name="error_400_add_network_message">The network request is invalid. Please check the QR code and try again.</string>
-    <string name="error_401_add_network_title">Authentication Required</string>
-    <string name="error_401_add_network_message">You need to authenticate to add networks.</string>
-    <string name="error_403_add_network_title">Network Access Denied</string>
-    <string name="error_403_add_network_message">You don\'t have permission to add this network.</string>
-    <string name="error_404_add_network_title">Network Not Found</string>
-    <string name="error_404_add_network_message">The requested network configuration was not found.</string>
+    <!-- downloadWifiPass function -->
+    <string name="success_200_add_network_title">Wi-Fi Pass Added</string>
+    <string name="success_200_add_network_message">Your Wi-Fi pass has been added successfully</string>
+    <string name="error_403_add_network_title">Expired Wi-Fi Pass</string>
+    <string name="error_403_add_network_message">This Wi-Fi pass has already been downloaded. Please contact the event organizer if you didn\'t do it or if you need a new one.</string>
+    <string name="error_404_add_network_title">Wi-Fi Pass Not Available</string>
+    <string name="error_404_add_network_message">This Wi-Fi pass is no longer available. Please contact the event organizer for a new Pass.</string>
     
     <!-- authorizeAttendee function -->
     <string name="success_200_authorize_attendee_title">Authorization Successful</string>
@@ -61,24 +51,20 @@
     <string name="error_404_login_petition_message">The login service is not available. Please check the server URL.</string>
     
     <!-- sendCSR function -->
-    <string name="success_200_send_csr_title">Certificate Generated</string>
-    <string name="success_200_send_csr_message">Your certificate has been generated successfully</string>
-    <string name="error_400_send_csr_title">Invalid Certificate Request</string>
-    <string name="error_400_send_csr_message">The certificate request is invalid. Please regenerate and try again.</string>
-    <string name="error_401_send_csr_title">Authentication Required</string>
-    <string name="error_401_send_csr_message">You need to authenticate before requesting certificates.</string>
-    <string name="error_403_send_csr_title">Certificate Request Not Allowed</string>
-    <string name="error_403_send_csr_message">You don\'t have permission to request certificates for this network.</string>
-    <string name="error_404_send_csr_title">Certificate Service Not Found</string>
-    <string name="error_404_send_csr_message">The certificate signing service was not found.</string>
+    <string name="success_200_send_csr_title">Wi-Fi Credentials Ready</string>
+    <string name="success_200_send_csr_message">Your Wi-Fi security certificates have been generated successfully</string>
+    <string name="error_400_send_csr_title">Certificate Error</string>
+    <string name="error_400_send_csr_message">There was a problem generating your Wi-Fi certificates. Please try again.</string>
+    <string name="error_401_send_csr_title">Authentication Failed</string>
+    <string name="error_401_send_csr_message">Your session has expired. Please scan the QR code again.</string>
+    <string name="error_403_send_csr_title">Access Denied</string>
+    <string name="error_403_send_csr_message">Your access token is invalid. Please contact the event organizer for a new QR code.</string>
+    <string name="error_404_send_csr_title">Service Unavailable</string>
+    <string name="error_404_send_csr_message">The certificate service is temporarily unavailable. Please try again later.</string>
     
     <!-- checkUserAuthorized function -->
-    <string name="success_200_check_user_authorized_title">User Authorized</string>
-    <string name="success_200_check_user_authorized_message">The user has the necessary permissions</string>
-    <string name="error_400_check_user_authorized_title">Invalid Authorization Check</string>
-    <string name="error_400_check_user_authorized_message">The authorization check request is malformed.</string>
-    <string name="error_401_check_user_authorized_title">Authentication Required</string>
-    <string name="error_401_check_user_authorized_message">You need to authenticate before checking authorization status.</string>
-    <string name="error_404_check_user_authorized_title">Authorization Service Not Found</string>
-    <string name="error_404_check_user_authorized_message">The authorization check service was not found.</string>
+    <string name="success_200_check_user_authorized_title">Access Granted</string>
+    <string name="success_200_check_user_authorized_message">You are authorized to connect to this network</string>
+    <string name="error_404_check_user_authorized_title">User Not Found</string>
+    <string name="error_404_check_user_authorized_message">Your user information was not found. Please contact the event organizer.</string>
 </resources>
