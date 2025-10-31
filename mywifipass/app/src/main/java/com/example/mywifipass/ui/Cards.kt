@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.ui.components
 
 
@@ -11,9 +20,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.ui.Alignment
 import app.mywifipass.model.data.Network
 
-
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
 
 @Composable
 fun InfoText(label: String, value: String) {
@@ -25,9 +40,9 @@ fun InfoText(label: String, value: String) {
 @Composable
 fun NetworkCardInfo(network: Network) {
     Column {
-        InfoText("Location", network.location)
-        InfoText("Start date", network.start_date)
-        InfoText("End date", network.end_date)
+        InfoText(stringResource(R.string.location), network.location)
+        InfoText(stringResource(R.string.start_date), network.start_date)
+        InfoText(stringResource(R.string.end_date), network.end_date)
     }
 }
 
@@ -44,16 +59,39 @@ fun MyCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = data.location_name,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Contenido principal de la card (izquierda)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = data.location_name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                NetworkCardInfo(network = data)
+            }
+            
+            // Icono de estado (derecha)
+            Icon(
+                imageVector = if (data.is_connection_configured) Icons.Default.Wifi else Icons.Default.WifiOff,
+                contentDescription = if (data.is_connection_configured) 
+                    stringResource(R.string.network_configured) 
+                else 
+                    stringResource(R.string.network_not_configured),
+                modifier = Modifier.size(32.dp),
+                tint = if (data.is_connection_configured) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            NetworkCardInfo(network = data)
         }
     }
 }

@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass
 
 import androidx.activity.ComponentActivity
@@ -6,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -16,7 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 
-import app.mywifipass.ui.components.BackButton
+import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
 import app.mywifipass.controller.AdminController
 import android.widget.Toast
@@ -27,6 +37,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Check 
 import androidx.compose.material.icons.filled.Close
 
+import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
+
+// i18n
+import app.mywifipass.R
+import androidx.compose.ui.res.stringResource
 
 @Composable 
 fun AdminScreen(
@@ -45,6 +61,7 @@ fun AdminScreen(
     
     if (showScannerDialog) {
         QRScannerDialog(
+            barcodeText = stringResource(R.string.validator_qr_code),
             onDismiss = { 
                 showScannerDialog = false 
             },
@@ -60,7 +77,7 @@ fun AdminScreen(
                         lastAuthorizeUrl = attendeeResult.authorizeUrl
                         showValidatedUserDialog = true
                     } else {
-                        response = validationResult.exceptionOrNull()?.message ?: "Validation failed"
+                        response = validationResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)
                         failed = true
                         showValidatedUserDialog = true
                     }
@@ -74,7 +91,7 @@ fun AdminScreen(
     if (showValidatedUserDialog) {
         AlertDialog(
             onDismissRequest = { showValidatedUserDialog = false },
-            title = { Text("Scanned info:") },
+            title = { Text(stringResource(R.string.scanned_info)) },
             text = { 
                 Column (
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -87,14 +104,14 @@ fun AdminScreen(
                         if (failed) {
                             Icon(
                                 Icons.Filled.Close, 
-                                contentDescription = "Error", 
+                                contentDescription = stringResource(R.string.error), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         } else {
                             Icon(
                                 Icons.Filled.Check, 
-                                contentDescription = "Success", 
+                                contentDescription = stringResource(R.string.success), 
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -109,53 +126,47 @@ fun AdminScreen(
                     onClick = { 
                         if(!failed && lastAuthorizeUrl.isNotEmpty()){
                             scope.launch {
-                                isLoading = true
                                 val authResult = adminController.authorizeAttendee(lastAuthorizeUrl)
                                 
                                 if (authResult.isSuccess) {
-                                    response = authResult.getOrNull() ?: "Authorization successful"
-                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                                    response = authResult.getOrNull() ?: context.getString(R.string.authorization_successful)
+                                    ShowText.toast(response)
                                 } else {
-                                    response = authResult.exceptionOrNull()?.message ?: "Authorization failed"
-                                    Toast.makeText(context, response, Toast.LENGTH_SHORT).show()
+                                    val errorMsg = authResult.exceptionOrNull()?.message ?: context.getString(R.string.authorization_failed)
+                                    ShowText.dialog(context.getString(R.string.authorization_failed), errorMsg)
                                 }
-                                isLoading = false
                             }
                         } 
                         showValidatedUserDialog = false
                     },
-                    enabled = !isLoading
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("OK")
-                    }
+                    Text(stringResource(R.string.ok))
                 }
             }
         )
     }
 
+    // Add the notification handler to manage all notifications
+    NotificationHandler(context)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .statusBarsPadding()
+            .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (isLoading) {
             CircularProgressIndicator()
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Processing...")
+            Text(stringResource(R.string.processing))
         } else {
             Button(
                 onClick = { showScannerDialog = true },
                 modifier = Modifier.fillMaxWidth(0.8f)
             ) {
-                Text("Open QR Scanner")
+                Text(stringResource(R.string.open_qr_scanner))
             }
         }
     }
@@ -167,31 +178,32 @@ class AdminActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
                     Box(modifier = Modifier.fillMaxSize()) {
-                        IconButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopEnd), 
-                            onClick = { 
-                                // Handle logout action using AdminController
-                                val adminController = AdminController(context)
-                                adminController.logout()
-                                finish() 
+                        TopBar(
+                            title = stringResource(R.string.admin_panel),
+                            onBackClick = { finish() },
+                            actions = {
+                                Box(){
+                                    IconButton(
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(40.dp)
+                                            .align(Alignment.TopEnd), 
+                                    onClick = { 
+                                        // Handle logout action using AdminController
+                                        val adminController = AdminController(context)
+                                        adminController.logout()
+                                        finish() 
+                                    }
+                                    ){
+                                        Icon(Icons.Filled.Logout, contentDescription = "Logout")   
+                                    }
+                                }
                             }
-                        ){
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout")   
-                        }
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart),
-                            onClick = { finish() }
                         )
                         AdminScreen(context)
                     }

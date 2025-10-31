@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.ui.components
 
 import androidx.compose.runtime.*
@@ -19,6 +28,9 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.text.input.VisualTransformation
 
+// i18n
+import androidx.compose.ui.res.stringResource
+import app.mywifipass.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +67,8 @@ fun PasswordField(
     onChange: (String) -> Unit,
     submit: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Password",
-    placeholder: String = "Enter your Password"
+    label: String = stringResource(id = R.string.password),
+    placeholder: String = stringResource(id = R.string.enter_your_password)
 ) {
     var isPasswordVisible by remember { mutableStateOf(false) }
 

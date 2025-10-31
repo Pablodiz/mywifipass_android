@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass
 
 import androidx.activity.ComponentActivity
@@ -6,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -23,15 +34,23 @@ import android.app.Activity
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
-import app.mywifipass.ui.components.BackButton 
+import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
 import androidx.lifecycle.lifecycleScope
 
 import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.controller.LoginController
 
+import app.mywifipass.ui.components.ShowText
+import app.mywifipass.ui.components.NotificationHandler
+
+// i18n
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import app.mywifipass.R
+
 @Composable
-fun LoginScreen() {
+fun LoginScreen(modifier: Modifier = Modifier) {
     var credentials by remember { mutableStateOf(LoginCredentials()) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -43,12 +62,12 @@ fun LoginScreen() {
             val result = loginController.login(credentials)
             result.fold(
                 onSuccess = { message ->
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    ShowText.toastDirect(context, message)
                     context.startActivity(Intent(context, AdminActivity::class.java))
                     (context as Activity).finish()
                 },
                 onFailure = { exception ->
-                    Toast.makeText(context, exception.message ?: "Login failed", Toast.LENGTH_SHORT).show()
+                    ShowText.dialog(title=context.getString(R.string.login_failed), message=exception.message ?: context.getString(R.string.login_failed))
                 }
             )
         }
@@ -57,10 +76,12 @@ fun LoginScreen() {
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .padding(horizontal = 30.dp)
+            .imePadding()
     ) {
+        Text(stringResource(R.string.login_help_text), textAlign = TextAlign.Center)
+        Spacer(modifier = Modifier.height(16.dp))
         LoginField(
             value = credentials.url,
             onChange = { it -> credentials = credentials.copy(url = it) },
@@ -72,7 +93,7 @@ fun LoginScreen() {
                 )
             },
             label = "Url",
-            placeholder = "Enter the URL of the admin server",
+            placeholder = stringResource(R.string.url_admin_server),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -86,8 +107,8 @@ fun LoginScreen() {
                     tint = MaterialTheme.colorScheme.primary
                 )
             },
-            label = "Login",
-            placeholder = "Enter your login",
+            label = stringResource(R.string.username),
+            placeholder = stringResource(R.string.enter_your_login),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(10.dp))
@@ -103,7 +124,7 @@ fun LoginScreen() {
             enabled = credentials.isNotEmpty(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text(stringResource(R.string.login))
         }
     }
 }
@@ -114,50 +135,56 @@ class LoginActivity : ComponentActivity() {
         setContent {
             MyWifiPassTheme {
                 Surface(
-                    modifier = Modifier.fillMaxSize().padding(top = 20.dp),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var showQrScanner by remember { mutableStateOf(false) }
                     val loginController = remember { LoginController(this@LoginActivity) }
                     
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        IconButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopEnd), 
-                            onClick = { 
-                                showQrScanner = true
-                            }
-                        ){
-                            Icon(Icons.Filled.QrCode, contentDescription = "Scan a QR")   
-                        }
-                        BackButton(
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(40.dp)
-                                .align(Alignment.TopStart), 
-                            onClick = { finish() }
-                        )
-                        LoginScreen()
-                    }
+                    // Add NotificationHandler to handle loading dialogs
+                    NotificationHandler(context = this@LoginActivity)
                     
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        TopBar(
+                            title = stringResource(R.string.login),
+                            onBackClick = { finish() },
+                            actions = {
+                                IconButton(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .size(40.dp),
+                                    onClick = { showQrScanner = true }
+                                ) {
+                                    Icon(Icons.Filled.QrCode, contentDescription = "Scan a QR")
+                                }
+                            }
+                        )
+                        LoginScreen(modifier = Modifier.weight(1f))
+                    }
                     if (showQrScanner) {
                         QRScannerDialog(
                             onDismiss = { showQrScanner = false },
+                            barcodeText = stringResource(R.string.login_qr_code),
                             onResult = { qrCode ->
                                 lifecycleScope.launch {
+                                    // Loading dialog while we don't get the message 
+                                    // It has a loading circle and a processing text
+                                    ShowText.loadingDialog(this@LoginActivity.getString(R.string.processing))
                                     val result = loginController.loginWithQR(qrCode)
                                     result.fold(
                                         onSuccess = { message ->
-                                            Toast.makeText(this@LoginActivity, message, Toast.LENGTH_SHORT).show()
+                                            ShowText.toastDirect(this@LoginActivity, message)
                                             startActivity(Intent(this@LoginActivity, AdminActivity::class.java))
                                             finish()
                                         },
                                         onFailure = { exception ->
-                                            Toast.makeText(this@LoginActivity, exception.message ?: "QR login failed", Toast.LENGTH_SHORT).show()
+                                            ShowText.dialog(title=this@LoginActivity.getString(R.string.login_failed), 
+                                                message=exception.message ?: this@LoginActivity.getString(R.string.qr_login_failed),
+                                                onDismiss = { showQrScanner = false }
+                                            )
                                         }
                                     )
+                                    ShowText.hideLoadingDialog()
                                 }
                                 showQrScanner = false
                             }

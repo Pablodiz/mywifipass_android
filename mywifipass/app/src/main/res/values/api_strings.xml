@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- confirmDownload function -->
+    <string name="success_200_confirm_download_title">Wi-Fi Pass Downloaded</string>
+    <string name="success_200_confirm_download_message">Your Wi-Fi pass has been saved successfully</string>
+    <string name="error_404_confirm_download_title">Wi-Fi Pass Not Found</string>
+    <string name="error_404_confirm_download_message">This Wi-Fi pass is no longer available. Please contact the event organizer.</string>
+    
+    <!-- downloadWifiPass function -->
+    <string name="success_200_add_network_title">Wi-Fi Pass Added</string>
+    <string name="success_200_add_network_message">Your Wi-Fi pass has been added successfully</string>
+    <string name="error_403_add_network_title">Expired Wi-Fi Pass</string>
+    <string name="error_403_add_network_message">This Wi-Fi pass has already been downloaded. Please contact the event organizer if you didn\'t do it or if you need a new one.</string>
+    <string name="error_404_add_network_title">Wi-Fi Pass Not Available</string>
+    <string name="error_404_add_network_message">This Wi-Fi pass is no longer available. Please contact the event organizer for a new Pass.</string>
+    
+    <!-- authorizeAttendee function -->
+    <string name="success_200_authorize_attendee_title">Authorization Successful</string>
+    <string name="success_200_authorize_attendee_message">Attendee has been authorized successfully</string>
+    <string name="error_400_authorize_attendee_title">Invalid Authorization Request</string>
+    <string name="error_400_authorize_attendee_message">The authorization request is malformed. Please scan the QR code again.</string>
+    <string name="error_401_authorize_attendee_title">Admin Authentication Required</string>
+    <string name="error_401_authorize_attendee_message">Your admin session has expired. Please log in again.</string>
+    <string name="error_403_authorize_attendee_title">Authorization Not Allowed</string>
+    <string name="error_403_authorize_attendee_message">You don\'t have permission to authorize this attendee.</string>
+    <string name="error_404_authorize_attendee_title">Attendee Not Found</string>
+    <string name="error_404_authorize_attendee_message">The attendee information was not found in the system.</string>
+    
+    <!-- checkAttendee function -->
+    <string name="success_200_check_attendee_title">Verified User</string>
+    <string name="success_200_check_attendee_message">The user\'s status has been verified successfully</string>
+    <string name="error_400_check_attendee_title">Invalid Check Request</string>
+    <string name="error_400_check_attendee_message">The attendee check request is invalid. Please scan the QR code again.</string>
+    <string name="error_401_check_attendee_title">Admin Authentication Required</string>
+    <string name="error_401_check_attendee_message">Your admin session has expired. Please log in again.</string>
+    <string name="error_403_check_attendee_title">Check Not Allowed</string>
+    <string name="error_403_check_attendee_message">You don\'t have permission to check this attendee.</string>
+    <string name="error_404_check_attendee_title">Attendee Not Found</string>
+    <string name="error_404_check_attendee_message">No attendee found with the provided information.</string>
+    
+    <!-- loginPetition function -->
+    <string name="success_200_login_petition_title">Login Successful</string>
+    <string name="success_200_login_petition_message">You have logged in successfully</string>
+    <string name="error_400_login_petition_title">Invalid Login Request</string>
+    <string name="error_400_login_petition_message">The login request is malformed. Please check your input.</string>
+    <string name="error_401_login_petition_title">Login Failed</string>
+    <string name="error_401_login_petition_message">Invalid username or password. Please check your credentials and try again.</string>
+    <string name="error_403_login_petition_title">Account Blocked</string>
+    <string name="error_403_login_petition_message">Your account has been temporarily blocked. Please contact the administrator.</string>
+    <string name="error_404_login_petition_title">Login Service Not Found</string>
+    <string name="error_404_login_petition_message">The login service is not available. Please check the server URL.</string>
+    
+    <!-- sendCSR function -->
+    <string name="success_200_send_csr_title">Wi-Fi Credentials Ready</string>
+    <string name="success_200_send_csr_message">Your Wi-Fi security certificates have been generated successfully</string>
+    <string name="error_400_send_csr_title">Certificate Error</string>
+    <string name="error_400_send_csr_message">There was a problem generating your Wi-Fi certificates. Please try again.</string>
+    <string name="error_401_send_csr_title">Authentication Failed</string>
+    <string name="error_401_send_csr_message">Your session has expired. Please scan the QR code again.</string>
+    <string name="error_403_send_csr_title">Access Denied</string>
+    <string name="error_403_send_csr_message">Your access token is invalid. Please contact the event organizer for a new QR code.</string>
+    <string name="error_404_send_csr_title">Service Unavailable</string>
+    <string name="error_404_send_csr_message">The certificate service is temporarily unavailable. Please try again later.</string>
+    
+    <!-- checkUserAuthorized function -->
+    <string name="success_200_check_user_authorized_title">Access Granted</string>
+    <string name="success_200_check_user_authorized_message">You are authorized to connect to this network</string>
+    <string name="error_404_check_user_authorized_title">User Not Found</string>
+    <string name="error_404_check_user_authorized_message">Your user information was not found. Please contact the event organizer.</string>
+</resources>

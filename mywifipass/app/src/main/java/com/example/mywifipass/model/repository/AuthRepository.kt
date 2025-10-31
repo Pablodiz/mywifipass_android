@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.model.repository
 
 import android.content.Context
@@ -30,12 +39,13 @@ class AuthRepository(private val context: Context) {
                     login = credentials.login,
                     pwd = credentials.pwd,
                     usePassword = credentials.usePassword,
+                    context = context,
                     onSuccess = { token ->
                         authToken = token
                         saveToken(token)
                     },
-                    onError = { error ->
-                        loginError = error
+                    onError = { apiResult ->
+                        loginError = apiResult.message
                     }
                 )
                 

@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.backend.wifi_connection
 
 import android.content.Context
@@ -13,6 +22,8 @@ import android.util.Log
 import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
+import app.mywifipass.ui.components.ShowText
+
 
 class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, identity: String, altSubjectMatch: String) {
     val suggestion: WifiNetworkSuggestion
@@ -60,6 +71,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         // Create intent to add network via Settings
         val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
             putParcelableArrayListExtra(Settings.EXTRA_WIFI_NETWORK_LIST, arrayListOf(suggestion))
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
         }
         context.startActivity(intent)
     }
@@ -67,7 +79,7 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
     fun disconnect(wifiManager: WifiManager, context: Context) {
          when {
             // Android 10-: Remove suggestion directly
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R && context != null -> {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R -> {
                 wifiManager.removeNetworkSuggestions(listOf(suggestion))
                 Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
             }
@@ -77,11 +89,13 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
                 
                 // Show Toast on main thread
                 Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(context, "You may forget the network in settings", Toast.LENGTH_LONG).show()
+                    ShowText.toastDirect(context, context.getString(app.mywifipass.R.string.wifi_forget_message), Toast.LENGTH_LONG)
                 }
 
                 // Open WiFi settings for user to remove manually
-                val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
+                }
                 context.startActivity(intent)
             }
          }

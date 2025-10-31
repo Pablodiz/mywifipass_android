@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.backend.database
 
 import kotlinx.serialization.*
@@ -18,7 +27,16 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import app.mywifipass.model.data.Network
 
-@Database(entities = [Network::class], version = 1)
+// Migration from version 1 to version 2
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE networks ADD COLUMN user_email TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN check_user_authorized_url TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN is_user_authorized INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+@Database(entities = [Network::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -47,7 +65,9 @@ class DataSource(context: Context) {
         context.applicationContext,
         AppDatabase::class.java,
         "app-database"
-    ).build() 
+    )
+    .addMigrations(MIGRATION_1_2)
+    .build() 
 
     private val NetworkDao = db.networkDao()
 

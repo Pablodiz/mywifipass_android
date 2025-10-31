@@ -1,4 +1,13 @@
-package app.mywifipass.model.repository
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
+ package app.mywifipass.model.repository
 
 import android.content.Context
 import android.util.Log
@@ -11,8 +20,6 @@ import app.mywifipass.model.data.Network
 import app.mywifipass.model.data.QrData
 import app.mywifipass.backend.database.DataSource
 import app.mywifipass.backend.api_petitions.*
-import app.mywifipass.backend.certificates.hexToSecretKey
-import app.mywifipass.backend.certificates.decryptAES256
 import app.mywifipass.backend.certificates.checkCertificates
 import java.util.Enumeration
 import java.security.cert.X509Certificate
@@ -21,15 +28,28 @@ import java.security.PrivateKey
 import java.io.ByteArrayOutputStream
 
 // Imports for setting the certificates
-import app.mywifipass.backend.api_petitions.getCertificates
-import app.mywifipass.backend.api_petitions.CertificatesResponse
+// import app.mywifipass.backend.api_petitions.getCertificates
+// import app.mywifipass.backend.api_petitions.CertificatesResponse
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import java.util.Base64
+import app.mywifipass.R
 
+import app.mywifipass.backend.extractURLFromParameter
+
+// Imports for CSR generation and submission
+import app.mywifipass.backend.certificates.generateKeyPair
+import app.mywifipass.backend.certificates.generateCSR
+import app.mywifipass.backend.certificates.csrToPem
+import app.mywifipass.backend.api_petitions.sendCSR
+import app.mywifipass.backend.api_petitions.checkUserAuthorized
+import app.mywifipass.backend.api_petitions.CSRResponse
+import java.security.KeyPair
+
+import kotlinx.coroutines.launch
 /**
  * Repository for handling network data operations
- * Implements database operations, certificate downloads, and QR network parsing
+ * Implements database operations, certificate downloads, QR network parsing, and CSR operations
  */
 class NetworkRepository(private val context: Context) {
     
@@ -59,20 +79,102 @@ class NetworkRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 // Parse QR code to extract URL
-                val parseResult = parseQRNetworkData(qrCode)
+                val parseResult = parseQRNetworkData(qrCode, context)
                 if (parseResult.isFailure) {
                     return@withContext Result.failure(parseResult.exceptionOrNull()!!)
                 }
                 
-                val qrData = parseResult.getOrNull()!!
-                val validationUrl = qrData.validation_url
+                val url = parseResult.getOrNull()!!
                 
                 // Now use the URL to add the network
-                addNetworkFromUrl(validationUrl)
+                addNetworkFromUrl(url)
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error processing QR code: ${e.message}")
-                Result.failure(Exception("Error processing QR code: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.error_processing_qr_code) + ": ${e.message}"))
+            }
+        }
+    }
+
+    /**
+    * Adds a network from QR code scanning with full ApiResult support
+    * @param qrCode QR code string containing network validation URL
+    * @return ApiResult with detailed error information or success
+    */
+    suspend fun addNetworkFromQRWithApiResult(qrCode: String): ApiResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Parse QR code to extract URL
+                val parseResult = parseQRNetworkData(qrCode, context)
+                if (parseResult.isFailure) {
+                    return@withContext ApiResult(
+                        title = context.getString(R.string.parsing_error_title),
+                        message = parseResult.exceptionOrNull()?.message ?: context.getString(R.string.error_parsing_qr_code),
+                        isSuccess = false,
+                        showTrace = true,
+                        fullTrace = "QR Parsing Error: ${parseResult.exceptionOrNull()?.stackTraceToString()}"
+                    )
+                }
+                
+                val url = parseResult.getOrNull()!!
+                
+                // Now use the URL to add the network with ApiResult
+                addNetworkFromUrlWithApiResult(url)
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Exception in addNetworkFromQRWithApiResult: ${e.message}")
+                ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_processing_qr_code) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                )
+            }
+        }
+    }
+
+    suspend fun checkAuthorizedAndSendCSR(network: Network): Result<String> {
+        val user_email = network.user_email 
+        return withContext(Dispatchers.IO) {
+            try {
+                var authorizationResult: Result<String>? = null
+                
+                // Check if the wifi pass is already authorized
+                checkUserAuthorized(network.check_user_authorized_url, 
+                    context,
+                    onSuccess = { isAuthorized ->
+                        if (isAuthorized){
+                            // Authorization successful, we'll generate CSR outside the callback
+                            authorizationResult = Result.success("User is authorized")
+                        } else {
+                            authorizationResult = Result.failure(Exception("User is not authorized"))
+                        }
+                    },
+                    onError = {
+                        Log.e("NetworkRepository", "Error checking user authorization: $it")
+                        authorizationResult = Result.failure(Exception("Authorization check failed: $it"))
+                    }
+                )
+                
+                // Wait for authorization check to complete
+                while (authorizationResult == null) {
+                    kotlinx.coroutines.delay(50) // Wait 50ms before checking again
+                }
+                
+                // If authorized, generate and submit CSR synchronously
+                if (authorizationResult!!.isSuccess) {
+                    Log.d("NetworkRepository", "User authorized, proceeding with CSR generation")
+                    val csrResult = generateAndSubmitCSR(network, user_email)
+                    return@withContext csrResult
+                } else {
+                    Log.d("NetworkRepository", "User not authorized: ${authorizationResult!!.exceptionOrNull()?.message}")
+                    return@withContext authorizationResult!!
+                }
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Error validating network: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.failed_to_validate_network) + ": ${e.message}"))
             }
         }
     }
@@ -85,105 +187,89 @@ class NetworkRepository(private val context: Context) {
     suspend fun addNetworkFromUrl(url: String): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
-                var resultNetwork: Network? = null
-                var errorMessage: String? = null
+                var apiError: ApiResult? = null
+                var apiSuccess: ApiResult? = null
                 
-                // Use the existing makePetitionAndAddToDatabase function
-                makePetitionAndAddToDatabase(
+                // Use the existing downloadWifiPass function
+                downloadWifiPass(
                     enteredText = url,
                     dataSource = dataSource,
-                    onSuccess = { body ->
-                        Log.d("NetworkRepository", "Network added successfully: $body")
+                    context = context,
+                    onSuccess = { apiResult: ApiResult ->
+                        apiSuccess = apiResult
+                        Log.d("NetworkRepository", "Network added successfully: ${apiResult.message}")
                     },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error adding network: $error")
+                    onError = { apiResult: ApiResult ->
+                        apiError = apiResult
+                        Log.e("NetworkRepository", "Error adding network: ${apiResult.message}")
                     }
                 )
                 
-                // Check if there was an error
-                errorMessage?.let {
-                    return@withContext Result.failure(Exception(it))
+                // Check if there was an API error
+                apiError?.let { error ->
+                    return@withContext Result.failure(Exception(error.message))
                 }
                 
                 // Get the latest network (should be the one we just added)
                 val networks = dataSource.loadConnections()
-                resultNetwork = networks.lastOrNull()
-                
-                if (resultNetwork != null) {
+                val resultNetwork = networks.lastOrNull()
+
+                if (resultNetwork != null) {      
                     Result.success(resultNetwork)
                 } else {
-                    Result.failure(Exception("Failed to retrieve added network"))
+                    Result.failure(Exception(context.getString(R.string.failed_to_retrieve_added_network)))
                 }
                 
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error adding network from URL: ${e.message}")
-                Result.failure(Exception("Error adding network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.error_adding_network) + ": ${e.message}"))
             }
         }
     }
+
     /**
-     * Downloads and decrypts certificates for a network
-     * @param network Network to download certificates for
-     * @return Result containing success message or error
-     */
-    suspend fun downloadCertificates(network: Network): Result<String> {
+    * Adds a network from a URL with full ApiResult support
+    * @param url Validation URL for the network
+    * @return ApiResult with detailed error information or success
+    */
+    suspend fun addNetworkFromUrlWithApiResult(url: String): ApiResult {
         return withContext(Dispatchers.IO) {
             try {
-                // Step 1: Get certificates symmetric key if not already present
-                if (network.certificates_symmetric_key.isEmpty()) {
-                    return@withContext Result.failure(Exception("No certificates symmetric key available"))
-                }
+                var result: ApiResult? = null
                 
-                var errorMessage: String? = null
-                var keyStore: KeyStore? = null
-                
-                // Step 2: Download certificates using existing function
-                getCertificates(
-                    endpoint = network.certificates_url,
-                    key = network.certificates_symmetric_key,
-                    onSuccess = { downloadedKeyStore ->
-                        keyStore = downloadedKeyStore
-                        Log.d("NetworkRepository", "Certificates downloaded successfully")
+                // Use the existing downloadWifiPass function
+                downloadWifiPass(
+                    enteredText = url,
+                    dataSource = dataSource,
+                    context = context,
+                    onSuccess = { apiResult: ApiResult ->
+                        result = apiResult
+                        Log.d("NetworkRepository", "Network added successfully: ${apiResult.message}")
                     },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error downloading certificates: $error")
+                    onError = { apiResult: ApiResult ->
+                        result = apiResult
+                        Log.e("NetworkRepository", "Error adding network: ${apiResult.message}")
                     }
                 )
                 
-                // Check for download errors
-                errorMessage?.let {
-                    return@withContext Result.failure(Exception(it))
-                }
-                
-                keyStore?.let { ks ->
-                    // Step 3: Extract certificates from KeyStore
-                    val extractResult = extractCertificatesFromKeyStore(ks, network.certificates_symmetric_key)
-                    if (extractResult.isFailure) {
-                        return@withContext Result.failure(extractResult.exceptionOrNull()!!)
-                    }
-                    
-                    val certificates = extractResult.getOrNull()!!
-                    
-                    // Step 4: Update network with certificates
-                    val updatedNetwork = network.copy(
-                        ca_certificate = certificates.caCertificate,
-                        certificate = certificates.clientCertificate,
-                        private_key = certificates.privateKey,
-                        is_certificates_key_set = true,
-                        are_certificiates_decrypted = true
-                    )
-                    
-                    // Step 5: Update in database
-                    dataSource.updateNetwork(updatedNetwork)
-                    
-                    Result.success("Certificates downloaded and decrypted successfully")
-                } ?: Result.failure(Exception("Failed to download certificates"))
+                // Return the ApiResult (either success or error)
+                result ?: ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_adding_network),
+                    isSuccess = false,
+                    showTrace = false,
+                    fullTrace = null
+                )
                 
             } catch (e: Exception) {
-                Log.e("NetworkRepository", "Error downloading certificates: ${e.message}")
-                Result.failure(Exception("Certificate download failed: ${e.message}"))
+                Log.e("NetworkRepository", "Exception in addNetworkFromUrlWithApiResult: ${e.message}")
+                ApiResult(
+                    title = context.getString(R.string.network_error_title),
+                    message = context.getString(R.string.error_adding_network) + ": ${e.message}",
+                    isSuccess = false,
+                    showTrace = true,
+                    fullTrace = "Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
+                )
             }
         }
     }
@@ -201,7 +287,7 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error deleting network: ${e.message}")
-                Result.failure(Exception("Failed to delete network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_delete_network) + ": ${e.message}"))
             }
         }
     }
@@ -219,7 +305,7 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error updating network: ${e.message}")
-                Result.failure(Exception("Failed to update network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_update_network) + ": ${e.message}"))
             }
         }
     }
@@ -237,148 +323,29 @@ class NetworkRepository(private val context: Context) {
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("NetworkRepository", "Error inserting network: ${e.message}")
-                Result.failure(Exception("Failed to insert network: ${e.message}"))
+                Result.failure(Exception(context.getString(R.string.failed_to_insert_network) + ": ${e.message}"))
             }
         }
     }
-    
-    /**
-     * Gets certificates symmetric key for a network
-     * @param network Network to get key for
-     * @return Result containing the symmetric key or error
-     */
-    suspend fun getCertificatesSymmetricKey(network: Network): Result<String> {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (network.validation_url.isEmpty()) {
-                    return@withContext Result.failure(Exception("No validation URL available"))
-                }
-                
-                var symmetricKey: String? = null
-                var errorMessage: String? = null
-                
-                getCertificatesSymmetricKey(
-                    endpoint = network.validation_url,
-                    onSuccess = { key ->
-                        symmetricKey = key
-                        Log.d("NetworkRepository", "Symmetric key retrieved successfully")
-                    },
-                    onError = { error ->
-                        errorMessage = error
-                        Log.e("NetworkRepository", "Error getting symmetric key: $error")
-                    }
-                )
-                
-                errorMessage?.let {
-                    return@withContext Result.failure(Exception(it))
-                }
-                
-                symmetricKey?.let {
-                    Result.success(it)
-                } ?: Result.failure(Exception("Failed to retrieve symmetric key"))
-                
-            } catch (e: Exception) {
-                Log.e("NetworkRepository", "Error getting certificates symmetric key: ${e.message}")
-                Result.failure(Exception("Failed to get symmetric key: ${e.message}"))
-            }
-        }
-    }
-    
-    // Private helper methods
     
     /**
     * Parses QR code string to extract network validation data
     * @param qrCode QR code string (just a URL)
+    * @param context Android context for string resources
     * @return Result containing QrData or error
     */
-    private fun parseQRNetworkData(qrCode: String): Result<QrData> {
+    private fun parseQRNetworkData(qrCode: String, context: Context): Result<String> {
         return try {
             val url = qrCode.trim()
             if (url.startsWith("http://") || url.startsWith("https://")) {
-                Result.success(QrData(validation_url = url))
+                val result = extractURLFromParameter(url)
+                Result.success(result)
             } else {
-                Result.failure(Exception("QR code does not contain a valid URL"))
+                Result.failure(Exception(context.getString(R.string.qr_code_invalid_url)))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Error parsing QR code: ${e.message}"))
+            Result.failure(Exception(context.getString(R.string.error_parsing_qr_code) + ": ${e.message}"))
         }
-    }
-    
-    /**
-     * Data class to hold extracted certificates
-     */
-    private data class ExtractedCertificates(
-        val caCertificate: String,
-        val clientCertificate: String,
-        val privateKey: String
-    )
-    
-    /**
-     * Extracts certificates from KeyStore and converts them to PEM format
-     * @param keyStore KeyStore containing certificates
-     * @param password Password for the KeyStore
-     * @return Result containing extracted certificates or error
-     */
-    private fun extractCertificatesFromKeyStore(keyStore: KeyStore, password: String): Result<ExtractedCertificates> {
-        return try {
-            val aliases = keyStore.aliases()
-            var foundAlias: String? = null
-            var userCert: Certificate? = null
-            var caCert: Certificate? = null
-            var privateKey: PrivateKey? = null
-            var ca: Array<Certificate>? = null
-            // Find all certificates found in the store
-            var contador: Int = 0
-            while (aliases.hasMoreElements()) {
-                val a = aliases.nextElement()
-                // Obtain private key 
-                val pk = keyStore.getKey(a, password.toCharArray())
-                // Obtain certificate chain
-                val chain = keyStore.getCertificateChain(a)
-                // Get user and CA certs from the cert chain
-                if (pk != null && chain != null && chain.size >= 2) {
-                    foundAlias = a
-                    userCert = chain[0]
-                    privateKey = pk as? PrivateKey
-                    caCert = chain[1]
-                    break
-                }
-            }
-
-            // Encode in PEM format
-            val certPem = convertCertificateToPem(userCert as X509Certificate)
-            val caPem  = convertCertificateToPem(caCert as X509Certificate)
-            val privateKeyPem = convertPrivateKeyToPem(privateKey as PrivateKey)
-
-            if (checkCertificates(caPem, certPem, privateKeyPem)) {
-                Result.success(ExtractedCertificates(caPem, certPem, privateKeyPem))
-            } else {
-                Result.failure(Exception("Could not find valid certificate chain with at least 2 certificates"))
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception("Failed to extract certificates: ${e.message}"))
-        }
-    }
-    
-    /**
-     * Converts X509Certificate to PEM format
-     */
-    private fun convertCertificateToPem(certificate: X509Certificate): String {
-        val encoded = Base64.getEncoder().encode(certificate.encoded)
-        val pemCert = StringBuilder()
-        pemCert.append("-----BEGIN CERTIFICATE-----\n")
-        
-        // Split the base64 string into 64-character lines
-        val certString = String(encoded)
-        var i = 0
-        while (i < certString.length) {
-            val end = minOf(i + 64, certString.length)
-            pemCert.append(certString.substring(i, end)).append("\n")
-            i += 64
-        }
-        
-        pemCert.append("-----END CERTIFICATE-----\n")
-        return pemCert.toString()
     }
     
     /**
@@ -400,5 +367,111 @@ class NetworkRepository(private val context: Context) {
         
         pemKey.append("-----END PRIVATE KEY-----\n")
         return pemKey.toString()
+    }
+
+    /**
+     * Generates a CSR for a network and sends it to get signed certificates
+     * @param network Network to generate CSR for
+     * @param commonName Common name for the certificate (usually the user identifier)
+     * @return Result containing success message or error
+     */
+    suspend fun generateAndSubmitCSR(network: Network, commonName: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("NetworkRepository", "Generating CSR for network: ${network.network_common_name}")
+                
+                // Validate network has CSR endpoint
+                if (network.certificates_url.isEmpty()) {
+                    return@withContext Result.failure(Exception(context.getString(R.string.network_has_no_certificate_download_url)))
+                }
+                
+                // Step 1: Generate key pair
+                val keyPair = generateKeyPair()
+                Log.d("NetworkRepository", "Generated key pair for CSR")
+                
+                // Step 2: Generate CSR
+                val csr = generateCSR(keyPair, commonName)
+                val csrPem = csrToPem(csr)
+                Log.d("NetworkRepository", "Generated CSR in PEM format")
+                
+                // Step 3: Send CSR to server
+                var errorMessage: String? = null
+                var csrResponse: CSRResponse? = null
+                
+                sendCSR(
+                    endpoint = network.certificates_url,
+                    csrPem = csrPem,
+                    token = network.certificates_symmetric_key,
+                    context = context,
+                    onSuccess = { response ->
+                        csrResponse = response
+                        Log.d("NetworkRepository", "CSR submitted successfully and certificates received")
+                    },
+                    onError = { apiResult ->
+                        errorMessage = apiResult.message
+                        Log.e("NetworkRepository", "Error submitting CSR: ${apiResult.message}")
+                    }
+                )
+                
+                // Check for submission errors
+                errorMessage?.let {
+                    return@withContext Result.failure(Exception(it))
+                }
+                
+                csrResponse?.let { response ->
+                    // Step 4: Validate response contains required certificates
+                    if (response.signed_cert.isNullOrEmpty() || response.ca_cert.isNullOrEmpty()) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.invalid_csr_response_missing_certificates)))
+                    }
+                    
+                    // Step 5: Convert private key to PEM format
+                    val privateKeyPem = convertPrivateKeyToPem(keyPair.private)
+                    
+                    // Step 6: Validate certificates format
+                    if (!isValidPemCertificate(response.signed_cert) || 
+                        !isValidPemCertificate(response.ca_cert) ||
+                        !isValidPemPrivateKey(privateKeyPem)) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.invalid_certificate_format_from_csr)))
+                    }
+                    
+                    // Step 7: Update network with new certificates
+                    val updatedNetwork = network.copy(
+                        ca_certificate = response.ca_cert,
+                        certificate = response.signed_cert,
+                        private_key = privateKeyPem,
+                        is_certificates_key_set = true,
+                        are_certificiates_decrypted = true
+                    )
+                    
+                    // Step 8: Update in database
+                    val updateResult = updateNetwork(updatedNetwork)
+                    if (updateResult.isFailure) {
+                        return@withContext Result.failure(Exception(context.getString(R.string.failed_to_update_network_with_csr_certificates)))
+                    }
+                    
+                    Log.d("NetworkRepository", "CSR process completed successfully for network: ${network.network_common_name}")
+                    Result.success(context.getString(R.string.csr_generated_and_certificates_obtained_successfully))
+                } ?: Result.failure(Exception(context.getString(R.string.failed_to_receive_csr_response)))
+                
+            } catch (e: Exception) {
+                Log.e("NetworkRepository", "Error generating and submitting CSR: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.csr_generation_failed) + ": ${e.message}"))
+            }
+        }
+    }
+    /**
+     * Validates if a string is a valid PEM certificate
+     */
+    private fun isValidPemCertificate(pemData: String): Boolean {
+        return pemData.startsWith("-----BEGIN CERTIFICATE-----") && 
+               pemData.endsWith("-----END CERTIFICATE-----\n")
+    }
+
+    /**
+     * Validates if a string is a valid PEM private key
+     */
+    private fun isValidPemPrivateKey(pemData: String): Boolean {
+        return pemData.startsWith("-----BEGIN PRIVATE KEY-----") && 
+               pemData.endsWith("-----END PRIVATE KEY-----\n")
     }
 }

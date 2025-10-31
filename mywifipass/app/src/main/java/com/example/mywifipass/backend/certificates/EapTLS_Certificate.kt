@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
 package app.mywifipass.backend.certificates
 
 import java.security.PrivateKey
@@ -45,35 +54,35 @@ class EapTLSCertificate(caInputStream: InputStream,
     }
 }
 
-fun hexToSecretKey(hex: String): SecretKey {
-    if (hex.isEmpty()) {
-        throw IllegalArgumentException("Hex string cannot be empty")
-    }
-    if (!hex.matches(Regex("^[0-9a-fA-F]+$"))) {
-        throw IllegalArgumentException("Invalid hex string format: $hex")
-    }
+// fun hexToSecretKey(hex: String): SecretKey {
+//     if (hex.isEmpty()) {
+//         throw IllegalArgumentException("Hex string cannot be empty")
+//     }
+//     if (!hex.matches(Regex("^[0-9a-fA-F]+$"))) {
+//         throw IllegalArgumentException("Invalid hex string format: $hex")
+//     }
 
-    return try {
-        val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-        SecretKeySpec(bytes, 0, bytes.size, "AES")
-    } catch (e: NumberFormatException) {
-        throw IllegalArgumentException("Failed to parse hex string: $hex", e)
-    } catch (e: Exception) {
-        throw RuntimeException("Unexpected error while converting hex to SecretKey", e)
-    }
-}
+//     return try {
+//         val bytes = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+//         SecretKeySpec(bytes, 0, bytes.size, "AES")
+//     } catch (e: NumberFormatException) {
+//         throw IllegalArgumentException("Failed to parse hex string: $hex", e)
+//     } catch (e: Exception) {
+//         throw RuntimeException("Unexpected error while converting hex to SecretKey", e)
+//     }
+// }
 
-fun decryptAES256(
-    encryptedText: String,
-    secretKey: SecretKey,
-): String {
-    val textToDecrypt = Base64.decode(encryptedText, Base64.DEFAULT)
-    val cipher = Cipher.getInstance("AES/ECB/PKCS7PADDING")
-    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+// fun decryptAES256(
+//     encryptedText: String,
+//     secretKey: SecretKey,
+// ): String {
+//     val textToDecrypt = Base64.decode(encryptedText, Base64.DEFAULT)
+//     val cipher = Cipher.getInstance("AES/ECB/PKCS7PADDING")
+//     cipher.init(Cipher.DECRYPT_MODE, secretKey)
 
-    val decrypt = cipher.doFinal(textToDecrypt)
-    return String(decrypt)
-}
+//     val decrypt = cipher.doFinal(textToDecrypt)
+//     return String(decrypt)
+// }
 
 fun checkCertificate(certificate: String) : Boolean{
     return (certificate.startsWith("-----BEGIN CERTIFICATE-----") && certificate.endsWith("-----END CERTIFICATE-----\n"))

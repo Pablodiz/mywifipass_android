@@ -1,4 +1,13 @@
-package app.mywifipass.model.data
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2025, Pablo Diz de la Cruz
+ * All rights reserved.
+ *
+ * This file is licensed under the BSD 3-Clause License.
+ * For full license text, see the LICENSE file in the root directory of this project.
+ */
+
+ package app.mywifipass.model.data
 
 import kotlinx.serialization.*
 import androidx.room.Entity
@@ -11,16 +20,9 @@ data class Network(
     @Transient
     val id: Int = 0,
     
-    // @SerialName("name")
-    // val user_name: String,
+    @SerialName("email")
+    val user_email: String,
     
-    // @SerialName("email")
-    // val user_email: String,
-    
-    // @SerialName("id_document")
-    // val user_id_document: String,
-    
-    // val user_uuid: String, //useless
     val network_common_name: String, 
     val ssid: String,
     val location: String="",
@@ -28,12 +30,13 @@ data class Network(
     val end_date: String,
     val description: String="",
     val location_name: String,
-    // val location_uuid: String, // useless
     val validation_url: String,
     val certificates_url: String,
     var has_downloaded_url: String,
+    var check_user_authorized_url: String,
     val certificates_symmetric_key: String,
-    
+    var is_user_authorized: Boolean,
+
     @Transient
     var ca_certificate: String = "",
     @Transient
