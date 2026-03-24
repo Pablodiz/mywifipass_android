@@ -175,6 +175,13 @@ fun AdminScreen(
 class AdminActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Security: Prevent screenshots/screen recording of admin panel and QR validation data
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        
         setContent {
             MyWifiPassTheme {
                 Surface(

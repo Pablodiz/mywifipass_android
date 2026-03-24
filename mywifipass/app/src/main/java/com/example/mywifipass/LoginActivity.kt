@@ -132,6 +132,13 @@ fun LoginScreen(modifier: Modifier = Modifier) {
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Security: Prevent screenshots/screen recording of login credentials
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        
         setContent {
             MyWifiPassTheme {
                 Surface(

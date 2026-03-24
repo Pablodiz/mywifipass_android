@@ -32,6 +32,12 @@ class NetworkDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Security: Prevent screenshots/screen recording of network details and certificates
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        
         // Get the network_id from the intent
         val networkId = intent.getIntExtra("network_id", -1)
         
