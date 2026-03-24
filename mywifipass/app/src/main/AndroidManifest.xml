@@ -9,9 +9,9 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- usesCleartextTraffic = permitir HTTP (no S) -->
+    <!-- Network security configuration: HTTPS by default, HTTP only for private/local networks -->
     <application
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
