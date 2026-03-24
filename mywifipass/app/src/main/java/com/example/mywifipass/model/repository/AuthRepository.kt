@@ -10,6 +10,8 @@
 package app.mywifipass.model.repository
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import app.mywifipass.model.data.LoginCredentials
 import app.mywifipass.backend.api_petitions.loginPetition
 import kotlinx.coroutines.Dispatchers
@@ -17,10 +19,21 @@ import kotlinx.coroutines.withContext
 
 class AuthRepository(private val context: Context) {
 
-    // SharedPreferences keys
+    // EncryptedSharedPreferences keys and initialization
     companion object {
         private const val PREFS_NAME = "AppPreferences"
         private const val TOKEN_KEY = "auth_token"
+        
+        private fun getEncryptedSharedPreferences(context: Context) =
+            EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build(),
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
     }
     
     /**
@@ -62,24 +75,30 @@ class AuthRepository(private val context: Context) {
     }
     
     /**
-     * Saves authentication token to SharedPreferences
+     * Saves authentication token to encrypted SharedPreferences
      * @param token Authentication token to save
      */
     private fun saveToken(token: String) {
-        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        with(sharedPreferences.edit()) {
+        val encryptedPrefs = getEncryptedSharedPreferences(context)
+        with(encryptedPrefs.edit()) {
             putString(TOKEN_KEY, token)
             apply()
         }
     }
     
     /**
-     * Retrieves stored authentication token
+     * Retrieves stored authentication token from encrypted storage
      * @return Stored token or null if not found
      */
     fun getStoredToken(): String? {
-        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return sharedPreferences.getString(TOKEN_KEY, null)
+        return try {
+            val encryptedPrefs = getEncryptedSharedPreferences(context)
+            encryptedPrefs.getString(TOKEN_KEY, null)
+        } catch (e: Exception) {
+            // If decryption fails (e.g., corrupted data), clear and return null
+            clearToken()
+            null
+        }
     }
     
     /**
@@ -94,10 +113,14 @@ class AuthRepository(private val context: Context) {
      * Clears the stored authentication token (logout)
      */
     fun clearToken() {
-        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        with(sharedPreferences.edit()) {
-            remove(TOKEN_KEY)
-            apply()
+        try {
+            val encryptedPrefs = getEncryptedSharedPreferences(context)
+            with(encryptedPrefs.edit()) {
+                remove(TOKEN_KEY)
+                apply()
+            }
+        } catch (e: Exception) {
+            // Silently fail if cannot access preferences
         }
     }
     
