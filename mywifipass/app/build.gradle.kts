@@ -83,6 +83,8 @@ dependencies {
     ksp("androidx.room:room-compiler:$room_version") 
     implementation("androidx.room:room-ktx:$room_version") 
     implementation("androidx.core:core-ktx:1.9.0")
+    // Security: Encrypted SharedPreferences for token storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation(platform("androidx.compose:compose-bom:2023.03.00"))
