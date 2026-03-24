@@ -49,30 +49,37 @@ typealias ApiErrorCallback = (ApiResult) -> Unit
 // Functions for handling different types of errors
 
 private fun handleUnexpectedError(statusCode: Int, body: String, context: Context, operation: String): ApiResult {
-    val fullTrace = "Operation: $operation\nStatus Code: $statusCode\nResponse Body: $body\nTimestamp: ${System.currentTimeMillis()}"
-    
-    
+    // Log complete details server-side (Logcat), but don't expose to user
+    android.util.Log.e(
+        "ApiPetitions",
+        "Error in operation: $operation\nStatus Code: $statusCode\nResponse Body: $body"
+    )
     
     return ApiResult(
         title = context.getString(R.string.unexpected_error_title),
         message = context.getString(R.string.server_error_message),
         isSuccess = false,
         errorCode = statusCode,
-        showTrace = true,
-        fullTrace = fullTrace
+        showTrace = false,  // Don't show trace to user
+        fullTrace = null    // Don't send details to UI
     )
 }
 
 private fun handleNetworkException(exception: Exception, context: Context, operation: String): ApiResult {
-    val fullTrace = "Operation: $operation\nException: ${exception.javaClass.simpleName}\nMessage: ${exception.message}\nStackTrace: ${exception.stackTraceToString()}\nTimestamp: ${System.currentTimeMillis()}"
+    // Log complete details server-side (Logcat), but don't expose to user
+    android.util.Log.e(
+        "ApiPetitions",
+        "Network exception in operation: $operation\nException Type: ${exception.javaClass.simpleName}\nMessage: ${exception.message}",
+        exception
+    )
     
     return ApiResult(
         title = context.getString(R.string.network_error_title), 
         message = context.getString(R.string.network_connection_error),
         isSuccess = false,
         errorCode = null,
-        showTrace = true,
-        fullTrace = fullTrace
+        showTrace = false,  // Don't show trace to user
+        fullTrace = null    // Don't send details to UI
     )
 }
 
