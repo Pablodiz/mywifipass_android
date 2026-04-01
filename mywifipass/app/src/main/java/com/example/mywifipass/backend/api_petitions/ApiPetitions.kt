@@ -542,3 +542,48 @@ suspend fun checkUserAuthorized(
         }
     }
 }
+
+/**
+ * Get FIDO2 authentication options using complete URL from backend
+ * @param completeUrl Complete URL to FIDO2 authenticate start endpoint (passed from backend)
+ * @param email User email for authentication
+ * @param context Android context
+ * @return JSON string with authentication options
+ */
+suspend fun fido2AuthenticateStart(
+    completeUrl: String,
+    email: String,
+    context: Context
+): String {
+    val jsonString = "{\"email\": \"$email\"}"
+    val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
+    if (httpResponse.statusCode == 200) {
+        return httpResponse.body
+    } else {
+        throw Exception("Failed to get FIDO2 auth options: ${httpResponse.statusCode}")
+    }
+}
+
+
+/**
+ * Finish FIDO2 authentication using complete URL from backend
+ * @param completeUrl Complete URL to FIDO2 authenticate finish endpoint (passed from backend)
+ * @param email User email for authentication
+ * @param credentialJson Credential response from client
+ * @param context Android context
+ * @return Success message from server
+ */
+suspend fun fido2AuthenticateFinish(
+    completeUrl: String,
+    email: String,
+    credentialJson: String,
+    context: Context
+): String {
+    val jsonString = "{\"email\": \"$email\", \"credential\": $credentialJson}"
+    val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
+    if (httpResponse.statusCode in 200..299) {
+        return httpResponse.body
+    } else {
+        throw Exception("Failed to finish FIDO2 auth: ${httpResponse.statusCode}")
+    }
+}

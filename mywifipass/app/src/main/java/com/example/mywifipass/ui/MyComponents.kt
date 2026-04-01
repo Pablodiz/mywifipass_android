@@ -64,6 +64,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -494,6 +495,8 @@ fun NetworkDetailScreen(
         val deleteFailedText = stringResource(R.string.delete_failed)
         val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
         val connectionFailedText = stringResource(R.string.connection_failed)
+        val fido2ValidationSuccessfulText = stringResource(R.string.fido2_validation_successful)
+        val fido2ValidationFailedText = stringResource(R.string.fido2_validation_failed)
 
         val buttonState by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
             mutableStateOf(
@@ -674,6 +677,38 @@ fun NetworkDetailScreen(
                             }
                         }
                 )
+            }
+            
+            // FIDO2 Validation Button - shows if network requires FIDO2 and user is NOT authorized
+            if (network.requires_fido2_validation && !network.is_user_authorized) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val result = mainController.validateWithFido2(network, context)
+                            if (result.isSuccess) {
+                                ShowText.toastDirect(context, fido2ValidationSuccessfulText)
+                            } else {
+                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: fido2ValidationFailedText)
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = "FIDO2",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(end = 8.dp)
+                    )
+                    Text(stringResource(R.string.fido2_validation))
+                }
             }
             
             // Action button for connecting/configuring network - always at bottom

@@ -25,6 +25,7 @@ import app.mywifipass.backend.api_petitions.ApiResult
 
 import app.mywifipass.backend.database.DataSource
 import app.mywifipass.R
+import app.mywifipass.fido2.Fido2Service
 
 /**
  * MainController handles the main application business logic
@@ -34,6 +35,7 @@ class MainController(private val context: Context) {
     
     private val networkRepository = NetworkRepository(context)
     private val dataSource = app.mywifipass.backend.database.DataSource(context)
+    private val fido2Service = Fido2Service()
     
     /**
      * Retrieves all networks from the database
@@ -520,6 +522,50 @@ class MainController(private val context: Context) {
                 showTrace = true,
                 fullTrace = "MainController Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
             )
+        }
+    }
+
+    /**
+     * Validates network using FIDO2 biometric authentication
+     * @param network Network to validate
+     * @param context Android context for getting Activity
+     * @return Result containing success message or error
+     */
+    suspend fun validateWithFido2(network: Network, context: Context): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("MainController", "Starting FIDO2 validation for network: ${network.network_common_name}")
+                
+                val startUrl = network.fido2_authenticate_start_url
+                val finishUrl = network.fido2_authenticate_finish_url
+                val username = network.user_email
+                
+                if (username.isEmpty()) {
+                    throw Exception("User email not available")
+                }
+                
+                if (startUrl.isEmpty() || finishUrl.isEmpty()) {
+                    throw Exception("FIDO2 URLs not available")
+                }
+                
+                Log.d("MainController", "FIDO2 auth: startUrl=$startUrl, username=$username")
+                
+                // Call FIDO2 service to authenticate user
+                val result = fido2Service.authenticateForNetwork(
+                    context,
+                    startUrl,
+                    finishUrl,
+                    username,
+                    network.network_common_name
+                )
+                
+                Log.d("MainController", "FIDO2 validation completed successfully for: ${network.network_common_name}")
+                Result.success(result)
+                
+            } catch (e: Exception) {
+                Log.e("MainController", "Error during FIDO2 validation: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.fido2_validation_failed) + ": ${e.message}"))
+            }
         }
     }
 }
