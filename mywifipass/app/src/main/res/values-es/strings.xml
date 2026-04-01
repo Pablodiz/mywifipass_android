@@ -213,4 +213,9 @@
     <string name="invalid_json_format_error">Formato JSON inválido recibido del servidor</string>
     <string name="certificate_processing_error">Error procesando certificados</string>
     <string name="authentication_error">Error de autenticación</string>
+    
+    <!-- FIDO2 Validation -->
+    <string name="fido2_validation">Validación FIDO2</string>
+    <string name="fido2_validation_successful">Validación FIDO2 Exitosa</string>
+    <string name="fido2_validation_failed">Fallo de Validación FIDO2</string>
 </resources>
