@@ -16,4 +16,4 @@ run.sh
 *.kts
 *.jks
 */.env
-/wip_docs/
+wip_docs/

@@ -67,4 +67,7 @@
     <string name="success_200_check_user_authorized_message">Tienes autorización para conectarte a esta red</string>
     <string name="error_404_check_user_authorized_title">Usuario No Encontrado</string>
     <string name="error_404_check_user_authorized_message">No se encontró tu información de usuario. Contacta con el organizador del evento.</string>
+
+    <!-- SSE authorization stream -->
+    <string name="error_authorization_stream_reopen_pass_message">Hubo un problema de conexión mientras esperábamos la autorización. Vuelve a abrir tu pase Wi-Fi e inténtalo de nuevo.</string>
 </resources>
