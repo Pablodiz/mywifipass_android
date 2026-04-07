@@ -61,14 +61,10 @@ class MainController(private val context: Context) {
             if (networkResult.isFailure) {
                 return networkResult
             }
-            
+
+            // The Wi-Fi Pass installation workflow is handled by the detail screen loop after the pass is added.
+            // Before, we blocked the pass download UX with authorization/CSR/connect flow.
             val network = networkResult.getOrThrow()
-            try {
-                checkAuthorizedAndConnect(network, wifiManager)
-            } catch (e: Exception) {
-                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
-            }
-            
             Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from QR: ${e.message}")
@@ -87,14 +83,9 @@ class MainController(private val context: Context) {
             if (networkResult.isFailure) {
                 return networkResult
             }
-            
+
+            // Keep add/download operation fast and deterministic.
             val network = networkResult.getOrThrow()
-            try {
-                checkAuthorizedAndConnect(network, wifiManager)
-            } catch (e: Exception) {
-                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
-            }
-            
             Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from URL: ${e.message}")
@@ -105,11 +96,15 @@ class MainController(private val context: Context) {
     
     /**
      * Connects to a WiFi network using EAP-TLS configuration
+     * and returns the updated in-memory Network state.
+     *
+     * Some runtime flags in Network are transient and should not be sourced
+     * from DB right after update (they are not persisted in Room schema).
      * @param network Network to connect to
      * @param wifiManager Android WifiManager instance
-     * @return Result containing success message or error
+     * @return Result containing updated Network or error
      */
-    suspend fun connectToNetwork(network: Network, wifiManager: WifiManager): Result<String> {
+    suspend fun connectToNetwork(network: Network, wifiManager: WifiManager): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("MainController", "Attempting to connect to network: ${network.ssid}")
@@ -145,9 +140,9 @@ class MainController(private val context: Context) {
                 if (updateResult.isFailure) {
                     Log.w("MainController", "Failed to update network status after connection")
                 }
-                
+
                 Log.d("MainController", "Successfully configured connection to: ${network.ssid}")
-                Result.success(context.getString(R.string.network_connection_configured_successfully))
+                Result.success(updatedNetwork)
                 
             } catch (e: Exception) {
                 Log.e("MainController", "Error connecting to network: ${e.message}")
@@ -454,23 +449,8 @@ class MainController(private val context: Context) {
         return try {
             Log.d("MainController", "Adding network from URL with ApiResult: $url")
             val result = networkRepository.addNetworkFromUrlWithApiResult(url)
-            
-            if (result.isSuccess) {
-                // Get the added network from database to attempt auto-connection
-                val networks = networkRepository.getNetworksFromDatabase()
-                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
-                
-                if (addedNetwork != null) {
-                    try {
-                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
-                        Log.d("MainController", "Successfully added network and attempted auto-connection")
-                    } catch (e: Exception) {
-                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
-                        // Don't fail the whole operation if connection fails
-                    }
-                }
-            }
-            
+
+            // Keep API-result add flow focused on pass download only.
             result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromUrlWithApiResult: ${e.message}")
@@ -493,23 +473,8 @@ class MainController(private val context: Context) {
         return try {
             Log.d("MainController", "Adding network from QR with ApiResult: $qrCode")
             val result = networkRepository.addNetworkFromQRWithApiResult(qrCode)
-            
-            if (result.isSuccess) {
-                // Get the added network from database to attempt auto-connection
-                val networks = networkRepository.getNetworksFromDatabase()
-                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
-                
-                if (addedNetwork != null) {
-                    try {
-                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
-                        Log.d("MainController", "Successfully added network and attempted auto-connection")
-                    } catch (e: Exception) {
-                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
-                        // Don't fail the whole operation if connection fails
-                    }
-                }
-            }
-            
+
+            // Keep API-result add flow focused on pass download only.
             result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromQRWithApiResult: ${e.message}")

@@ -463,8 +463,6 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
 }
 
 
-data class ButtonState(val text: String, val isBlocked: Boolean)
-
 @Composable
 fun NetworkDetailScreen(
     modifier:Modifier = Modifier, 
@@ -487,48 +485,52 @@ fun NetworkDetailScreen(
         var menuExpanded by remember { mutableStateOf(false) }
         
         // Get strings in composable context
-        val configureConnectionText = stringResource(R.string.configure_connection)
-        val connectedText = stringResource(R.string.connected)
-        val notConnectedYetText = stringResource(R.string.not_connected_yet)
         val deleteText = stringResource(R.string.delete)
         val deleteFailedText = stringResource(R.string.delete_failed)
         val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
         val connectionFailedText = stringResource(R.string.connection_failed)
 
-        val buttonState by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
-            mutableStateOf(
-                when {
-                    network.are_certificiates_decrypted && !network.is_connection_configured -> 
-                        ButtonState(configureConnectionText, false)
-                    network.is_connection_configured -> 
-                        ButtonState(connectedText, true)
-                    else -> 
-                        ButtonState(notConnectedYetText, true)
-                }
-            )
-        }
-
         LaunchedEffect(selectedNetworkId) {
             if (!network.is_connection_configured && !network.are_certificiates_decrypted){
                 while (true) {
                     try {
-                        val result = mainController.checkAuthorizedAndSendCSR(network)
+                        val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                             currentNetwork = networks.find { it.id == selectedNetworkId }
                             break
                         } else {
-                            throw result.exceptionOrNull() ?: Exception("Failed to download certificates")
+                            throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
                         }
                     } catch (e: Exception) {
                         // Continue trying
-                        // Toast.makeText(
-                        //     context,
-                        //     "${e.message}",
-                        //     Toast.LENGTH_SHORT
-                        // ).show()
                     }
-                    delay(10_000L) // Wait 10 seconds before trying again
+                    delay(5_000L) // Wait 5 seconds before trying again
+                }
+            }
+        }
+
+        // Auto-configure once certificates are available.
+        LaunchedEffect(network.are_certificiates_decrypted, network.is_connection_configured) {
+            if (network.are_certificiates_decrypted && !network.is_connection_configured) {
+                var attempts = 0
+                val maxAttempts = 6 // ~12 seconds total retry window
+                while (attempts < maxAttempts) {
+                    val result = mainController.connectToNetwork(network, wifiManager)
+                    if (result.isSuccess) {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                            ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+                        }
+                        currentNetwork = result.getOrNull()
+                        break
+                    }
+
+                    attempts += 1
+                    if (attempts >= maxAttempts) {
+                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+                        break
+                    }
+                    delay(2_000L)
                 }
             }
         }
@@ -659,7 +661,8 @@ fun NetworkDetailScreen(
                     textDecoration = TextDecoration.Underline,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .navigationBarsPadding()
+                        .padding(16.dp)
                         .clickable {
                             // Reconfigure the network
                             scope.launch {
@@ -675,36 +678,39 @@ fun NetworkDetailScreen(
                         }
                 )
             }
+
+
             
             // Action button for connecting/configuring network - always at bottom
-            Button(
-                enabled = !buttonState.isBlocked,
-                onClick = {
-                    if (!network.is_connection_configured && network.are_certificiates_decrypted) {
-                        scope.launch {
-                            val result = mainController.connectToNetwork(network, wifiManager)
-                            if (result.isSuccess) {
-                                // Only show success message in Android 10-
-                                // As in 11+, the system has it's own way of notifying users
-                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                                    ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
-                                }
-                                // Reload the network to get updated state
-                                val networks = mainController.getNetworks().getOrNull() ?: emptyList()
-                                currentNetwork = networks.find { it.id == selectedNetworkId }
-                            } else {
-                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(16.dp)
-                ) {
-                Text(buttonState.text)
-            }
+            // DEPRECATED, now the configuration is done automatically
+            // Button(
+            //     enabled = !buttonState.isBlocked,
+            //     onClick = {
+            //         if (!network.is_connection_configured && network.are_certificiates_decrypted) {
+            //             scope.launch {
+            //                 val result = mainController.connectToNetwork(network, wifiManager)
+            //                 if (result.isSuccess) {
+            //                     // Only show success message in Android 10-
+            //                     // As in 11+, the system has it's own way of notifying users
+            //                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            //                         ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+            //                     }
+            //                     // Reload the network to get updated state
+            //                     val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+            //                     currentNetwork = networks.find { it.id == selectedNetworkId }
+            //                 } else {
+            //                     ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+            //                 }
+            //             }
+            //         }
+            //     },
+            //     modifier = Modifier
+            //          .fillMaxWidth()
+            //          .navigationBarsPadding()
+            //          .padding(16.dp)
+            //     ) {
+            //     Text(buttonState.text)
+            // }
         }
     }
 }
