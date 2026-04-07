@@ -498,15 +498,44 @@ fun NetworkDetailScreen(
                 while (true) {
                     try {
                         val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
+                        val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                             currentNetwork = networks.find { it.id == selectedNetworkId }
                             break
                         } else {
                             throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
+                            throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
                         }
                     } catch (e: Exception) {
                         // Continue trying
+                    }
+                    delay(5_000L) // Wait 5 seconds before trying again
+                }
+            }
+        }
+
+        // Auto-configure once certificates are available.
+        LaunchedEffect(network.are_certificiates_decrypted, network.is_connection_configured) {
+            if (network.are_certificiates_decrypted && !network.is_connection_configured) {
+                var attempts = 0
+                val maxAttempts = 6 // ~12 seconds total retry window
+                while (attempts < maxAttempts) {
+                    val result = mainController.connectToNetwork(network, wifiManager)
+                    if (result.isSuccess) {
+                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                            ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+                        }
+                        currentNetwork = result.getOrNull()
+                        break
+                    }
+
+                    attempts += 1
+                    if (attempts >= maxAttempts) {
+                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+                        break
+                    }
+                    delay(2_000L)
                     }
                     delay(5_000L) // Wait 5 seconds before trying again
                 }
@@ -664,6 +693,8 @@ fun NetworkDetailScreen(
                     textDecoration = TextDecoration.Underline,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(16.dp)
                         .navigationBarsPadding()
                         .padding(16.dp)
                         .clickable {
