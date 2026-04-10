@@ -345,6 +345,8 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     // Variables for the UI state
     var apiError by remember { mutableStateOf<app.mywifipass.backend.api_petitions.ApiResult?>(null) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+    val fido2ValidationSuccessfulText = stringResource(R.string.fido2_validation_successful)
+    val fido2ValidationFailedText = stringResource(R.string.fido2_validation_failed)
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
@@ -450,8 +452,24 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         networks = connections,
         isLoading = isLoading,
         onNetworkClick = { network ->
-            // Navigate to NetworkDetailActivity instead of showing dialog
-            NetworkDetailActivity.start(context, network.id)
+            scope.launch {
+                if (network.requires_fido2_validation && !network.is_user_authorized) {
+                    val result = mainController.validateWithFido2(network, context)
+                    if (result.isFailure) {
+                        ShowText.toastDirect(
+                            context,
+                            result.exceptionOrNull()?.message ?: fido2ValidationFailedText
+                        )
+                        return@launch
+                    }
+
+                    ShowText.toastDirect(context, fido2ValidationSuccessfulText)
+                    refreshNetworks()
+                }
+
+                // Navigate to detail after list-level FIDO2 gate.
+                NetworkDetailActivity.start(context, network.id)
+            }
         },
         onScanQRClick = { showQrScanner = true },
         onQRResult = handleQRResult,        // For QR scanning
@@ -490,14 +508,15 @@ fun NetworkDetailScreen(
         val deleteFailedText = stringResource(R.string.delete_failed)
         val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
         val connectionFailedText = stringResource(R.string.connection_failed)
-        val fido2ValidationSuccessfulText = stringResource(R.string.fido2_validation_successful)
-        val fido2ValidationFailedText = stringResource(R.string.fido2_validation_failed)
+        val needsFido2Validation = network.requires_fido2_validation && !network.is_user_authorized
 
         LaunchedEffect(selectedNetworkId) {
-            if (!network.is_connection_configured && !network.are_certificiates_decrypted){
+            if (!network.is_connection_configured &&
+                !network.are_certificiates_decrypted &&
+                !needsFido2Validation
+            ){
                 while (true) {
                     try {
-                        val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
                         val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
@@ -505,37 +524,9 @@ fun NetworkDetailScreen(
                             break
                         } else {
                             throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
-                            throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
                         }
                     } catch (e: Exception) {
                         // Continue trying
-                    }
-                    delay(5_000L) // Wait 5 seconds before trying again
-                }
-            }
-        }
-
-        // Auto-configure once certificates are available.
-        LaunchedEffect(network.are_certificiates_decrypted, network.is_connection_configured) {
-            if (network.are_certificiates_decrypted && !network.is_connection_configured) {
-                var attempts = 0
-                val maxAttempts = 6 // ~12 seconds total retry window
-                while (attempts < maxAttempts) {
-                    val result = mainController.connectToNetwork(network, wifiManager)
-                    if (result.isSuccess) {
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                            ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
-                        }
-                        currentNetwork = result.getOrNull()
-                        break
-                    }
-
-                    attempts += 1
-                    if (attempts >= maxAttempts) {
-                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
-                        break
-                    }
-                    delay(2_000L)
                     }
                     delay(5_000L) // Wait 5 seconds before trying again
                 }
@@ -612,7 +603,7 @@ fun NetworkDetailScreen(
                 }
             )
 
-            if (!network.is_user_authorized){
+            if (!network.is_user_authorized && !network.requires_fido2_validation){
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -628,8 +619,23 @@ fun NetworkDetailScreen(
                             .height(200.dp)
                     )
                 }
-            } else {
-                // Success message when network is authorized
+            } else if (network.requires_fido2_validation && !network.is_user_authorized) {
+                // FIDO2-required networks should not show "configured" before authorization.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.fido2_validation),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (network.is_user_authorized || network.is_connection_configured) {
+                // Success message only when effectively authorized/configured.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -667,6 +673,9 @@ fun NetworkDetailScreen(
                         )
                     }
                 }
+            } else {
+                // Keep layout stable without showing incorrect success status.
+                Spacer(modifier = Modifier.height(1.dp))
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -695,8 +704,6 @@ fun NetworkDetailScreen(
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(16.dp)
-                        .navigationBarsPadding()
-                        .padding(16.dp)
                         .clickable {
                             // Reconfigure the network
                             scope.launch {
@@ -715,37 +722,7 @@ fun NetworkDetailScreen(
 
 
             
-            // FIDO2 Validation Button - shows if network requires FIDO2 and user is NOT authorized
-            if (network.requires_fido2_validation && !network.is_user_authorized) {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val result = mainController.validateWithFido2(network, context)
-                            if (result.isSuccess) {
-                                ShowText.toastDirect(context, fido2ValidationSuccessfulText)
-                            } else {
-                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: fido2ValidationFailedText)
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = "FIDO2",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .padding(end = 8.dp)
-                    )
-                    Text(stringResource(R.string.fido2_validation))
-                }
-            }
+            // FIDO2 validation is now launched directly when entering this screen.
             
             // Action button for connecting/configuring network - always at bottom
             // DEPRECATED, now the configuration is done automatically

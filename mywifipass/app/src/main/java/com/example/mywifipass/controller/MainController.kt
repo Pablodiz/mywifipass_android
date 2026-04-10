@@ -523,6 +523,13 @@ class MainController(private val context: Context) {
                     username,
                     network.network_common_name
                 )
+
+                // Persist local authorization state so the app does not ask for FIDO2 again.
+                val updatedNetwork = network.copy(is_user_authorized = true)
+                val updateResult = networkRepository.updateNetwork(updatedNetwork)
+                if (updateResult.isFailure) {
+                    throw Exception(context.getString(R.string.failed_to_update_network))
+                }
                 
                 Log.d("MainController", "FIDO2 validation completed successfully for: ${network.network_common_name}")
                 Result.success(result)
