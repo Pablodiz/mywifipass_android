@@ -54,6 +54,8 @@
     <string name="failed_to_load_networks">Failed to load networks</string>
     <string name="network_deleted_successfully">Network deleted successfully</string>
     <string name="delete_failed">Delete failed</string>
+    <string name="delete_pass_title">Delete WiFi Pass?</string>
+    <string name="delete_pass_message">Delete the pass for \'%s\'? This cannot be undone.</string>
     <string name="connection_configured_successfully">Connection configured successfully</string>
     <string name="connection_failed">Connection failed</string>
     <string name="no_wifi_passes_added_yet">"No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one."</string>

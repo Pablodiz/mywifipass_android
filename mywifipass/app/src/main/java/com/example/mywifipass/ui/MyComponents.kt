@@ -259,6 +259,7 @@ fun MainScreen(
     networks: List<Network> = emptyList(),
     isLoading: Boolean = false,
     onNetworkClick: (Network) -> Unit = {},
+    onNetworkLongClick: (Network) -> Unit = {},
     onScanQRClick: () -> Unit = {},
     onQRResult: (String) -> Unit = {},
     showQrScanner: Boolean = false,
@@ -298,7 +299,8 @@ fun MainScreen(
                 } else {
                     MyCardList(
                         dataList = networks,
-                        onItemClick = onNetworkClick
+                        onItemClick = onNetworkClick,
+                        onItemLongClick = onNetworkLongClick,
                     )
                 }
             }
@@ -350,6 +352,7 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var networkToDelete by remember { mutableStateOf<Network?>(null) }
 
     // Function to refresh networks list - define it first
     val refreshNetworks : () -> Unit = {
@@ -471,12 +474,49 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
                 NetworkDetailActivity.start(context, network.id)
             }
         },
+        onNetworkLongClick = { network -> networkToDelete = network },
         onScanQRClick = { showQrScanner = true },
-        onQRResult = handleQRResult,        // For QR scanning
+        onQRResult = handleQRResult,
         showQrScanner = showQrScanner,
         onQRScannerDismiss = { showQrScanner = false },
     )
-    
+
+    networkToDelete?.let { network ->
+        val deleteTitle = stringResource(R.string.delete_pass_title)
+        val deleteMessage = stringResource(R.string.delete_pass_message, network.location_name)
+        val deleteLabel = stringResource(R.string.delete)
+        val cancelLabel = stringResource(R.string.cancel)
+        val deletedText = stringResource(R.string.network_deleted_successfully)
+        val deleteFailedText = stringResource(R.string.delete_failed)
+
+        AlertDialog(
+            onDismissRequest = { networkToDelete = null },
+            title = { Text(deleteTitle) },
+            text = { Text(deleteMessage) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val target = network
+                    networkToDelete = null
+                    scope.launch {
+                        val result = mainController.deleteNetwork(target, wifiManager)
+                        if (result.isSuccess) {
+                            refreshNetworks()
+                            ShowText.toastDirect(context, deletedText)
+                        } else {
+                            ShowText.toastDirect(
+                                context,
+                                result.exceptionOrNull()?.message ?: deleteFailedText
+                            )
+                        }
+                    }
+                }) { Text(deleteLabel) }
+            },
+            dismissButton = {
+                TextButton(onClick = { networkToDelete = null }) { Text(cancelLabel) }
+            }
+        )
+    }
+
     // Add the NotificationHandler to show dialogs, toasts, etc.
     NotificationHandler(context = context)
 }

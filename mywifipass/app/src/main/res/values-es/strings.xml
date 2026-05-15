@@ -54,6 +54,8 @@
     <string name="failed_to_load_networks">Error al cargar las redes</string>
     <string name="network_deleted_successfully">Red eliminada exitosamente</string>
     <string name="delete_failed">Error al eliminar</string>
+    <string name="delete_pass_title">¿Eliminar pase Wi-Fi?</string>
+    <string name="delete_pass_message">¿Eliminar el pase de \'%s\'? Esta acción no se puede deshacer.</string>
     <string name="connection_configured_successfully">Conexión configurada exitosamente</string>
     <string name="connection_failed">Error de conexión</string>
     <string name="no_wifi_passes_added_yet">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
