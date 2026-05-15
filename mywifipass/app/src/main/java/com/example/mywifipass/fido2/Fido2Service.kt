@@ -67,16 +67,19 @@ class Fido2Service {
     ): String {
         try {
             Log.d(TAG, "Starting FIDO2 authentication for network: $networkName")
-            
-            // 1: Request authentication options from server
-            val optionsJson = getAuthenticationOptions(startUrl, username, context)
-            
-            // 2: Get credential using Android Credentials API
+
+            // Step 1: Request authentication options from server.
+            // session_id is non-null in discoverable mode (username is empty),
+            // null in legacy email mode.
+            val (optionsJson, sessionId) = getAuthenticationOptions(startUrl, username, context)
+
+            // Step 2: Show biometric/passkey prompt via Android Credential Manager.
             val credentialResponseJson = getCredentialWithFido2(activity, optionsJson)
-            
-            // 3: Send credential response to server for verification
-            verifyAuthentication(finishUrl, username, credentialResponseJson, context)
-            
+
+            // Step 3: Send assertion to server. In discoverable mode the session_id
+            // is included instead of the email so the server can find the challenge.
+            verifyAuthentication(finishUrl, username, credentialResponseJson, context, sessionId)
+
             Log.d(TAG, "FIDO2 authentication completed successfully for: $networkName")
             return success_message
             
@@ -84,8 +87,13 @@ class Fido2Service {
             Log.e(TAG, "FIDO2 authentication cancelled by user", e)
             throw Exception(cancelled_message)
         } catch (e: GetCredentialException) {
-            Log.e(TAG, "Credential retrieval failed: ${e.message}", e)
-            throw Exception("Error al obtener credencial: ${e.message}")
+            Log.e(TAG, "=== CREDENTIAL MANAGER ERROR ===")
+            Log.e(TAG, "Exception class: ${e.javaClass.name}")
+            Log.e(TAG, "Exception type:  ${e.type}")
+            Log.e(TAG, "Exception message: ${e.message}")
+            Log.e(TAG, "Cause: ${e.cause}")
+            Log.e(TAG, "================================")
+            throw Exception("Error al obtener credencial: [${e.type}] ${e.message}")
         } catch (e: Exception) {
             Log.e(TAG, "FIDO2 authentication error: ${e.message}", e)
             throw e
@@ -114,25 +122,43 @@ class Fido2Service {
     /**
      * Step 1: Request FIDO2 authentication options (challenge) from the backend.
      *
+     * If [username] is empty the request is sent without an email, triggering
+     * discoverable mode on the server: the response will contain
+     * `allowCredentials=[]` and a `session_id` UUID.
+     *
+     * If [username] is non-empty the legacy email mode is used and no
+     * `session_id` is returned.
+     *
+     * To re-enable the email mode from [MainController.validateWithFido2],
+     * pass `network.user_email` as `username` instead of `""`.
+     *
      * @param startUrl Endpoint URL for options request
-     * @param username User email
+     * @param username User email (empty string for discoverable mode)
      * @param context Android context
-     * @return JSON response from the server containing the challenge
+     * @return Pair of (options JSON for Credential Manager, session_id or null)
      */
-    private suspend fun getAuthenticationOptions(startUrl: String, username: String, context: Context): String {
-        Log.d(TAG, "Requesting authentication options for: $username")
-        val optionsJson = fido2AuthenticateStart(startUrl, username, context)
-        
+    private suspend fun getAuthenticationOptions(
+        startUrl: String,
+        username: String,
+        context: Context
+    ): Pair<String, String?> {
+        val modeLabel = if (username.isNotBlank()) "email" else "discoverable"
+        Log.d(TAG, "Requesting authentication options (mode=$modeLabel)")
+        val result = fido2AuthenticateStart(startUrl, username, context)
+        val (optionsJson, sessionId) = result
         if (optionsJson.isBlank()) {
             throw Exception("Empty authentication options from server")
         }
-        
-        Log.d(TAG, "Authentication options received")
-        return optionsJson
+        Log.d(TAG, "Authentication options received, discoverable=${sessionId != null}")
+        return Pair(optionsJson, sessionId)
     }
-    
+
     /**
      * Step 2: Use Android Credentials API to prompt the user and compute the signature (assertion).
+     *
+     * The full options JSON (including any extra server fields like `session_id`)
+     * is passed to [GetPublicKeyCredentialOption]. Android Credential Manager
+     * only reads the standard WebAuthn fields and ignores any extras.
      *
      * @param activity The current activity calling the FIDO2 prompt
      * @param optionsJson FIDO2 options provided by the backend
@@ -143,31 +169,44 @@ class Fido2Service {
         optionsJson: String
     ): String {
         Log.d(TAG, "Getting FIDO2 credential")
-        
+        Log.d(TAG, "=== OPTIONS JSON TO CREDENTIAL MANAGER ===")
+        Log.d(TAG, optionsJson)
+        Log.d(TAG, "==========================================")
+
         val getRequest = GetPublicKeyCredentialOption(optionsJson, null)
         val credentialRequest = GetCredentialRequest(listOf(getRequest))
-        
+
         val result = getCredential(activity, credentialRequest)
-        
+
         if (result.credential !is PublicKeyCredential) {
             throw Exception("Unexpected credential type")
         }
-        
+
         val credential = result.credential as PublicKeyCredential
         return credential.authenticationResponseJson
     }
-    
+
     /**
      * Step 3: Send the generated credential assertion JSON to the backend for cryptographic validation.
      *
+     * In discoverable mode [sessionId] is non-null and is sent instead of the
+     * email so the server can retrieve the matching challenge.
+     *
      * @param finishUrl Endpoint URL for submitting the signature
-     * @param username User email
-     * @param credentialJson Completed credential JSON snippet from Android Credentials API
+     * @param username User email (unused in discoverable mode)
+     * @param credentialJson Completed credential JSON from Android Credentials API
      * @param context Android context
+     * @param sessionId UUID from [getAuthenticationOptions], null in email mode
      */
-    private suspend fun verifyAuthentication(finishUrl: String, username: String, credentialJson: String, context: Context) {
-        Log.d(TAG, "Verifying authentication with server")
-        val verification = fido2AuthenticateFinish(finishUrl, username, credentialJson, context)
+    private suspend fun verifyAuthentication(
+        finishUrl: String,
+        username: String,
+        credentialJson: String,
+        context: Context,
+        sessionId: String? = null
+    ) {
+        Log.d(TAG, "Verifying authentication with server (discoverable=${sessionId != null})")
+        val verification = fido2AuthenticateFinish(finishUrl, username, credentialJson, context, sessionId)
         Log.d(TAG, "Authentication verified: $verification")
     }
     

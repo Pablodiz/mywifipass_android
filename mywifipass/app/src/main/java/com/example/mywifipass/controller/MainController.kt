@@ -503,17 +503,20 @@ class MainController(private val context: Context) {
                 
                 val startUrl = network.fido2_authenticate_start_url
                 val finishUrl = network.fido2_authenticate_finish_url
-                val username = network.user_email
-                
-                if (username.isEmpty()) {
-                    throw Exception("User email not available")
-                }
-                
+
                 if (startUrl.isEmpty() || finishUrl.isEmpty()) {
                     throw Exception("FIDO2 URLs not available")
                 }
-                
-                Log.d("MainController", "FIDO2 auth: startUrl=$startUrl, username=$username")
+
+                // Empty username triggers discoverable mode: the server sends
+                // allowCredentials=[] and Android Credential Manager shows a
+                // passkey picker. The user identity is resolved server-side
+                // from the credential ID in the assertion.
+                //
+                // To switch back to the legacy email mode (server pre-selects
+                // the credential for the user), replace "" with network.user_email.
+                val username = ""
+                Log.d("MainController", "FIDO2 auth: startUrl=$startUrl, mode=${if (username.isBlank()) "discoverable" else "email"}")
                 
                 // Call FIDO2 service to authenticate user
                 val result = fido2Service.authenticateForNetwork(

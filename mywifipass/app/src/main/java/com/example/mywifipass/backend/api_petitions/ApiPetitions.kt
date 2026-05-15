@@ -544,21 +544,50 @@ suspend fun checkUserAuthorized(
 }
 
 /**
- * Get FIDO2 authentication options using complete URL from backend
- * @param completeUrl Complete URL to FIDO2 authenticate start endpoint (passed from backend)
- * @param email User email for authentication
+ * Requests FIDO2 authentication options (challenge) from the server.
+ *
+ * Supports two modes depending on whether [email] is provided:
+ *
+ * **Discoverable mode** (default - pass empty string for [email]):
+ * Sends `{}` to the server. The server responds with `allowCredentials=[]`
+ * and a `session_id` UUID. Android Credential Manager then shows a passkey
+ * picker so the user can choose which account to authenticate with.
+ * The returned `session_id` must be passed to [fido2AuthenticateFinish].
+ *
+ * **Email mode** (legacy - pass a non-empty [email]):
+ * Sends `{"email": "..."}`. The server looks up the user's registered
+ * credential and returns it in `allowCredentials`, bypassing the picker.
+ * No `session_id` is returned; [fido2AuthenticateFinish] uses the email.
+ * To re-enable this mode, pass `network.user_email` as `username` in
+ * `MainController.validateWithFido2` instead of `""`.
+ *
+ * @param completeUrl Complete URL to /fido2/authenticate/start/
+ * @param email User email (empty string for discoverable mode)
  * @param context Android context
- * @return JSON string with authentication options
+ * @return Pair of (options JSON for Credential Manager, session_id or null)
  */
 suspend fun fido2AuthenticateStart(
     completeUrl: String,
     email: String,
     context: Context
-): String {
-    val jsonString = "{\"email\": \"$email\"}"
+): Pair<String, String?> {
+    val jsonString = if (email.isNotBlank()) "{\"email\": \"$email\"}" else "{}"
     val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
     if (httpResponse.statusCode == 200) {
-        return httpResponse.body
+        val body = httpResponse.body
+        val sessionId: String?
+        val credentialManagerJson: String
+        try {
+            val json = org.json.JSONObject(body)
+            sessionId = if (json.has("session_id")) json.getString("session_id") else null
+            // Strip non-standard fields before handing JSON to Android Credential Manager.
+            // Some provider implementations reject unknown fields.
+            json.remove("session_id")
+            credentialManagerJson = json.toString()
+        } catch (e: Exception) {
+            return Pair(body, null)
+        }
+        return Pair(credentialManagerJson, sessionId)
     } else {
         throw Exception("Failed to get FIDO2 auth options: ${httpResponse.statusCode}")
     }
@@ -566,20 +595,30 @@ suspend fun fido2AuthenticateStart(
 
 
 /**
- * Finish FIDO2 authentication using complete URL from backend
- * @param completeUrl Complete URL to FIDO2 authenticate finish endpoint (passed from backend)
- * @param email User email for authentication
- * @param credentialJson Credential response from client
+ * Sends the signed FIDO2 assertion to the server for verification.
+ *
+ * The request body depends on which mode was used in [fido2AuthenticateStart]:
+ * - If [sessionId] is non-null (discoverable mode): `{"session_id": "...", "credential": ...}`
+ * - If [sessionId] is null (email mode): `{"email": "...", "credential": ...}`
+ *
+ * @param completeUrl Complete URL to /fido2/authenticate/finish/
+ * @param email User email (unused in discoverable mode, may be empty)
+ * @param credentialJson WebAuthn assertion JSON from Android Credential Manager
  * @param context Android context
- * @return Success message from server
+ * @param sessionId UUID returned by [fido2AuthenticateStart] in discoverable mode, null otherwise
+ * @return Success response body from server
  */
 suspend fun fido2AuthenticateFinish(
     completeUrl: String,
     email: String,
     credentialJson: String,
-    context: Context
+    context: Context,
+    sessionId: String? = null
 ): String {
-    val jsonString = "{\"email\": \"$email\", \"credential\": $credentialJson}"
+    val jsonString = if (sessionId != null)
+        "{\"session_id\": \"$sessionId\", \"credential\": $credentialJson}"
+    else
+        "{\"email\": \"$email\", \"credential\": $credentialJson}"
     val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
     if (httpResponse.statusCode in 200..299) {
         return httpResponse.body
