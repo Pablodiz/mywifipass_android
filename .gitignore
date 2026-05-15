@@ -17,3 +17,5 @@ run.sh
 *.jks
 */.env
 wip_docs/
+mywifipass/logcat.txt
+*.log
