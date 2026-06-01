@@ -26,7 +26,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.wifi.WifiManager
 import android.widget.Toast
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +57,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 
 // Imports for Back Button
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.WifiOff
 
 // Imports for Network Detail Screen
 import androidx.compose.ui.text.style.TextAlign
@@ -90,6 +94,52 @@ import android.os.Build
 
 // i18n
 import androidx.compose.ui.res.stringResource
+
+@Composable
+fun rememberWifiEnabled(): Boolean {
+    val context = LocalContext.current
+    val wifiManager = remember {
+        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    }
+    var isEnabled by remember { mutableStateOf(wifiManager.isWifiEnabled) }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                val state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN)
+                isEnabled = state == WifiManager.WIFI_STATE_ENABLED
+            }
+        }
+        context.registerReceiver(receiver, IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION))
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
+    return isEnabled
+}
+
+@Composable
+fun WifiDisabledBanner(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.WifiOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.wifi_disabled_banner),
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
 
 data class SpeedDialItem(
     val label: String,
@@ -265,8 +315,13 @@ fun MainScreen(
     showQrScanner: Boolean = false,
     onQRScannerDismiss: () -> Unit = {},
 ){
+    val isWifiEnabled = rememberWifiEnabled()
+
     // Main layout with button at bottom
     Column(modifier = modifier.fillMaxSize()) {
+        if (!isWifiEnabled) {
+            WifiDisabledBanner()
+        }
         // Networks list takes all available space
         if (isLoading) {
             Box(
@@ -598,6 +653,8 @@ fun NetworkDetailScreen(
             }
         }
 
+        val isWifiEnabled = rememberWifiEnabled()
+
         Column(modifier=modifier){
             // Top bar with back button, title and menu
             TopBar(
@@ -642,6 +699,10 @@ fun NetworkDetailScreen(
                     }
                 }
             )
+
+            if (!isWifiEnabled) {
+                WifiDisabledBanner()
+            }
 
             if (!network.is_user_authorized && !network.requires_fido2_validation){
                 Column(
