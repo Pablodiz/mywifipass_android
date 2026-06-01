@@ -226,4 +226,6 @@
 
     <!-- Wi-Fi connectivity feedback -->
     <string name="failed_to_suggest_network">Failed to configure network</string>
+    <string name="no_internet_connection">No internet connection</string>
+    <string name="connection_timeout">Connection timed out. Please try again.</string>
 </resources>

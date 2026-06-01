@@ -223,4 +223,6 @@
 
     <!-- Wi-Fi connectivity feedback -->
     <string name="failed_to_suggest_network">Error al configurar la red</string>
+    <string name="no_internet_connection">Sin conexión a internet</string>
+    <string name="connection_timeout">Tiempo de espera agotado. Por favor, inténtalo de nuevo.</string>
 </resources>

@@ -9,12 +9,15 @@
 
 package app.mywifipass.backend
 
-import java.net.HttpURLConnection 
+import java.net.HttpURLConnection
 import java.net.URL
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.net.ConnectException
 
 import android.content.Context
 import app.mywifipass.R
-import android.net.Uri  
+import android.net.Uri
 
 
 data class HttpResponse(val statusCode: Int, val body: String)
@@ -54,8 +57,14 @@ suspend fun httpPetition(url_string: String, jsonString: String? = null, token: 
             urlConnection.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
         }
         HttpResponse(statusCode, responseBody)
+    } catch (e: SocketTimeoutException) {
+        HttpResponse(504, context.getString(R.string.connection_timeout))
+    } catch (e: UnknownHostException) {
+        HttpResponse(0, context.getString(R.string.no_internet_connection))
+    } catch (e: ConnectException) {
+        HttpResponse(0, context.getString(R.string.no_internet_connection))
     } catch (e: Exception) {
-        HttpResponse(500, e.message ?: context.getString(R.string.unknown_error)) // Return 500 on exception
+        HttpResponse(500, e.message ?: context.getString(R.string.unknown_error))
     }
 }
 

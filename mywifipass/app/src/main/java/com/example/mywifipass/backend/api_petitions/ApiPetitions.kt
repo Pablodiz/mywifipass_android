@@ -49,19 +49,30 @@ typealias ApiErrorCallback = (ApiResult) -> Unit
 // Functions for handling different types of errors
 
 private fun handleUnexpectedError(statusCode: Int, body: String, context: Context, operation: String): ApiResult {
-    // Log complete details server-side (Logcat), but don't expose to user
     android.util.Log.e(
         "ApiPetitions",
         "Error in operation: $operation\nStatus Code: $statusCode\nResponse Body: $body"
     )
-    
+
+    // Connectivity errors already mapped by httpPetition — body contains the right message
+    if (statusCode == 0 || statusCode == 504) {
+        return ApiResult(
+            title = context.getString(R.string.network_error_title),
+            message = body,
+            isSuccess = false,
+            errorCode = statusCode,
+            showTrace = false,
+            fullTrace = null
+        )
+    }
+
     return ApiResult(
         title = context.getString(R.string.unexpected_error_title),
         message = context.getString(R.string.server_error_message),
         isSuccess = false,
         errorCode = statusCode,
-        showTrace = false,  // Don't show trace to user
-        fullTrace = null    // Don't send details to UI
+        showTrace = false,
+        fullTrace = null
     )
 }
 
