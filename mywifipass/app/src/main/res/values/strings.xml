@@ -223,4 +223,7 @@
     <string name="fido2_validation">FIDO2 Validation</string>
     <string name="fido2_validation_successful">FIDO2 Validation Successful</string>
     <string name="fido2_validation_failed">FIDO2 Validation Failed</string>
+
+    <!-- Wi-Fi connectivity feedback -->
+    <string name="failed_to_suggest_network">Failed to configure network</string>
 </resources>

@@ -220,4 +220,7 @@
     <string name="fido2_validation">Validación FIDO2</string>
     <string name="fido2_validation_successful">Validación FIDO2 Exitosa</string>
     <string name="fido2_validation_failed">Fallo de Validación FIDO2</string>
+
+    <!-- Wi-Fi connectivity feedback -->
+    <string name="failed_to_suggest_network">Error al configurar la red</string>
 </resources>

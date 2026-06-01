@@ -64,39 +64,59 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
     }
     
     private fun connectWithSuggestion(wifiManager: WifiManager) {
-        wifiManager.addNetworkSuggestions(listOf(suggestion))   
+        try {
+            wifiManager.addNetworkSuggestions(listOf(suggestion))
+        } catch (e: Exception) {
+            Log.e("EapTLSConnection", "addNetworkSuggestions failed for SSID: $ssid", e)
+            throw e
+        }
     }
-    
+
     private fun connectWithSettingsIntent(context: Context) {
-        // Create intent to add network via Settings
         val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
             putParcelableArrayListExtra(Settings.EXTRA_WIFI_NETWORK_LIST, arrayListOf(suggestion))
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("EapTLSConnection", "startActivity(ACTION_WIFI_ADD_NETWORKS) failed", e)
+            Handler(Looper.getMainLooper()).post {
+                ShowText.toastDirect(context, context.getString(app.mywifipass.R.string.failed_to_suggest_network))
+            }
+        }
     }
-    
+
     fun disconnect(wifiManager: WifiManager, context: Context) {
          when {
             // Android 10-: Remove suggestion directly
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.R -> {
-                wifiManager.removeNetworkSuggestions(listOf(suggestion))
-                Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
+                try {
+                    wifiManager.removeNetworkSuggestions(listOf(suggestion))
+                    Log.d("EapTLSConnection", "Removed network suggestion for SSID: $ssid")
+                } catch (e: Exception) {
+                    Log.e("EapTLSConnection", "removeNetworkSuggestions failed for SSID: $ssid", e)
+                    Handler(Looper.getMainLooper()).post {
+                        ShowText.toastDirect(context, context.getString(app.mywifipass.R.string.failed_to_suggest_network))
+                    }
+                }
             }
             else -> {
                 // Android 11+: Cannot remove suggestion added via Settings Intent
                 Log.d("EapTLSConnection", "Network must be removed manually from WiFi settings on Android 11+")
-                
-                // Show Toast on main thread
+
                 Handler(Looper.getMainLooper()).post {
                     ShowText.toastDirect(context, context.getString(app.mywifipass.R.string.wifi_forget_message), Toast.LENGTH_LONG)
                 }
 
-                // Open WiFi settings for user to remove manually
                 val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK // Add flag for non-Activity context
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                context.startActivity(intent)
+                try {
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e("EapTLSConnection", "startActivity(ACTION_WIFI_SETTINGS) failed", e)
+                }
             }
          }
     }
