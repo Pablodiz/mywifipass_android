@@ -10,7 +10,9 @@
 package app.mywifipass.controller
 
 import android.content.Context
+import android.content.Intent
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -412,35 +414,48 @@ class MainController(private val context: Context) {
 
     suspend fun checkAuthorizedAndConnect(network: Network, wifiManager: WifiManager): Result<String> {
         return try{
-            // Check if the wifi pass is already authorized, if so send CSR
             val csrResult = checkAuthorizedAndSendCSR(network)
-            
+
             if (csrResult.isFailure) {
                 Log.d("MainController", "Failed to check if user is authorized: ${csrResult.exceptionOrNull()?.message}")
                 return Result.failure(Exception(csrResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)))
             }
-            
-            Log.d("MainController", "CSR completed successfully, retrieving updated network from database")
-            
-            // Get the updated network from database (should now have certificates)
-            val updatedNetworks = networkRepository.getNetworksFromDatabase()
-            val updatedNetwork = updatedNetworks.find { it.id == network.id } ?: network
-            
-            Log.d("MainController", "Retrieved updated network. Certificates decrypted: ${updatedNetwork.are_certificiates_decrypted}")
-            
-            // Now connect with the updated network that should have certificates
-            val result = connectToNetwork(updatedNetwork, wifiManager)
-            if (result.isSuccess) {
-                Log.d("MainController", "Successfully configured connection to network: ${updatedNetwork.network_common_name}")
-                Result.success(context.getString(R.string.network_connection_configured_successfully))
-            } else {
-                Log.d("MainController", "Failed to connect to network: ${result.exceptionOrNull()?.message}")
-                Result.failure(Exception(context.getString(R.string.failed_to_connect_to_network)))
-            }
+
+            Log.d("MainController", "CSR completed, certificates ready. Connection step handled by UI layer.")
+            // On Android 11+ the UI launches Settings.ACTION_WIFI_ADD_NETWORKS via ActivityResultLauncher
+            // and only marks as connected after RESULT_OK. On Android 10- connectToNetwork is called
+            // directly from the LaunchedEffect retry loop. Either way, we just signal "certs ready" here.
+            Result.success(context.getString(R.string.network_is_ready_for_connection))
         } catch (e: Exception) {
             Log.e("MainController", "Error checking if user is authorized: ${e.message}")
             Result.failure(Exception("${e.message}"))
         }
+    }
+
+    fun buildConnectionIntent(network: Network): Result<Intent> {
+        return try {
+            if (!network.are_certificiates_decrypted) {
+                return Result.failure(Exception(context.getString(R.string.network_certificates_are_not_decrypted)))
+            }
+            if (network.ca_certificate.isEmpty() || network.certificate.isEmpty() || network.private_key.isEmpty()) {
+                return Result.failure(Exception(context.getString(R.string.network_is_missing_required_certificates)))
+            }
+            if (!isValidCertificateFormat(network)) {
+                return Result.failure(Exception(context.getString(R.string.invalid_certificate_format)))
+            }
+            val eapTLSConnection = createEapTLSConnection(network)
+                ?: return Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_configuration)))
+            Result.success(eapTLSConnection.buildSettingsIntent())
+        } catch (e: Exception) {
+            Log.e("MainController", "Error building connection intent: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markNetworkConnected(network: Network): Result<Network> {
+        val updated = network.copy(is_connection_configured = true, is_user_authorized = true)
+        networkRepository.updateNetwork(updated)
+        return Result.success(updated)
     }
     /**
      * Adds a network from URL with full ApiResult support

@@ -231,4 +231,6 @@
     <string name="wifi_disabled_banner">Wi-Fi is disabled. Turn it on to connect.</string>
     <string name="connection_not_on_wifi">Not connected to any Wi-Fi network</string>
     <string name="connection_wifi_unreadable_ssid">Connected to Wi-Fi. Make sure it\'s \'%s\'.</string>
+    <string name="wifi_configuration_pending">Configuring Wi-Fi network…</string>
+    <string name="wifi_configuration_denied">Configuration not accepted. Tap Retry to try again.</string>
 </resources>

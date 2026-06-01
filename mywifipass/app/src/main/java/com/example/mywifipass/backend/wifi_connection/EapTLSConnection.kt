@@ -72,13 +72,17 @@ class EapTLSConnection(val ssid: String, eapTLSCertificate: EapTLSCertificate, i
         }
     }
 
-    private fun connectWithSettingsIntent(context: Context) {
-        val intent = Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
+    fun buildSettingsIntent(): Intent {
+        return Intent(Settings.ACTION_WIFI_ADD_NETWORKS).apply {
             putParcelableArrayListExtra(Settings.EXTRA_WIFI_NETWORK_LIST, arrayListOf(suggestion))
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
+    }
+
+    private fun connectWithSettingsIntent(context: Context) {
         try {
-            context.startActivity(intent)
+            context.startActivity(buildSettingsIntent().apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            })
         } catch (e: Exception) {
             Log.e("EapTLSConnection", "startActivity(ACTION_WIFI_ADD_NETWORKS) failed", e)
             Handler(Looper.getMainLooper()).post {

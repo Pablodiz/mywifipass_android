@@ -228,4 +228,6 @@
     <string name="wifi_disabled_banner">Wi-Fi desactivado. Actívalo para conectarte.</string>
     <string name="connection_not_on_wifi">No estás conectado a ninguna red Wi-Fi</string>
     <string name="connection_wifi_unreadable_ssid">Conectado a Wi-Fi. Comprueba que es la red \'%s\'.</string>
+    <string name="wifi_configuration_pending">Configurando la red Wi-Fi…</string>
+    <string name="wifi_configuration_denied">Configuración no aceptada. Pulsa Reintentar para volver a intentarlo.</string>
 </resources>

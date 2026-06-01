@@ -26,13 +26,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Network as AndroidNetwork
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import app.mywifipass.backend.isConnectedToWifi
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -145,15 +150,23 @@ fun WifiDisabledBanner(modifier: Modifier = Modifier) {
 @Composable
 fun ConnectionStatusSection(ssid: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val connectivityManager = remember {
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
     var onWifi by remember { mutableStateOf(isConnectedToWifi(context)) }
 
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) onWifi = isConnectedToWifi(context)
+    DisposableEffect(Unit) {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: AndroidNetwork) { onWifi = isConnectedToWifi(context) }
+            override fun onLost(network: AndroidNetwork) { onWifi = isConnectedToWifi(context) }
+            override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
+                onWifi = isConnectedToWifi(context)
+            }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        try { connectivityManager.registerDefaultNetworkCallback(callback) } catch (_: Exception) {}
+        onDispose {
+            try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        }
     }
 
     val (text, color) = if (onWifi) {
@@ -617,12 +630,40 @@ fun NetworkDetailScreen(
 ){
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var currentNetwork by remember {mutableStateOf<Network?>(null)}
+    var currentNetwork by remember { mutableStateOf<Network?>(null) }
+
+    var awaitingSystemDialog by remember { mutableStateOf(false) }
+    var systemDialogDenied by remember { mutableStateOf(false) }
+
+    val addNetworkLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        awaitingSystemDialog = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            systemDialogDenied = false
+            scope.launch {
+                currentNetwork?.let { net ->
+                    mainController.markNetworkConnected(net).getOrNull()?.let { updated ->
+                        currentNetwork = updated
+                    }
+                }
+            }
+        } else {
+            systemDialogDenied = true
+        }
+    }
 
     // Load initial network when this screen opens
     LaunchedEffect(selectedNetworkId){
-        val networks = mainController.getNetworks().getOrNull()?:emptyList()
-        currentNetwork = networks.find {it.id == selectedNetworkId}
+        val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+        val net = networks.find { it.id == selectedNetworkId }
+        // Set awaitingSystemDialog before currentNetwork so both land in the same recomposition
+        // and the "configured" UI never flashes before the spinner appears.
+        if (net != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            net.are_certificiates_decrypted && !net.is_connection_configured) {
+            awaitingSystemDialog = true
+        }
+        currentNetwork = net
     }
 
     currentNetwork?.let {network ->
@@ -660,25 +701,35 @@ fun NetworkDetailScreen(
 
         // Auto-configure once certificates are available.
         LaunchedEffect(network.are_certificiates_decrypted, network.is_connection_configured) {
-            if (network.are_certificiates_decrypted && !network.is_connection_configured) {
-                var attempts = 0
-                val maxAttempts = 6 // ~12 seconds total retry window
-                while (attempts < maxAttempts) {
-                    val result = mainController.connectToNetwork(network, wifiManager)
-                    if (result.isSuccess) {
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            if (network.are_certificiates_decrypted && !network.is_connection_configured && !awaitingSystemDialog) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    // Android 11+: launch system dialog via launcher, mark configured only on RESULT_OK
+                    val intentResult = mainController.buildConnectionIntent(network)
+                    if (intentResult.isSuccess) {
+                        awaitingSystemDialog = true
+                        systemDialogDenied = false
+                        addNetworkLauncher.launch(intentResult.getOrNull()!!)
+                    } else {
+                        ShowText.toastDirect(context, intentResult.exceptionOrNull()?.message ?: connectionFailedText)
+                    }
+                } else {
+                    // Android 10-: suggestion API, result is immediate
+                    var attempts = 0
+                    val maxAttempts = 6
+                    while (attempts < maxAttempts) {
+                        val result = mainController.connectToNetwork(network, wifiManager)
+                        if (result.isSuccess) {
                             ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+                            currentNetwork = result.getOrNull()
+                            break
                         }
-                        currentNetwork = result.getOrNull()
-                        break
+                        attempts += 1
+                        if (attempts >= maxAttempts) {
+                            ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+                            break
+                        }
+                        delay(2_000L)
                     }
-
-                    attempts += 1
-                    if (attempts >= maxAttempts) {
-                        ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
-                        break
-                    }
-                    delay(2_000L)
                 }
             }
         }
@@ -734,7 +785,43 @@ fun NetworkDetailScreen(
                 WifiDisabledBanner()
             }
 
-            if (!network.is_user_authorized && !network.requires_fido2_validation){
+            if (awaitingSystemDialog) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_pending),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (systemDialogDenied) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_denied),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = {
+                        val intentResult = mainController.buildConnectionIntent(network)
+                        if (intentResult.isSuccess) {
+                            systemDialogDenied = false
+                            awaitingSystemDialog = true
+                            addNetworkLauncher.launch(intentResult.getOrNull()!!)
+                        }
+                    }) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            } else if (!network.is_user_authorized && !network.requires_fido2_validation){
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -765,8 +852,8 @@ fun NetworkDetailScreen(
                         textAlign = TextAlign.Center
                     )
                 }
-            } else if (network.is_user_authorized || network.is_connection_configured) {
-                // Success message only when effectively authorized/configured.
+            } else if (network.is_connection_configured) {
+                // Only show success when the device is actually configured (dialog accepted).
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -779,37 +866,38 @@ fun NetworkDetailScreen(
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
-                    
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Icons row: WiFi + Check
+
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Wifi,
-                            contentDescription = "WiFi",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        
+                        Icon(Icons.Default.Wifi, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Success",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        Icon(Icons.Default.Check, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
-
                     ConnectionStatusSection(ssid = network.ssid)
                 }
+            } else if (network.is_user_authorized) {
+                // Authorized by server but device not yet configured — show spinner while we work.
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_pending),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
-                // Keep layout stable without showing incorrect success status.
                 Spacer(modifier = Modifier.height(1.dp))
             }
             
