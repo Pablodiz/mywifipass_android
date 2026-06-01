@@ -32,6 +32,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.wifi.WifiManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import app.mywifipass.backend.isConnectedToWifi
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -46,7 +48,6 @@ import app.mywifipass.controller.MainController
 import app.mywifipass.NetworkDetailActivity
 
 // Imports for the QR code scanner
-import androidx.activity.compose.rememberLauncherForActivityResult
 
 // Imports for the SpeedDial
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -139,6 +140,35 @@ fun WifiDisabledBanner(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodySmall
         )
     }
+}
+
+@Composable
+fun ConnectionStatusSection(ssid: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var onWifi by remember { mutableStateOf(isConnectedToWifi(context)) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) onWifi = isConnectedToWifi(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val (text, color) = if (onWifi) {
+        Pair(stringResource(R.string.connection_wifi_unreadable_ssid, ssid), MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        Pair(stringResource(R.string.connection_not_on_wifi), MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 data class SpeedDialItem(
@@ -773,6 +803,10 @@ fun NetworkDetailScreen(
                             modifier = Modifier.size(32.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ConnectionStatusSection(ssid = network.ssid)
                 }
             } else {
                 // Keep layout stable without showing incorrect success status.
