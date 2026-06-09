@@ -134,7 +134,6 @@ class MainController(private val context: Context) {
                     return@withContext Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_configuration)))
                 }
                 
-                // Attempt connection
                 eapTLSConnection.connect(wifiManager, context)
                 
                 // Update network status

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.ui.Alignment
 import app.mywifipass.model.data.Network
 
+
 // i18n
 import androidx.compose.ui.res.stringResource
 import app.mywifipass.R
@@ -54,6 +55,8 @@ fun MyCard(
     onItemClick: (Network) -> Unit,
     onItemLongClick: ((Network) -> Unit)? = null,
 ){
+    val showAsConfigured = data.is_connection_configured
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -87,15 +90,15 @@ fun MyCard(
             
             // Icono de estado (derecha)
             Icon(
-                imageVector = if (data.is_connection_configured) Icons.Default.Wifi else Icons.Default.WifiOff,
-                contentDescription = if (data.is_connection_configured) 
-                    stringResource(R.string.network_configured) 
-                else 
+                imageVector = if (showAsConfigured) Icons.Default.Wifi else Icons.Default.WifiOff,
+                contentDescription = if (showAsConfigured)
+                    stringResource(R.string.network_configured)
+                else
                     stringResource(R.string.network_not_configured),
                 modifier = Modifier.size(32.dp),
-                tint = if (data.is_connection_configured) 
-                    MaterialTheme.colorScheme.primary 
-                else 
+                tint = if (showAsConfigured)
+                    MaterialTheme.colorScheme.primary
+                else
                     MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

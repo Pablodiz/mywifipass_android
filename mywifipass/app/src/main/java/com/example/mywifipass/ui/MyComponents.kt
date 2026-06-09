@@ -656,14 +656,7 @@ fun NetworkDetailScreen(
     // Load initial network when this screen opens
     LaunchedEffect(selectedNetworkId){
         val networks = mainController.getNetworks().getOrNull() ?: emptyList()
-        val net = networks.find { it.id == selectedNetworkId }
-        // Set awaitingSystemDialog before currentNetwork so both land in the same recomposition
-        // and the "configured" UI never flashes before the spinner appears.
-        if (net != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-            net.are_certificiates_decrypted && !net.is_connection_configured) {
-            awaitingSystemDialog = true
-        }
-        currentNetwork = net
+        currentNetwork = networks.find { it.id == selectedNetworkId }
     }
 
     currentNetwork?.let {network ->
