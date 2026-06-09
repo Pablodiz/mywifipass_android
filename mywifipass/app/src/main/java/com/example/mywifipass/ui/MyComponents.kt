@@ -39,6 +39,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import app.mywifipass.backend.isConnectedToWifi
+import app.mywifipass.backend.isConnectedToInternet
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -64,6 +65,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 // Imports for Back Button
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.PublicOff
 
 // Imports for Network Detail Screen
 import androidx.compose.ui.text.style.TextAlign
@@ -121,6 +123,55 @@ fun rememberWifiEnabled(): Boolean {
     }
 
     return isEnabled
+}
+
+@Composable
+fun rememberHasInternet(): Boolean {
+    val context = LocalContext.current
+    val connectivityManager = remember {
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+    var hasInternet by remember { mutableStateOf(isConnectedToInternet(context)) }
+
+    DisposableEffect(Unit) {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: AndroidNetwork) { hasInternet = isConnectedToInternet(context) }
+            override fun onLost(network: AndroidNetwork) { hasInternet = isConnectedToInternet(context) }
+            override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
+                hasInternet = isConnectedToInternet(context)
+            }
+        }
+        try { connectivityManager.registerDefaultNetworkCallback(callback) } catch (_: Exception) {}
+        onDispose {
+            try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        }
+    }
+
+    return hasInternet
+}
+
+@Composable
+fun NoInternetBanner(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.PublicOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.no_internet_banner),
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
 }
 
 @Composable
@@ -359,11 +410,15 @@ fun MainScreen(
     onQRScannerDismiss: () -> Unit = {},
 ){
     val isWifiEnabled = rememberWifiEnabled()
+    val hasInternet = rememberHasInternet()
 
     // Main layout with button at bottom
     Column(modifier = modifier.fillMaxSize()) {
         if (!isWifiEnabled) {
             WifiDisabledBanner()
+        }
+        if (!hasInternet) {
+            NoInternetBanner()
         }
         // Networks list takes all available space
         if (isLoading) {
@@ -728,6 +783,7 @@ fun NetworkDetailScreen(
         }
 
         val isWifiEnabled = rememberWifiEnabled()
+        val hasInternet = rememberHasInternet()
 
         Column(modifier=modifier){
             // Top bar with back button, title and menu
@@ -776,6 +832,9 @@ fun NetworkDetailScreen(
 
             if (!isWifiEnabled) {
                 WifiDisabledBanner()
+            }
+            if (!hasInternet) {
+                NoInternetBanner()
             }
 
             if (awaitingSystemDialog) {
