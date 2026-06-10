@@ -229,6 +229,7 @@
     <string name="no_internet_connection">No internet connection</string>
     <string name="connection_timeout">Connection timed out. Please try again.</string>
     <string name="wifi_disabled_banner">Wi-Fi is disabled. Turn it on to connect.</string>
+    <string name="no_internet_banner">No internet connection. You won\'t be able to download passes.</string>
     <string name="connection_not_on_wifi">Not connected to any Wi-Fi network</string>
     <string name="connection_wifi_unreadable_ssid">Connected to Wi-Fi. Make sure it\'s \'%s\'.</string>
     <string name="wifi_configuration_pending">Configuring Wi-Fi network…</string>

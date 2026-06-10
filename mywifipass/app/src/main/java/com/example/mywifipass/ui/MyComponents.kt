@@ -37,6 +37,7 @@ import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.Network as AndroidNetwork
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -134,17 +135,22 @@ fun rememberHasInternet(): Boolean {
     val connectivityManager = remember {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
-    var hasInternet by remember { mutableStateOf(isConnectedToInternet(context)) }
+    // Start pessimistic; the callback fires onAvailable immediately for existing matching networks
+    var hasInternet by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: AndroidNetwork) { hasInternet = isConnectedToInternet(context) }
+            override fun onAvailable(network: AndroidNetwork) { hasInternet = true }
             override fun onLost(network: AndroidNetwork) { hasInternet = isConnectedToInternet(context) }
             override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
                 hasInternet = isConnectedToInternet(context)
             }
         }
-        try { connectivityManager.registerDefaultNetworkCallback(callback) } catch (_: Exception) {}
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            .build()
+        try { connectivityManager.registerNetworkCallback(request, callback) } catch (_: Exception) {}
         onDispose {
             try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
         }
