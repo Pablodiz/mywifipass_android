@@ -135,15 +135,18 @@ fun rememberHasInternet(): Boolean {
     val connectivityManager = remember {
         context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     }
-    // Start pessimistic; the callback fires onAvailable immediately for existing matching networks
-    var hasInternet by remember { mutableStateOf(false) }
+    var hasInternet by remember { mutableStateOf(isConnectedToInternet(context)) }
 
     DisposableEffect(Unit) {
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: AndroidNetwork) { hasInternet = true }
-            override fun onLost(network: AndroidNetwork) { hasInternet = isConnectedToInternet(context) }
+            // onLost fires before activeNetwork is updated; reading isConnectedToInternet here
+            // returns stale true. Set false directly — if another validated network exists,
+            // onAvailable fires for it almost immediately.
+            override fun onLost(network: AndroidNetwork) { hasInternet = false }
             override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
-                hasInternet = isConnectedToInternet(context)
+                hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                              caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             }
         }
         val request = NetworkRequest.Builder()
@@ -160,7 +163,10 @@ fun rememberHasInternet(): Boolean {
 }
 
 @Composable
-fun NoInternetBanner(modifier: Modifier = Modifier) {
+fun NoInternetBanner(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.no_internet_banner)
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -176,7 +182,7 @@ fun NoInternetBanner(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = stringResource(R.string.no_internet_banner),
+            text = message,
             color = MaterialTheme.colorScheme.onErrorContainer,
             style = MaterialTheme.typography.bodySmall
         )

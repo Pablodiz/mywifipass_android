@@ -51,6 +51,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.widget.ImageView
 import com.google.zxing.qrcode.QRCodeWriter
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import kotlinx.serialization.*
 // import androidx.compose.ui.viewinterop.AndroidView
 
@@ -242,29 +245,52 @@ fun QrInfo(network: Network): String {
     return qrData.toJson()
 }
 
+private fun generateQrBitmap(data: String): Bitmap {
+    val bitMatrix = QRCodeWriter().encode(data, BarcodeFormat.QR_CODE, 512, 512, mapOf(EncodeHintType.MARGIN to 1))
+    val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)
+    for (x in 0 until bitMatrix.width) {
+        for (y in 0 until bitMatrix.height) {
+            bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.TRANSPARENT)
+        }
+    }
+    return bitmap
+}
+
 @Composable
 fun QrCode(
     data: String,
     modifier: Modifier = Modifier
 ) {
-    // QR Code generator
+    var showEnlarged by remember { mutableStateOf(false) }
+    val bitmap = remember(data) { generateQrBitmap(data) }
+
     AndroidView(
         factory = { context ->
-            val qrCodeWriter = QRCodeWriter()
-            val hints = mapOf(
-                EncodeHintType.MARGIN to 1
-            )
-            val bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200, hints)
-            val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)
-            for (x in 0 until bitMatrix.width) {
-                for (y in 0 until bitMatrix.height) {
-                    bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
-                }
-            }
             ImageView(context).apply {
                 setImageBitmap(bitmap)
+                scaleType = ImageView.ScaleType.FIT_CENTER
             }
         },
-        modifier = modifier
+        modifier = modifier.clickable { showEnlarged = true }
     )
+
+    if (showEnlarged) {
+        AlertDialog(
+            onDismissRequest = { showEnlarged = false },
+            confirmButton = {},
+            text = {
+                AndroidView(
+                    factory = { context ->
+                        ImageView(context).apply {
+                            setImageBitmap(bitmap)
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+        )
+    }
 }
