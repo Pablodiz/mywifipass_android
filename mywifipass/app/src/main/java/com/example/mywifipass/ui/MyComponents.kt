@@ -21,6 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
@@ -877,18 +880,21 @@ fun NetworkDetailScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
-                )
-                {   
-                    Text(stringResource(R.string.show_qr_code_validator))
-                    // QR Code section
+                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.show_qr_code_validator),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     QrCode(
                         data = QrInfo(network = network),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
+                        modifier = Modifier.size(220.dp)
                     )
                 }
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
             } else if (network.requires_fido2_validation && !network.is_user_authorized) {
                 // FIDO2-required networks should not show "configured" before authorization.
                 Column(
@@ -905,36 +911,38 @@ fun NetworkDetailScreen(
                     )
                 }
             } else if (network.is_connection_configured) {
-                // Only show success when the device is actually configured (dialog accepted).
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(vertical = 24.dp, horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Wifi,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(44.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.wifi_network_configured_successfully),
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Wifi, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.Default.Check, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-                    }
-
                     Spacer(modifier = Modifier.height(8.dp))
                     ConnectionStatusSection(ssid = network.ssid)
                 }
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
             } else if (network.is_user_authorized) {
                 // Authorized by server but device not yet configured — show spinner while we work.
                 Column(
@@ -953,12 +961,10 @@ fun NetworkDetailScreen(
                 Spacer(modifier = Modifier.height(1.dp))
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
             // Network information section - scrollable content
             Box(
                 modifier = Modifier
-                    .weight(1f) // Take all available space
+                    .weight(1f)
                     .padding(16.dp)
             ) {
                 Column(
@@ -969,30 +975,25 @@ fun NetworkDetailScreen(
             }
             
             if (network.is_connection_configured) {
-                Text(
-                    text = stringResource(R.string.having_problems_reconfigure),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    textDecoration = TextDecoration.Underline,
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            val result = mainController.connectToNetwork(network, wifiManager)
+                            if (result.isSuccess) {
+                                val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+                                currentNetwork = networks.find { it.id == selectedNetworkId }
+                            } else {
+                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Failed to reset configuration")
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .navigationBarsPadding()
                         .padding(16.dp)
-                        .clickable {
-                            // Reconfigure the network
-                            scope.launch {
-                                val result = mainController.connectToNetwork(network, wifiManager)
-                                if (result.isSuccess) {
-                                    // Reload the network to get updated state
-                                    val networks = mainController.getNetworks().getOrNull() ?: emptyList()
-                                    currentNetwork = networks.find { it.id == selectedNetworkId }
-                                } else {
-                                    ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Failed to reset configuration")
-                                }
-                            }
-                        }
-                )
+                ) {
+                    Text(stringResource(R.string.having_problems_reconfigure))
+                }
             }
 
 

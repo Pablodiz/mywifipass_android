@@ -59,6 +59,10 @@ import kotlinx.serialization.*
 
 // Import for waiting x seconds
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import androidx.compose.ui.text.font.FontWeight
 
 // Imports for asking for permissions
 import androidx.activity.result.contract.ActivityResultContracts
@@ -194,13 +198,40 @@ fun QRScannerDialog(
     }
 }
 
+private fun formatNetworkDate(dateStr: String): String {
+    return try {
+        LocalDate.parse(dateStr).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG))
+    } catch (_: Exception) {
+        dateStr
+    }
+}
+
+@Composable
+private fun NetworkInfoRow(label: String, value: String) {
+    if (value.isNotEmpty()) {
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 @Composable
 fun NetworkDialogEventInfo(network: Network) {
-    Column {
-        InfoText(stringResource(R.string.location), network.location)
-        InfoText(stringResource(R.string.start_date), network.start_date)
-        InfoText(stringResource(R.string.end_date), network.end_date)
-        InfoText(stringResource(R.string.description), network.description)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        NetworkInfoRow(stringResource(R.string.location), network.location)
+        NetworkInfoRow(stringResource(R.string.start_date), formatNetworkDate(network.start_date))
+        NetworkInfoRow(stringResource(R.string.end_date), formatNetworkDate(network.end_date))
+        NetworkInfoRow(stringResource(R.string.description), network.description)
     }
 }
 
