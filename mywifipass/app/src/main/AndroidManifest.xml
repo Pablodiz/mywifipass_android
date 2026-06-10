@@ -30,9 +30,9 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".LoginActivity" 
+        <activity android:name=".LoginActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" /> 
+            android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".AdminActivity" 
             android:exported="false" /> 
