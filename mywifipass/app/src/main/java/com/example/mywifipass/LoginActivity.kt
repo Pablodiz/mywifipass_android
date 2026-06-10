@@ -36,6 +36,8 @@ import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
+import app.mywifipass.ui.components.NoInternetBanner
+import app.mywifipass.ui.components.rememberHasInternet
 import androidx.lifecycle.lifecycleScope
 
 import app.mywifipass.model.data.LoginCredentials
@@ -152,6 +154,7 @@ class LoginActivity : ComponentActivity() {
                     NotificationHandler(context = this@LoginActivity)
                     
                     Column(modifier = Modifier.fillMaxSize()) {
+                        val hasInternet = rememberHasInternet()
                         TopBar(
                             title = stringResource(R.string.login),
                             onBackClick = { finish() },
@@ -166,6 +169,7 @@ class LoginActivity : ComponentActivity() {
                                 }
                             }
                         )
+                        if (!hasInternet) NoInternetBanner(message = stringResource(R.string.no_internet_login_banner))
                         LoginScreen(modifier = Modifier.weight(1f))
                     }
                     if (showQrScanner) {

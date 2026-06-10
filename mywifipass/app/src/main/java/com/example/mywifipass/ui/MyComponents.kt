@@ -160,7 +160,10 @@ fun rememberHasInternet(): Boolean {
 }
 
 @Composable
-fun NoInternetBanner(modifier: Modifier = Modifier) {
+fun NoInternetBanner(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.no_internet_banner)
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -176,7 +179,7 @@ fun NoInternetBanner(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = stringResource(R.string.no_internet_banner),
+            text = message,
             color = MaterialTheme.colorScheme.onErrorContainer,
             style = MaterialTheme.typography.bodySmall
         )
