@@ -36,8 +36,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
-import androidx.compose.material.icons.filled.Check 
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.QrCode
 
 import app.mywifipass.ui.components.ShowText
 import app.mywifipass.ui.components.NotificationHandler
@@ -163,6 +164,21 @@ fun AdminScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text(stringResource(R.string.processing))
         } else {
+            Icon(
+                imageVector = Icons.Filled.QrCode,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.validator_scan_instructions),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { showScannerDialog = true },
                 modifier = Modifier.fillMaxWidth(0.8f)

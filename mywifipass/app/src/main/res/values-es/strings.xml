@@ -103,6 +103,7 @@
     <string name="description">Descripción</string>
 
     <!-- QR Code Scanner -->
+    <string name="validator_scan_instructions">Escanea el código QR del Wifi Pass de un usuario. Se te indicará si el pase es válido o ya fue utilizado. Si es válido, verifica su identidad (p. ej. DNI) y autoriza o rechaza el acceso.</string>
     <string name="open_qr_scanner">Abrir Escáner QR</string>
     <string name="scan_qr_code">Escanear Código QR</string>
     <string name="validator_qr_code">Escanea el QR de un Wifi Pass</string>

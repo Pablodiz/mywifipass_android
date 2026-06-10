@@ -92,6 +92,7 @@
     <string name="description">Description</string>
 
     
+    <string name="validator_scan_instructions">Scan a user\'s WiFi Pass QR code. You\'ll be told whether the pass is valid or has already been used. If valid, verify the user\'s identity (e.g. ID card) and authorize or reject their access.</string>
     <string name="open_qr_scanner">Open QR Scanner</string>
     <string name="scan_qr_code">Scan QR Code</string>
     <string name="validator_qr_code">Scan the QR of a Wifi Pass</string>
