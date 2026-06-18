@@ -49,30 +49,48 @@ typealias ApiErrorCallback = (ApiResult) -> Unit
 // Functions for handling different types of errors
 
 private fun handleUnexpectedError(statusCode: Int, body: String, context: Context, operation: String): ApiResult {
-    val fullTrace = "Operation: $operation\nStatus Code: $statusCode\nResponse Body: $body\nTimestamp: ${System.currentTimeMillis()}"
-    
-    
-    
+    android.util.Log.e(
+        "ApiPetitions",
+        "Error in operation: $operation\nStatus Code: $statusCode\nResponse Body: $body"
+    )
+
+    // Connectivity errors already mapped by httpPetition — body contains the right message
+    if (statusCode == 0 || statusCode == 504) {
+        return ApiResult(
+            title = context.getString(R.string.network_error_title),
+            message = body,
+            isSuccess = false,
+            errorCode = statusCode,
+            showTrace = false,
+            fullTrace = null
+        )
+    }
+
     return ApiResult(
         title = context.getString(R.string.unexpected_error_title),
         message = context.getString(R.string.server_error_message),
         isSuccess = false,
         errorCode = statusCode,
-        showTrace = true,
-        fullTrace = fullTrace
+        showTrace = false,
+        fullTrace = null
     )
 }
 
 private fun handleNetworkException(exception: Exception, context: Context, operation: String): ApiResult {
-    val fullTrace = "Operation: $operation\nException: ${exception.javaClass.simpleName}\nMessage: ${exception.message}\nStackTrace: ${exception.stackTraceToString()}\nTimestamp: ${System.currentTimeMillis()}"
+    // Log complete details server-side (Logcat), but don't expose to user
+    android.util.Log.e(
+        "ApiPetitions",
+        "Network exception in operation: $operation\nException Type: ${exception.javaClass.simpleName}\nMessage: ${exception.message}",
+        exception
+    )
     
     return ApiResult(
         title = context.getString(R.string.network_error_title), 
         message = context.getString(R.string.network_connection_error),
         isSuccess = false,
         errorCode = null,
-        showTrace = true,
-        fullTrace = fullTrace
+        showTrace = false,  // Don't show trace to user
+        fullTrace = null    // Don't send details to UI
     )
 }
 
@@ -533,5 +551,89 @@ suspend fun checkUserAuthorized(
         else -> {
             onError(handleUnexpectedError(statusCode, body, context, "Check User Authorization"))
         }
+    }
+}
+
+/**
+ * Requests FIDO2 authentication options (challenge) from the server.
+ *
+ * Supports two modes depending on whether [email] is provided:
+ *
+ * **Discoverable mode** (default - pass empty string for [email]):
+ * Sends `{}` to the server. The server responds with `allowCredentials=[]`
+ * and a `session_id` UUID. Android Credential Manager then shows a passkey
+ * picker so the user can choose which account to authenticate with.
+ * The returned `session_id` must be passed to [fido2AuthenticateFinish].
+ *
+ * **Email mode** (legacy - pass a non-empty [email]):
+ * Sends `{"email": "..."}`. The server looks up the user's registered
+ * credential and returns it in `allowCredentials`, bypassing the picker.
+ * No `session_id` is returned; [fido2AuthenticateFinish] uses the email.
+ * To re-enable this mode, pass `network.user_email` as `username` in
+ * `MainController.validateWithFido2` instead of `""`.
+ *
+ * @param completeUrl Complete URL to /fido2/authenticate/start/
+ * @param email User email (empty string for discoverable mode)
+ * @param context Android context
+ * @return Pair of (options JSON for Credential Manager, session_id or null)
+ */
+suspend fun fido2AuthenticateStart(
+    completeUrl: String,
+    email: String,
+    context: Context
+): Pair<String, String?> {
+    val jsonString = if (email.isNotBlank()) "{\"email\": \"$email\"}" else "{}"
+    val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
+    if (httpResponse.statusCode == 200) {
+        val body = httpResponse.body
+        val sessionId: String?
+        val credentialManagerJson: String
+        try {
+            val json = org.json.JSONObject(body)
+            sessionId = if (json.has("session_id")) json.getString("session_id") else null
+            // Strip non-standard fields before handing JSON to Android Credential Manager.
+            // Some provider implementations reject unknown fields.
+            json.remove("session_id")
+            credentialManagerJson = json.toString()
+        } catch (e: Exception) {
+            return Pair(body, null)
+        }
+        return Pair(credentialManagerJson, sessionId)
+    } else {
+        throw Exception("Failed to get FIDO2 auth options: ${httpResponse.statusCode}")
+    }
+}
+
+
+/**
+ * Sends the signed FIDO2 assertion to the server for verification.
+ *
+ * The request body depends on which mode was used in [fido2AuthenticateStart]:
+ * - If [sessionId] is non-null (discoverable mode): `{"session_id": "...", "credential": ...}`
+ * - If [sessionId] is null (email mode): `{"email": "...", "credential": ...}`
+ *
+ * @param completeUrl Complete URL to /fido2/authenticate/finish/
+ * @param email User email (unused in discoverable mode, may be empty)
+ * @param credentialJson WebAuthn assertion JSON from Android Credential Manager
+ * @param context Android context
+ * @param sessionId UUID returned by [fido2AuthenticateStart] in discoverable mode, null otherwise
+ * @return Success response body from server
+ */
+suspend fun fido2AuthenticateFinish(
+    completeUrl: String,
+    email: String,
+    credentialJson: String,
+    context: Context,
+    sessionId: String? = null
+): String {
+    val jsonString = if (sessionId != null)
+        "{\"session_id\": \"$sessionId\", \"credential\": $credentialJson}"
+    else
+        "{\"email\": \"$email\", \"credential\": $credentialJson}"
+    val httpResponse = httpPetition(url_string = completeUrl, jsonString = jsonString, context = context)
+    if (httpResponse.statusCode in 200..299) {
+        return httpResponse.body
+    } else {
+        throw Exception("Failed to finish FIDO2 auth: ${httpResponse.statusCode}")
     }
 }

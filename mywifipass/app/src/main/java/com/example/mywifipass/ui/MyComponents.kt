@@ -21,14 +21,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
+import android.app.Activity
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Network as AndroidNetwork
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.wifi.WifiManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import app.mywifipass.backend.isConnectedToWifi
+import app.mywifipass.backend.isConnectedToInternet
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -43,7 +58,6 @@ import app.mywifipass.controller.MainController
 import app.mywifipass.NetworkDetailActivity
 
 // Imports for the QR code scanner
-import androidx.activity.compose.rememberLauncherForActivityResult
 
 // Imports for the SpeedDial
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +68,8 @@ import androidx.compose.animation.ExperimentalAnimationApi
 
 // Imports for Back Button
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.PublicOff
 
 // Imports for Network Detail Screen
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +80,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -89,6 +106,149 @@ import android.os.Build
 
 // i18n
 import androidx.compose.ui.res.stringResource
+
+@Composable
+fun rememberWifiEnabled(): Boolean {
+    val context = LocalContext.current
+    val wifiManager = remember {
+        context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+    }
+    var isEnabled by remember { mutableStateOf(wifiManager.isWifiEnabled) }
+
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+                val state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN)
+                isEnabled = state == WifiManager.WIFI_STATE_ENABLED
+            }
+        }
+        context.registerReceiver(receiver, IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION))
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
+    return isEnabled
+}
+
+@Composable
+fun rememberHasInternet(): Boolean {
+    val context = LocalContext.current
+    val connectivityManager = remember {
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+    var hasInternet by remember { mutableStateOf(isConnectedToInternet(context)) }
+
+    DisposableEffect(Unit) {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: AndroidNetwork) { hasInternet = true }
+            // onLost fires before activeNetwork is updated; reading isConnectedToInternet here
+            // returns stale true. Set false directly — if another validated network exists,
+            // onAvailable fires for it almost immediately.
+            override fun onLost(network: AndroidNetwork) { hasInternet = false }
+            override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
+                hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                              caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            }
+        }
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            .build()
+        try { connectivityManager.registerNetworkCallback(request, callback) } catch (_: Exception) {}
+        onDispose {
+            try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        }
+    }
+
+    return hasInternet
+}
+
+@Composable
+fun NoInternetBanner(
+    modifier: Modifier = Modifier,
+    message: String = stringResource(R.string.no_internet_banner)
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.PublicOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+fun WifiDisabledBanner(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.WifiOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.wifi_disabled_banner),
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+}
+
+@Composable
+fun ConnectionStatusSection(ssid: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val connectivityManager = remember {
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
+    var onWifi by remember { mutableStateOf(isConnectedToWifi(context)) }
+
+    DisposableEffect(Unit) {
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: AndroidNetwork) { onWifi = isConnectedToWifi(context) }
+            override fun onLost(network: AndroidNetwork) { onWifi = isConnectedToWifi(context) }
+            override fun onCapabilitiesChanged(network: AndroidNetwork, caps: NetworkCapabilities) {
+                onWifi = isConnectedToWifi(context)
+            }
+        }
+        try { connectivityManager.registerDefaultNetworkCallback(callback) } catch (_: Exception) {}
+        onDispose {
+            try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        }
+    }
+
+    val (text, color) = if (onWifi) {
+        Pair(stringResource(R.string.connection_wifi_unreadable_ssid, ssid), MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        Pair(stringResource(R.string.connection_not_on_wifi), MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = color,
+        textAlign = TextAlign.Center,
+        modifier = modifier.fillMaxWidth()
+    )
+}
 
 data class SpeedDialItem(
     val label: String,
@@ -258,13 +418,23 @@ fun MainScreen(
     networks: List<Network> = emptyList(),
     isLoading: Boolean = false,
     onNetworkClick: (Network) -> Unit = {},
+    onNetworkLongClick: (Network) -> Unit = {},
     onScanQRClick: () -> Unit = {},
     onQRResult: (String) -> Unit = {},
     showQrScanner: Boolean = false,
     onQRScannerDismiss: () -> Unit = {},
 ){
+    val isWifiEnabled = rememberWifiEnabled()
+    val hasInternet = rememberHasInternet()
+
     // Main layout with button at bottom
     Column(modifier = modifier.fillMaxSize()) {
+        if (!isWifiEnabled) {
+            WifiDisabledBanner()
+        }
+        if (!hasInternet) {
+            NoInternetBanner()
+        }
         // Networks list takes all available space
         if (isLoading) {
             Box(
@@ -297,7 +467,8 @@ fun MainScreen(
                 } else {
                     MyCardList(
                         dataList = networks,
-                        onItemClick = onNetworkClick
+                        onItemClick = onNetworkClick,
+                        onItemLongClick = onNetworkLongClick,
                     )
                 }
             }
@@ -344,9 +515,12 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
     // Variables for the UI state
     var apiError by remember { mutableStateOf<app.mywifipass.backend.api_petitions.ApiResult?>(null) }
     val wifiManager = context.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+    val fido2ValidationSuccessfulText = stringResource(R.string.fido2_validation_successful)
+    val fido2ValidationFailedText = stringResource(R.string.fido2_validation_failed)
     var connections by remember { mutableStateOf<List<Network>>(emptyList()) }
     var showQrScanner by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    var networkToDelete by remember { mutableStateOf<Network?>(null) }
 
     // Function to refresh networks list - define it first
     val refreshNetworks : () -> Unit = {
@@ -449,21 +623,72 @@ fun MainScreenContainer(modifier: Modifier = Modifier, initialWifiPassUrl: Strin
         networks = connections,
         isLoading = isLoading,
         onNetworkClick = { network ->
-            // Navigate to NetworkDetailActivity instead of showing dialog
-            NetworkDetailActivity.start(context, network.id)
+            scope.launch {
+                if (network.requires_fido2_validation && !network.is_user_authorized) {
+                    val result = mainController.validateWithFido2(network, context)
+                    if (result.isFailure) {
+                        ShowText.toastDirect(
+                            context,
+                            result.exceptionOrNull()?.message ?: fido2ValidationFailedText
+                        )
+                        return@launch
+                    }
+
+                    ShowText.toastDirect(context, fido2ValidationSuccessfulText)
+                    refreshNetworks()
+                }
+
+                // Navigate to detail after list-level FIDO2 gate.
+                NetworkDetailActivity.start(context, network.id)
+            }
         },
+        onNetworkLongClick = { network -> networkToDelete = network },
         onScanQRClick = { showQrScanner = true },
-        onQRResult = handleQRResult,        // For QR scanning
+        onQRResult = handleQRResult,
         showQrScanner = showQrScanner,
         onQRScannerDismiss = { showQrScanner = false },
     )
-    
+
+    networkToDelete?.let { network ->
+        val deleteTitle = stringResource(R.string.delete_pass_title)
+        val deleteMessage = stringResource(R.string.delete_pass_message, network.location_name)
+        val deleteLabel = stringResource(R.string.delete)
+        val cancelLabel = stringResource(R.string.cancel)
+        val deletedText = stringResource(R.string.network_deleted_successfully)
+        val deleteFailedText = stringResource(R.string.delete_failed)
+
+        AlertDialog(
+            onDismissRequest = { networkToDelete = null },
+            title = { Text(deleteTitle) },
+            text = { Text(deleteMessage) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val target = network
+                    networkToDelete = null
+                    scope.launch {
+                        val result = mainController.deleteNetwork(target, wifiManager)
+                        if (result.isSuccess) {
+                            refreshNetworks()
+                            ShowText.toastDirect(context, deletedText)
+                        } else {
+                            ShowText.toastDirect(
+                                context,
+                                result.exceptionOrNull()?.message ?: deleteFailedText
+                            )
+                        }
+                    }
+                }) { Text(deleteLabel) }
+            },
+            dismissButton = {
+                TextButton(onClick = { networkToDelete = null }) { Text(cancelLabel) }
+            }
+        )
+    }
+
     // Add the NotificationHandler to show dialogs, toasts, etc.
     NotificationHandler(context = context)
 }
 
-
-data class ButtonState(val text: String, val isBlocked: Boolean)
 
 @Composable
 fun NetworkDetailScreen(
@@ -475,63 +700,105 @@ fun NetworkDetailScreen(
 ){
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    var currentNetwork by remember {mutableStateOf<Network?>(null)}
+    var currentNetwork by remember { mutableStateOf<Network?>(null) }
+
+    var awaitingSystemDialog by remember { mutableStateOf(false) }
+    var systemDialogDenied by remember { mutableStateOf(false) }
+
+    val addNetworkLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        awaitingSystemDialog = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            systemDialogDenied = false
+            scope.launch {
+                currentNetwork?.let { net ->
+                    mainController.markNetworkConnected(net).getOrNull()?.let { updated ->
+                        currentNetwork = updated
+                    }
+                }
+            }
+        } else {
+            systemDialogDenied = true
+        }
+    }
 
     // Load initial network when this screen opens
     LaunchedEffect(selectedNetworkId){
-        val networks = mainController.getNetworks().getOrNull()?:emptyList()
-        currentNetwork = networks.find {it.id == selectedNetworkId}
+        val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+        currentNetwork = networks.find { it.id == selectedNetworkId }
     }
 
     currentNetwork?.let {network ->
         var menuExpanded by remember { mutableStateOf(false) }
         
         // Get strings in composable context
-        val configureConnectionText = stringResource(R.string.configure_connection)
-        val connectedText = stringResource(R.string.connected)
-        val notConnectedYetText = stringResource(R.string.not_connected_yet)
         val deleteText = stringResource(R.string.delete)
         val deleteFailedText = stringResource(R.string.delete_failed)
         val connectionConfiguredSuccessfullyText = stringResource(R.string.connection_configured_successfully)
         val connectionFailedText = stringResource(R.string.connection_failed)
-
-        val buttonState by remember(network.are_certificiates_decrypted, network.is_connection_configured) {
-            mutableStateOf(
-                when {
-                    network.are_certificiates_decrypted && !network.is_connection_configured -> 
-                        ButtonState(configureConnectionText, false)
-                    network.is_connection_configured -> 
-                        ButtonState(connectedText, true)
-                    else -> 
-                        ButtonState(notConnectedYetText, true)
-                }
-            )
-        }
+        val needsFido2Validation = network.requires_fido2_validation && !network.is_user_authorized
 
         LaunchedEffect(selectedNetworkId) {
-            if (!network.is_connection_configured && !network.are_certificiates_decrypted){
+            if (!network.is_connection_configured &&
+                !network.are_certificiates_decrypted &&
+                !needsFido2Validation
+            ){
                 while (true) {
                     try {
-                        val result = mainController.checkAuthorizedAndSendCSR(network)
+                        val result = mainController.checkAuthorizedAndConnect(network, wifiManager)
                         if (result.isSuccess) {
                             val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                             currentNetwork = networks.find { it.id == selectedNetworkId }
                             break
                         } else {
-                            throw result.exceptionOrNull() ?: Exception("Failed to download certificates")
+                            throw result.exceptionOrNull() ?: Exception("Failed to authorize and configure connection")
                         }
                     } catch (e: Exception) {
                         // Continue trying
-                        // Toast.makeText(
-                        //     context,
-                        //     "${e.message}",
-                        //     Toast.LENGTH_SHORT
-                        // ).show()
                     }
-                    delay(10_000L) // Wait 10 seconds before trying again
+                    delay(5_000L) // Wait 5 seconds before trying again
                 }
             }
         }
+
+        // Auto-configure once certificates are available.
+        LaunchedEffect(network.are_certificiates_decrypted, network.is_connection_configured) {
+            if (network.are_certificiates_decrypted && !network.is_connection_configured && !awaitingSystemDialog) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    // Android 11+: launch system dialog via launcher, mark configured only on RESULT_OK
+                    val intentResult = mainController.buildConnectionIntent(network)
+                    if (intentResult.isSuccess) {
+                        awaitingSystemDialog = true
+                        systemDialogDenied = false
+                        addNetworkLauncher.launch(intentResult.getOrNull()!!)
+                    } else {
+                        ShowText.toastDirect(context, intentResult.exceptionOrNull()?.message ?: connectionFailedText)
+                    }
+                } else {
+                    // Android 10-: suggestion API, result is immediate
+                    var attempts = 0
+                    val maxAttempts = 6
+                    while (attempts < maxAttempts) {
+                        val result = mainController.connectToNetwork(network, wifiManager)
+                        if (result.isSuccess) {
+                            ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+                            currentNetwork = result.getOrNull()
+                            break
+                        }
+                        attempts += 1
+                        if (attempts >= maxAttempts) {
+                            ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+                            break
+                        }
+                        delay(2_000L)
+                    }
+                }
+            }
+        }
+
+        val isWifiEnabled = rememberWifiEnabled()
+        val hasInternet = rememberHasInternet()
 
         Column(modifier=modifier){
             // Top bar with back button, title and menu
@@ -578,24 +845,70 @@ fun NetworkDetailScreen(
                 }
             )
 
-            if (!network.is_user_authorized){
+            if (!isWifiEnabled) {
+                WifiDisabledBanner()
+            }
+            if (!hasInternet) {
+                NoInternetBanner()
+            }
+
+            if (awaitingSystemDialog) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_pending),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else if (systemDialogDenied) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_denied),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = {
+                        val intentResult = mainController.buildConnectionIntent(network)
+                        if (intentResult.isSuccess) {
+                            systemDialogDenied = false
+                            awaitingSystemDialog = true
+                            addNetworkLauncher.launch(intentResult.getOrNull()!!)
+                        }
+                    }) {
+                        Text(stringResource(R.string.retry))
+                    }
+                }
+            } else if (!network.is_user_authorized && !network.requires_fido2_validation){
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
-                )
-                {   
-                    Text(stringResource(R.string.show_qr_code_validator))
-                    // QR Code section
+                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.show_qr_code_validator),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     QrCode(
                         data = QrInfo(network = network),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
+                        modifier = Modifier.size(220.dp)
                     )
                 }
-            } else {
-                // Success message when network is authorized
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            } else if (network.requires_fido2_validation && !network.is_user_authorized) {
+                // FIDO2-required networks should not show "configured" before authorization.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -603,44 +916,67 @@ fun NetworkDetailScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = stringResource(R.string.wifi_network_configured_successfully),
+                        text = stringResource(R.string.fido2_validation),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary,
                         textAlign = TextAlign.Center
                     )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Icons row: WiFi + Check
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                }
+            } else if (network.is_connection_configured) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp, horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Wifi,
-                            contentDescription = "WiFi",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Success",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(44.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_network_configured_successfully),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ConnectionStatusSection(ssid = network.ssid)
                 }
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+            } else if (network.is_user_authorized) {
+                // Authorized by server but device not yet configured — show spinner while we work.
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.wifi_configuration_pending),
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                Spacer(modifier = Modifier.height(1.dp))
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
             
             // Network information section - scrollable content
             Box(
                 modifier = Modifier
-                    .weight(1f) // Take all available space
+                    .weight(1f)
                     .padding(16.dp)
             ) {
                 Column(
@@ -651,60 +987,61 @@ fun NetworkDetailScreen(
             }
             
             if (network.is_connection_configured) {
-                Text(
-                    text = stringResource(R.string.having_problems_reconfigure),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    textDecoration = TextDecoration.Underline,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clickable {
-                            // Reconfigure the network
-                            scope.launch {
-                                val result = mainController.connectToNetwork(network, wifiManager)
-                                if (result.isSuccess) {
-                                    // Reload the network to get updated state
-                                    val networks = mainController.getNetworks().getOrNull() ?: emptyList()
-                                    currentNetwork = networks.find { it.id == selectedNetworkId }
-                                } else {
-                                    ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Failed to reset configuration")
-                                }
-                            }
-                        }
-                )
-            }
-            
-            // Action button for connecting/configuring network - always at bottom
-            Button(
-                enabled = !buttonState.isBlocked,
-                onClick = {
-                    if (!network.is_connection_configured && network.are_certificiates_decrypted) {
+                OutlinedButton(
+                    onClick = {
                         scope.launch {
                             val result = mainController.connectToNetwork(network, wifiManager)
                             if (result.isSuccess) {
-                                // Only show success message in Android 10-
-                                // As in 11+, the system has it's own way of notifying users
-                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                                    ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
-                                }
-                                // Reload the network to get updated state
                                 val networks = mainController.getNetworks().getOrNull() ?: emptyList()
                                 currentNetwork = networks.find { it.id == selectedNetworkId }
                             } else {
-                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+                                ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: "Failed to reset configuration")
                             }
                         }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(16.dp)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(16.dp)
                 ) {
-                Text(buttonState.text)
+                    Text(stringResource(R.string.having_problems_reconfigure))
+                }
             }
+
+
+            
+            // FIDO2 validation is now launched directly when entering this screen.
+            
+            // Action button for connecting/configuring network - always at bottom
+            // DEPRECATED, now the configuration is done automatically
+            // Button(
+            //     enabled = !buttonState.isBlocked,
+            //     onClick = {
+            //         if (!network.is_connection_configured && network.are_certificiates_decrypted) {
+            //             scope.launch {
+            //                 val result = mainController.connectToNetwork(network, wifiManager)
+            //                 if (result.isSuccess) {
+            //                     // Only show success message in Android 10-
+            //                     // As in 11+, the system has it's own way of notifying users
+            //                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            //                         ShowText.toastDirect(context, connectionConfiguredSuccessfullyText)
+            //                     }
+            //                     // Reload the network to get updated state
+            //                     val networks = mainController.getNetworks().getOrNull() ?: emptyList()
+            //                     currentNetwork = networks.find { it.id == selectedNetworkId }
+            //                 } else {
+            //                     ShowText.toastDirect(context, result.exceptionOrNull()?.message ?: connectionFailedText)
+            //                 }
+            //             }
+            //         }
+            //     },
+            //     modifier = Modifier
+            //          .fillMaxWidth()
+            //          .navigationBarsPadding()
+            //          .padding(16.dp)
+            //     ) {
+            //     Text(buttonState.text)
+            // }
         }
     }
 }

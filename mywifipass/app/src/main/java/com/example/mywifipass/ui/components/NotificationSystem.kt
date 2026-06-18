@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 // i18n
 import androidx.compose.ui.res.stringResource
@@ -106,7 +109,24 @@ fun NotificationHandler(
     var currentDialog by remember { mutableStateOf<NotificationMessage.Dialog?>(null) }
     var currentApiDialog by remember { mutableStateOf<NotificationMessage.ApiDialog?>(null) }
     var currentLoadingDialog by remember { mutableStateOf<NotificationMessage.LoadingDialog?>(null) }
-    
+
+    // Clear stale dialogs when the Activity comes back to the foreground.
+    // NotificationManager is a global singleton: all active NotificationHandlers receive
+    // every event, including Activities in the back stack. Clearing on ON_RESUME ensures
+    // dialogs set while this Activity was hidden are never shown when it resurfaces.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                currentDialog = null
+                currentApiDialog = null
+                currentLoadingDialog = null
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Listen to notifications
     LaunchedEffect(Unit) {
         NotificationManager.notifications.collect { notification ->

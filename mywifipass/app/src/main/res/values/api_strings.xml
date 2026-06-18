@@ -67,4 +67,7 @@
     <string name="success_200_check_user_authorized_message">You are authorized to connect to this network</string>
     <string name="error_404_check_user_authorized_title">User Not Found</string>
     <string name="error_404_check_user_authorized_message">Your user information was not found. Please contact the event organizer.</string>
+
+    <!-- SSE authorization stream -->
+    <string name="error_authorization_stream_reopen_pass_message">Connection issue while waiting for authorization. Please reopen your Wi-Fi pass and try again.</string>
 </resources>

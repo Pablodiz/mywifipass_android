@@ -54,6 +54,8 @@
     <string name="failed_to_load_networks">Error al cargar las redes</string>
     <string name="network_deleted_successfully">Red eliminada exitosamente</string>
     <string name="delete_failed">Error al eliminar</string>
+    <string name="delete_pass_title">¿Eliminar pase Wi-Fi?</string>
+    <string name="delete_pass_message">¿Eliminar el pase de \'%s\'? Esta acción no se puede deshacer.</string>
     <string name="connection_configured_successfully">Conexión configurada exitosamente</string>
     <string name="connection_failed">Error de conexión</string>
     <string name="no_wifi_passes_added_yet">Aún no se han añadido pases de Wifi.\nRevisa tu bandeja de entrada y haz clic\n en el botón de abajo para añadir uno.</string>
@@ -101,6 +103,7 @@
     <string name="description">Descripción</string>
 
     <!-- QR Code Scanner -->
+    <string name="validator_scan_instructions">Escanea el código QR del Wifi Pass de un usuario. Se te indicará si el pase es válido o ya fue utilizado. Si es válido, verifica su identidad (p. ej. DNI) y autoriza o rechaza el acceso.</string>
     <string name="open_qr_scanner">Abrir Escáner QR</string>
     <string name="scan_qr_code">Escanear Código QR</string>
     <string name="validator_qr_code">Escanea el QR de un Wifi Pass</string>
@@ -213,4 +216,22 @@
     <string name="invalid_json_format_error">Formato JSON inválido recibido del servidor</string>
     <string name="certificate_processing_error">Error procesando certificados</string>
     <string name="authentication_error">Error de autenticación</string>
+    
+    <!-- FIDO2 Validation -->
+    <string name="fido2_validation">Validación FIDO2</string>
+    <string name="fido2_validation_successful">Validación FIDO2 Exitosa</string>
+    <string name="fido2_validation_failed">Fallo de Validación FIDO2</string>
+
+    <!-- Wi-Fi connectivity feedback -->
+    <string name="failed_to_suggest_network">Error al configurar la red</string>
+    <string name="no_internet_connection">Sin conexión a internet</string>
+    <string name="connection_timeout">Tiempo de espera agotado. Por favor, inténtalo de nuevo.</string>
+    <string name="wifi_disabled_banner">Wi-Fi desactivado. Actívalo para conectarte.</string>
+    <string name="no_internet_banner">Sin conexión a internet. No podrás descargar pases.</string>
+    <string name="no_internet_login_banner">Sin conexión a internet. No podrás iniciar sesión.</string>
+    <string name="no_internet_validator_banner">Sin conexión a internet. No podrás validar pases.</string>
+    <string name="connection_not_on_wifi">No estás conectado a ninguna red Wi-Fi</string>
+    <string name="connection_wifi_unreadable_ssid">Conectado a Wi-Fi. Comprueba que es la red \'%s\'.</string>
+    <string name="wifi_configuration_pending">Configurando la red Wi-Fi…</string>
+    <string name="wifi_configuration_denied">Configuración no aceptada. Pulsa Reintentar para volver a intentarlo.</string>
 </resources>

@@ -36,6 +36,8 @@ import java.util.Base64
 import app.mywifipass.R
 
 import app.mywifipass.backend.extractURLFromParameter
+import app.mywifipass.backend.ssePetition
+import app.mywifipass.backend.SseOutcome
 
 // Imports for CSR generation and submission
 import app.mywifipass.backend.certificates.generateKeyPair
@@ -47,6 +49,7 @@ import app.mywifipass.backend.api_petitions.CSRResponse
 import java.security.KeyPair
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CompletableDeferred
 /**
  * Repository for handling network data operations
  * Implements database operations, certificate downloads, QR network parsing, and CSR operations
@@ -138,38 +141,47 @@ class NetworkRepository(private val context: Context) {
         val user_email = network.user_email 
         return withContext(Dispatchers.IO) {
             try {
-                var authorizationResult: Result<String>? = null
-                
-                // Check if the wifi pass is already authorized
-                checkUserAuthorized(network.check_user_authorized_url, 
-                    context,
-                    onSuccess = { isAuthorized ->
-                        if (isAuthorized){
-                            // Authorization successful, we'll generate CSR outside the callback
-                            authorizationResult = Result.success("User is authorized")
-                        } else {
-                            authorizationResult = Result.failure(Exception("User is not authorized"))
+                // Use SSE first. Only if SSE is unavailable do we fall back to polling.
+                val sseOutcome = ssePetition(
+                    url_string = network.check_user_authorized_url,
+                    context = context,
+                    onEvent = { eventName, _ ->
+                        when (eventName) {
+                            "connected" -> Log.d("NetworkRepository", "Authorization stream connected")
+                            "heartbeat" -> Log.d("NetworkRepository", "Authorization stream heartbeat")
+                            "authorized" -> Log.d("NetworkRepository", "Authorization stream says the user is authorized")
+                            "timeout" -> Log.d("NetworkRepository", "Authorization stream timed out")
+                            "error" -> Log.d("NetworkRepository", "Authorization stream reported an error")
                         }
-                    },
-                    onError = {
-                        Log.e("NetworkRepository", "Error checking user authorization: $it")
-                        authorizationResult = Result.failure(Exception("Authorization check failed: $it"))
                     }
                 )
-                
-                // Wait for authorization check to complete
-                while (authorizationResult == null) {
-                    kotlinx.coroutines.delay(50) // Wait 50ms before checking again
+
+                when (sseOutcome) {
+                    SseOutcome.AUTHORIZED -> {
+                        Log.d("NetworkRepository", "User authorized via SSE, proceeding with CSR generation")
+                        return@withContext generateAndSubmitCSR(network, user_email)
+                    }
+                    SseOutcome.TIMEOUT, SseOutcome.ERROR, SseOutcome.DISCONNECTED -> {
+                        return@withContext Result.failure(
+                            Exception(context.getString(R.string.error_authorization_stream_reopen_pass_message))
+                        )
+                    }
+                    SseOutcome.UNAVAILABLE -> {
+                        Log.d("NetworkRepository", "SSE unavailable, falling back to polling")
+                    }
                 }
+
+                // Fall back to the polling endpoint only when SSE is unavailable.
+                val authorizationResult = checkUserAuthorizedSuspend(network.check_user_authorized_url)
                 
                 // If authorized, generate and submit CSR synchronously
-                if (authorizationResult!!.isSuccess) {
+                if (authorizationResult.isSuccess) {
                     Log.d("NetworkRepository", "User authorized, proceeding with CSR generation")
                     val csrResult = generateAndSubmitCSR(network, user_email)
                     return@withContext csrResult
                 } else {
-                    Log.d("NetworkRepository", "User not authorized: ${authorizationResult!!.exceptionOrNull()?.message}")
-                    return@withContext authorizationResult!!
+                    Log.d("NetworkRepository", "User not authorized: ${authorizationResult.exceptionOrNull()?.message}")
+                    return@withContext authorizationResult
                 }
                 
             } catch (e: Exception) {
@@ -177,6 +189,30 @@ class NetworkRepository(private val context: Context) {
                 Result.failure(Exception(context.getString(R.string.failed_to_validate_network) + ": ${e.message}"))
             }
         }
+    }
+
+    private suspend fun checkUserAuthorizedSuspend(endpoint: String): Result<String> {
+        val deferred = CompletableDeferred<Result<String>>()
+
+        checkUserAuthorized(
+            endpoint,
+            context,
+            onSuccess = { isAuthorized ->
+                if (deferred.isCompleted) return@checkUserAuthorized
+                if (isAuthorized) {
+                    deferred.complete(Result.success("User is authorized"))
+                } else {
+                    deferred.complete(Result.failure(Exception("User is not authorized")))
+                }
+            },
+            onError = {
+                if (deferred.isCompleted) return@checkUserAuthorized
+                Log.e("NetworkRepository", "Error checking user authorization: $it")
+                deferred.complete(Result.failure(Exception("Authorization check failed: $it")))
+            }
+        )
+
+        return deferred.await()
     }
 
     /**

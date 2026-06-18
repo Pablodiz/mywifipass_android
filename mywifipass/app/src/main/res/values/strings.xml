@@ -1,23 +1,23 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- App name -->
+    
     <string name="app_name">MyWifiPass</string>
-    <!-- Roles -->
+    
     <string name="validator">Validator</string>
     <string name="admin">Admin</string>
     <string name="user">User</string>
     <string name="select_role">Select Role</string>
 
-    <!-- Main Screen -->
+    
     <string name="no_networks_message">No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one.</string>
     <string name="add_wifi_pass">Add a new Wifi Pass</string>
-    <string name="processing">Processing&#8230;</string>
+    <string name="processing">Processing…</string>
 
-    <!-- Dialog title -->
+    
     <string name="default_dialog_title">MyWifiPass</string>
     <string name="default_dialog_message">This is the dialog message</string>
 
-    <!-- Login Activity -->
+    
     <string name="enter_credentials">Enter your credentials</string>
     <string name="enter_your_login">Enter your username</string>
     <string name="enter_your_password">Enter your password</string>
@@ -39,7 +39,7 @@
     <string name="qr_code_empty_credentials">QR code contains empty credentials</string>
     <string name="login_help_text">Once logged in, you can scan the Wifi Passes of the users of your network.</string>
 
-    <!-- Admin Activity -->
+    
     <string name="scanned_info">Scanned info:</string>
     <string name="authorization_failed">Authorization Failed</string>
     <string name="authorization_successful">Authorization successful</string>
@@ -47,19 +47,21 @@
     <string name="admin_panel">Admin Panel</string>
     <string name="admin_scan_qr_code">Scan QR Code</string>
     
-    <!-- Network operations -->
+    
     <string name="network_added_successfully">Network added successfully</string>
     <string name="failed_to_add_network">Failed to add network</string>
     <string name="failed_to_add_network_from_url">Failed to add network from URL</string>
     <string name="failed_to_load_networks">Failed to load networks</string>
     <string name="network_deleted_successfully">Network deleted successfully</string>
     <string name="delete_failed">Delete failed</string>
+    <string name="delete_pass_title">Delete WiFi Pass?</string>
+    <string name="delete_pass_message">Delete the pass for \'%s\'? This cannot be undone.</string>
     <string name="connection_configured_successfully">Connection configured successfully</string>
     <string name="connection_failed">Connection failed</string>
     <string name="no_wifi_passes_added_yet">"No Wifi Passes added yet.\nCheck your email inbox and click\n the button below to add one."</string>
     <string name="downloaded_wifi_passes">Wi-Fi Passes</string>
 
-    <!-- Network Detail Screen -->
+    
     <string name="configure_connection">Configure connection</string>
     <string name="connected">WiFi connection configured</string>
     <string name="not_connected_yet">WiFi connection not configured</string>
@@ -68,13 +70,13 @@
     
 
     
-    <!-- Camera permissions -->
+    
     <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
     
-    <!-- WiFi configuration -->
+    
     <string name="wifi_forget_message">You may forget this network manually if needed</string>
     
-    <!-- Common -->
+    
     <string name="error">Error</string>
     <string name="success">Success</string>
     <string name="cancel">Cancel</string>
@@ -82,21 +84,22 @@
     <string name="retry">Retry</string>
     <string name="back">Back</string>
 
-    <!-- Network Info -->
+    
     <string name="network_info">Network Information</string>
     <string name="location">Location</string>
     <string name="start_date">Valid since</string>
     <string name="end_date">Valid until</string>
     <string name="description">Description</string>
 
-    <!-- QR Code Scanner -->
+    
+    <string name="validator_scan_instructions">Scan a user\'s WiFi Pass QR code. You\'ll be told whether the pass is valid or has already been used. If valid, verify the user\'s identity (e.g. ID card) and authorize or reject their access.</string>
     <string name="open_qr_scanner">Open QR Scanner</string>
     <string name="scan_qr_code">Scan QR Code</string>
     <string name="validator_qr_code">Scan the QR of a Wifi Pass</string>
     <string name="user_qr_code">Scan the QR code in the email you received</string>
     <string name="login_qr_code">Scan the QR code in the admin panel</string>
 
-    <!-- API Responses -->
+    
     <string name="error_400">Bad Request</string>
     <string name="error_401">You are not authorized to access this resource</string>
     <string name="error_403">Forbidden</string>
@@ -110,7 +113,7 @@
     <string name="unrecognized_response_format">Unrecognized response format</string>
     <string name="unknown_error">Unknown error</string>
     
-    <!-- NetworkRepository error messages -->
+    
     <string name="error_processing_qr_code">Error processing QR code</string>
     <string name="error_adding_network">Error adding network</string>
     <string name="failed_to_retrieve_added_network">Failed to retrieve added network</string>
@@ -131,7 +134,7 @@
     <string name="failed_to_extract_certificates">Failed to extract certificates</string>
     <string name="could_not_find_valid_certificate_chain">Could not find valid certificate chain with at least 2 certificates</string>
     
-    <!-- MainController error messages -->
+    
     <string name="failed_to_get_networks">Failed to get networks</string>
     <string name="failed_to_add_network_from_qr">Failed to add network from QR</string>
     <string name="network_has_no_certificate_download_url">Network has no certificate download URL</string>
@@ -159,7 +162,7 @@
 
     <string name="loginText">Login as validator</string>
 
-    <!-- CSR-related strings -->
+    
     <string name="common_name_cannot_be_empty">Common name cannot be empty</string>
     <string name="failed_to_generate_and_submit_csr">Failed to generate and submit CSR</string>
     <string name="invalid_csr_response_missing_certificates">Invalid CSR response: missing certificates</string>
@@ -172,11 +175,11 @@
     <string name="show_qr_code_validator">Show the following QR code to a validator to authorize the WiFi network:</string>
     <string name="wifi_network_configured_successfully">The WiFi network was configured successfully</string>
     
-    <!-- Network status icons -->
+    
     <string name="network_configured">Network configured</string>
     <string name="network_not_configured">Network not configured</string>
 
-    <!-- AdminController / Dialog messages -->
+    
     <string name="auth_token_missing">Authentication token is missing</string>
     <string name="authorization_url_empty">Authorization URL is empty</string>
     <string name="unknown_authorization_error">Unknown authorization error</string>
@@ -186,7 +189,7 @@
     <string name="qr_code_missing_validation_url">QR code missing validation URL</string>
     <string name="invalid_qr_code_format">Invalid QR code format</string>
 
-    <!-- API Dialog Titles -->
+    
     <string name="download_confirmation_title">Download Confirmation</string>
     <string name="network_operation_title">Network Operation</string>
     <string name="certificate_operation_title">Certificate Operation</string>
@@ -198,23 +201,40 @@
     <string name="network_error_title">Network Error</string>
     <string name="parsing_error_title">Data Parsing Error</string>
     
-    <!-- Unexpected error messages (generic) -->
+    
     <string name="unexpected_error_title">Unexpected Error</string>
     
-    <!-- Unexpected error messages -->
+    
     <string name="server_error_message">An unexpected server error occurred. Technical details are available.</string>
     <string name="network_connection_error">Connection problem occurred. Technical details are available.</string>
     
-    <!-- Dialog actions -->
+    
     <string name="show_technical_details">Show Details</string>
     <string name="technical_details_title">Technical Details</string>
     <string name="copy_details">Copy Details</string>
     <string name="details_copied_to_clipboard">Details copied to clipboard</string>
     
-    <!-- Enhanced API Error Messages -->
+    
     <string name="server_returned_html_error">Server returned HTML page instead of JSON. Please check if the URL is correct.</string>
     <string name="invalid_json_format_error">Invalid JSON format received from server</string>
     <string name="certificate_processing_error">Error processing certificates</string>
     <string name="authentication_error">Authentication failed</string>
+    
+    <!-- FIDO2 Validation -->
+    <string name="fido2_validation">FIDO2 Validation</string>
+    <string name="fido2_validation_successful">FIDO2 Validation Successful</string>
+    <string name="fido2_validation_failed">FIDO2 Validation Failed</string>
 
+    <!-- Wi-Fi connectivity feedback -->
+    <string name="failed_to_suggest_network">Failed to configure network</string>
+    <string name="no_internet_connection">No internet connection</string>
+    <string name="connection_timeout">Connection timed out. Please try again.</string>
+    <string name="wifi_disabled_banner">Wi-Fi is disabled. Turn it on to connect.</string>
+    <string name="no_internet_banner">No internet connection. You won\'t be able to download passes.</string>
+    <string name="no_internet_login_banner">No internet connection. You won\'t be able to log in.</string>
+    <string name="no_internet_validator_banner">No internet connection. You won\'t be able to validate passes.</string>
+    <string name="connection_not_on_wifi">Not connected to any Wi-Fi network</string>
+    <string name="connection_wifi_unreadable_ssid">Connected to Wi-Fi. Make sure it\'s \'%s\'.</string>
+    <string name="wifi_configuration_pending">Configuring Wi-Fi network…</string>
+    <string name="wifi_configuration_denied">Configuration not accepted. Tap Retry to try again.</string>
 </resources>
