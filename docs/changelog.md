@@ -28,14 +28,6 @@ All notable changes to the MyWifiPass Android app.
 - **NetworkRepository** supports SSE over `check_user_authorized` endpoint with `Accept: text/event-stream`
 - Fallback to one-shot HTTP check if SSE unavailable (server returns non-SSE response)
 
-### Security Hardening (Phase 1)
-
-- **EncryptedSharedPreferences** - AES-256-GCM token storage (replaces plain SharedPreferences)
-- **CertificateValidator** - expiry, chain, and format validation for X.509 certificates
-- **UrlValidator** - both HTTP and HTTPS accepted for any host; rejects `%`-encoding, non-ASCII chars, `..` in host
-- **FLAG_SECURE** on `LoginActivity`, `AdminActivity`, `NetworkDetailActivity`
-- **Error sanitization** - full traces logged, generic messages shown to users
-
 ### Auto Wi-Fi Configuration
 
 - Removed manual "Configure Wi-Fi" button - connection configures on certificate installation
@@ -52,13 +44,15 @@ All notable changes to the MyWifiPass Android app.
 
 ---
 
-## [1.2] - 2026-02
+## [1.2] - Feb 2026
 
-> **Branch:** `refactor/code-quality-improvements`
+### Security Hardening
 
-- Code quality improvements: replace `!!` assertions, extract magic numbers
-- Error handling: specific exception types, better logging
-- Room DB migration consolidation
+- **EncryptedSharedPreferences** - AES-256-GCM token storage (replaces plain SharedPreferences)
+- **CertificateValidator** - expiry, chain, and format validation for X.509 certificates
+- **UrlValidator** - both HTTP and HTTPS accepted for any host; rejects `%`-encoding, non-ASCII chars, `..` in host
+- **FLAG_SECURE** on `LoginActivity`, `AdminActivity`, `NetworkDetailActivity`
+- **Error sanitization** - full traces logged, generic messages shown to users
 
 ---
 
