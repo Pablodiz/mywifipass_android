@@ -13,6 +13,8 @@ run.sh
 *.der
 *.pem
 *.p12
-*.kts
 *.jks
 */.env
+wip_docs/
+mywifipass/logcat.txt
+*.log

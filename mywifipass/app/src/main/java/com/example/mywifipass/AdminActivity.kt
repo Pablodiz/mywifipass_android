@@ -28,14 +28,17 @@ import androidx.compose.material.icons.filled.Logout
 
 import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
+import app.mywifipass.ui.components.NoInternetBanner
+import app.mywifipass.ui.components.rememberHasInternet
 import app.mywifipass.controller.AdminController
 import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
-import androidx.compose.material.icons.filled.Check 
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.QrCode
 
 import app.mywifipass.ui.components.ShowText
 import app.mywifipass.ui.components.NotificationHandler
@@ -152,8 +155,7 @@ fun AdminScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .padding(top = 56.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -162,6 +164,21 @@ fun AdminScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text(stringResource(R.string.processing))
         } else {
+            Icon(
+                imageVector = Icons.Filled.QrCode,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.validator_scan_instructions),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { showScannerDialog = true },
                 modifier = Modifier.fillMaxWidth(0.8f)
@@ -175,6 +192,13 @@ fun AdminScreen(
 class AdminActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Security: Prevent screenshots/screen recording of admin panel and QR validation data
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+        
         setContent {
             MyWifiPassTheme {
                 Surface(
@@ -182,29 +206,27 @@ class AdminActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        val hasInternet = rememberHasInternet()
                         TopBar(
                             title = stringResource(R.string.admin_panel),
                             onBackClick = { finish() },
                             actions = {
-                                Box(){
-                                    IconButton(
-                                        modifier = Modifier
-                                            .padding(8.dp)
-                                            .size(40.dp)
-                                            .align(Alignment.TopEnd), 
-                                    onClick = { 
-                                        // Handle logout action using AdminController
+                                IconButton(
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .size(40.dp),
+                                    onClick = {
                                         val adminController = AdminController(context)
                                         adminController.logout()
-                                        finish() 
+                                        finish()
                                     }
-                                    ){
-                                        Icon(Icons.Filled.Logout, contentDescription = "Logout")   
-                                    }
+                                ) {
+                                    Icon(Icons.Filled.Logout, contentDescription = "Logout")
                                 }
                             }
                         )
+                        if (!hasInternet) NoInternetBanner(message = stringResource(R.string.no_internet_validator_banner))
                         AdminScreen(context)
                     }
                 }

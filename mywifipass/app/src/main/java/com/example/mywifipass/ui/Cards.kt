@@ -12,7 +12,8 @@ package app.mywifipass.ui.components
 
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.ui.Alignment
 import app.mywifipass.model.data.Network
+
 
 // i18n
 import androidx.compose.ui.res.stringResource
@@ -46,16 +48,23 @@ fun NetworkCardInfo(network: Network) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MyCard(
     data: Network,
-    onItemClick: (Network) -> Unit
+    onItemClick: (Network) -> Unit,
+    onItemLongClick: ((Network) -> Unit)? = null,
 ){
+    val showAsConfigured = data.is_connection_configured
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onItemClick(data) },
+            .combinedClickable(
+                onClick = { onItemClick(data) },
+                onLongClick = { onItemLongClick?.invoke(data) }
+            ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         
@@ -81,15 +90,15 @@ fun MyCard(
             
             // Icono de estado (derecha)
             Icon(
-                imageVector = if (data.is_connection_configured) Icons.Default.Wifi else Icons.Default.WifiOff,
-                contentDescription = if (data.is_connection_configured) 
-                    stringResource(R.string.network_configured) 
-                else 
+                imageVector = if (showAsConfigured) Icons.Default.Wifi else Icons.Default.WifiOff,
+                contentDescription = if (showAsConfigured)
+                    stringResource(R.string.network_configured)
+                else
                     stringResource(R.string.network_not_configured),
                 modifier = Modifier.size(32.dp),
-                tint = if (data.is_connection_configured) 
-                    MaterialTheme.colorScheme.primary 
-                else 
+                tint = if (showAsConfigured)
+                    MaterialTheme.colorScheme.primary
+                else
                     MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -100,11 +109,12 @@ fun MyCard(
 @Composable
 fun MyCardList(
     dataList: List<Network>,
-    onItemClick: (Network) -> Unit
+    onItemClick: (Network) -> Unit,
+    onItemLongClick: ((Network) -> Unit)? = null,
 ){
     LazyColumn {
         items(dataList) { data ->
-            MyCard(data = data, onItemClick = onItemClick)
+            MyCard(data = data, onItemClick = onItemClick, onItemLongClick = onItemLongClick)
         }
     }
 }

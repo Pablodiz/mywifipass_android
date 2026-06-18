@@ -16,7 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.setContent
@@ -36,6 +37,8 @@ import kotlinx.coroutines.launch
 
 import app.mywifipass.ui.components.TopBar
 import app.mywifipass.ui.components.QRScannerDialog
+import app.mywifipass.ui.components.NoInternetBanner
+import app.mywifipass.ui.components.rememberHasInternet
 import androidx.lifecycle.lifecycleScope
 
 import app.mywifipass.model.data.LoginCredentials
@@ -74,64 +77,94 @@ fun LoginScreen(modifier: Modifier = Modifier) {
     }
 
     Column(
-        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .padding(horizontal = 30.dp)
-            .imePadding()
+            .verticalScroll(rememberScrollState())
     ) {
-        Text(stringResource(R.string.login_help_text), textAlign = TextAlign.Center)
-        Spacer(modifier = Modifier.height(16.dp))
-        LoginField(
-            value = credentials.url,
-            onChange = { it -> credentials = credentials.copy(url = it) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Link,
-                    contentDescription = "",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            label = "Url",
-            placeholder = stringResource(R.string.url_admin_server),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        LoginField(
-            value = credentials.login,
-            onChange = { it -> credentials = credentials.copy(login = it) },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            },
-            label = stringResource(R.string.username),
-            placeholder = stringResource(R.string.enter_your_login),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        PasswordField(
-            value = credentials.pwd,
-            onChange = { it -> credentials = credentials.copy(pwd = it) },
-            submit = { handleLogin() },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Button(
-            onClick = { handleLogin() },
-            enabled = credentials.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth()
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         ) {
-            Text(stringResource(R.string.login))
+            Text(
+                stringResource(R.string.login_help_text),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
         }
+        Spacer(modifier = Modifier.height(56.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 30.dp)
+        ) {
+            LoginField(
+                value = credentials.url,
+                onChange = { it -> credentials = credentials.copy(url = it) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Link,
+                        contentDescription = "",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                label = "Url",
+                placeholder = stringResource(R.string.url_admin_server),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            LoginField(
+                value = credentials.login,
+                onChange = { it -> credentials = credentials.copy(login = it) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
+                label = stringResource(R.string.username),
+                placeholder = stringResource(R.string.enter_your_login),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            PasswordField(
+                value = credentials.pwd,
+                onChange = { it -> credentials = credentials.copy(pwd = it) },
+                submit = { handleLogin() },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = { handleLogin() },
+                enabled = credentials.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.login))
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Security: Prevent screenshots/screen recording of login credentials
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE
+        )
+
         setContent {
             MyWifiPassTheme {
                 Surface(
@@ -145,6 +178,7 @@ class LoginActivity : ComponentActivity() {
                     NotificationHandler(context = this@LoginActivity)
                     
                     Column(modifier = Modifier.fillMaxSize()) {
+                        val hasInternet = rememberHasInternet()
                         TopBar(
                             title = stringResource(R.string.login),
                             onBackClick = { finish() },
@@ -159,6 +193,7 @@ class LoginActivity : ComponentActivity() {
                                 }
                             }
                         )
+                        if (!hasInternet) NoInternetBanner(message = stringResource(R.string.no_internet_login_banner))
                         LoginScreen(modifier = Modifier.weight(1f))
                     }
                     if (showQrScanner) {

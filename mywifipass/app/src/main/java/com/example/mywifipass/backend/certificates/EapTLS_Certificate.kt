@@ -22,6 +22,10 @@ import javax.crypto.SecretKey
 import android.util.Base64
 import javax.crypto.spec.SecretKeySpec
 
+// Import certificate validator
+import app.mywifipass.backend.security.CertificateValidator
+import android.util.Log
+
 class EapTLSCertificate(caInputStream: InputStream,  
                         clientCertInputStream: InputStream, 
                         clientKeyInputStream: InputStream) {
@@ -41,6 +45,37 @@ class EapTLSCertificate(caInputStream: InputStream,
         val keySpec = PKCS8EncodedKeySpec(decodePem(keyBytes))
         val keyFactory = KeyFactory.getInstance("RSA")
         clientPrivateKey = keyFactory.generatePrivate(keySpec)
+        
+        // Validate certificates are valid and not expired
+        validateCertificates()
+    }
+    
+    /**
+     * Validates the CA and client certificates are valid and not expired.
+     * Logs warnings if certificates are expiring soon.
+     */
+    private fun validateCertificates() {
+        // Validate CA certificate
+        val caValidation = CertificateValidator.validateCertificate(caCertificate)
+        if (caValidation is app.mywifipass.backend.security.CertificateValidationResult.Invalid) {
+            Log.w("EapTLSCertificate", "CA Certificate validation warning: ${caValidation.reason}")
+        }
+        
+        // Validate client certificate
+        val clientValidation = CertificateValidator.validateCertificate(clientCertificate)
+        if (clientValidation is app.mywifipass.backend.security.CertificateValidationResult.Invalid) {
+            Log.w("EapTLSCertificate", "Client Certificate validation warning: ${clientValidation.reason}")
+        }
+        
+        // Validate certificate chain
+        val chainValidation = CertificateValidator.validateCertificateChain(
+            listOf(caCertificate, clientCertificate)
+        )
+        if (chainValidation is app.mywifipass.backend.security.CertificateChainValidationResult.Invalid) {
+            Log.w("EapTLSCertificate", "Certificate chain validation warning: ${chainValidation.reason}")
+        }
+        
+        Log.d("EapTLSCertificate", "Certificates validated successfully")
     }
 
     // Función para decodificar un archivo PEM si tiene encabezados y pies de página

@@ -10,7 +10,9 @@
 package app.mywifipass.controller
 
 import android.content.Context
+import android.content.Intent
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,6 +27,7 @@ import app.mywifipass.backend.api_petitions.ApiResult
 
 import app.mywifipass.backend.database.DataSource
 import app.mywifipass.R
+import app.mywifipass.fido2.Fido2Service
 
 /**
  * MainController handles the main application business logic
@@ -34,6 +37,7 @@ class MainController(private val context: Context) {
     
     private val networkRepository = NetworkRepository(context)
     private val dataSource = app.mywifipass.backend.database.DataSource(context)
+    private val fido2Service = Fido2Service()
     
     /**
      * Retrieves all networks from the database
@@ -61,14 +65,10 @@ class MainController(private val context: Context) {
             if (networkResult.isFailure) {
                 return networkResult
             }
-            
+
+            // The Wi-Fi Pass installation workflow is handled by the detail screen loop after the pass is added.
+            // Before, we blocked the pass download UX with authorization/CSR/connect flow.
             val network = networkResult.getOrThrow()
-            try {
-                checkAuthorizedAndConnect(network, wifiManager)
-            } catch (e: Exception) {
-                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
-            }
-            
             Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from QR: ${e.message}")
@@ -87,14 +87,9 @@ class MainController(private val context: Context) {
             if (networkResult.isFailure) {
                 return networkResult
             }
-            
+
+            // Keep add/download operation fast and deterministic.
             val network = networkResult.getOrThrow()
-            try {
-                checkAuthorizedAndConnect(network, wifiManager)
-            } catch (e: Exception) {
-                Log.w("MainController", "Failed to check authorization and connect: ${e.message}")
-            }
-            
             Result.success(network)
         } catch (e: Exception) {
             Log.e("MainController", "Error adding network from URL: ${e.message}")
@@ -105,11 +100,15 @@ class MainController(private val context: Context) {
     
     /**
      * Connects to a WiFi network using EAP-TLS configuration
+     * and returns the updated in-memory Network state.
+     *
+     * Some runtime flags in Network are transient and should not be sourced
+     * from DB right after update (they are not persisted in Room schema).
      * @param network Network to connect to
      * @param wifiManager Android WifiManager instance
-     * @return Result containing success message or error
+     * @return Result containing updated Network or error
      */
-    suspend fun connectToNetwork(network: Network, wifiManager: WifiManager): Result<String> {
+    suspend fun connectToNetwork(network: Network, wifiManager: WifiManager): Result<Network> {
         return withContext(Dispatchers.IO) {
             try {
                 Log.d("MainController", "Attempting to connect to network: ${network.ssid}")
@@ -135,7 +134,6 @@ class MainController(private val context: Context) {
                     return@withContext Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_configuration)))
                 }
                 
-                // Attempt connection
                 eapTLSConnection.connect(wifiManager, context)
                 
                 // Update network status
@@ -145,9 +143,9 @@ class MainController(private val context: Context) {
                 if (updateResult.isFailure) {
                     Log.w("MainController", "Failed to update network status after connection")
                 }
-                
+
                 Log.d("MainController", "Successfully configured connection to: ${network.ssid}")
-                Result.success(context.getString(R.string.network_connection_configured_successfully))
+                Result.success(updatedNetwork)
                 
             } catch (e: Exception) {
                 Log.e("MainController", "Error connecting to network: ${e.message}")
@@ -415,35 +413,48 @@ class MainController(private val context: Context) {
 
     suspend fun checkAuthorizedAndConnect(network: Network, wifiManager: WifiManager): Result<String> {
         return try{
-            // Check if the wifi pass is already authorized, if so send CSR
             val csrResult = checkAuthorizedAndSendCSR(network)
-            
+
             if (csrResult.isFailure) {
                 Log.d("MainController", "Failed to check if user is authorized: ${csrResult.exceptionOrNull()?.message}")
                 return Result.failure(Exception(csrResult.exceptionOrNull()?.message ?: context.getString(R.string.failed_to_validate_network)))
             }
-            
-            Log.d("MainController", "CSR completed successfully, retrieving updated network from database")
-            
-            // Get the updated network from database (should now have certificates)
-            val updatedNetworks = networkRepository.getNetworksFromDatabase()
-            val updatedNetwork = updatedNetworks.find { it.id == network.id } ?: network
-            
-            Log.d("MainController", "Retrieved updated network. Certificates decrypted: ${updatedNetwork.are_certificiates_decrypted}")
-            
-            // Now connect with the updated network that should have certificates
-            val result = connectToNetwork(updatedNetwork, wifiManager)
-            if (result.isSuccess) {
-                Log.d("MainController", "Successfully configured connection to network: ${updatedNetwork.network_common_name}")
-                Result.success(context.getString(R.string.network_connection_configured_successfully))
-            } else {
-                Log.d("MainController", "Failed to connect to network: ${result.exceptionOrNull()?.message}")
-                Result.failure(Exception(context.getString(R.string.failed_to_connect_to_network)))
-            }
+
+            Log.d("MainController", "CSR completed, certificates ready. Connection step handled by UI layer.")
+            // On Android 11+ the UI launches Settings.ACTION_WIFI_ADD_NETWORKS via ActivityResultLauncher
+            // and only marks as connected after RESULT_OK. On Android 10- connectToNetwork is called
+            // directly from the LaunchedEffect retry loop. Either way, we just signal "certs ready" here.
+            Result.success(context.getString(R.string.network_is_ready_for_connection))
         } catch (e: Exception) {
             Log.e("MainController", "Error checking if user is authorized: ${e.message}")
             Result.failure(Exception("${e.message}"))
         }
+    }
+
+    fun buildConnectionIntent(network: Network): Result<Intent> {
+        return try {
+            if (!network.are_certificiates_decrypted) {
+                return Result.failure(Exception(context.getString(R.string.network_certificates_are_not_decrypted)))
+            }
+            if (network.ca_certificate.isEmpty() || network.certificate.isEmpty() || network.private_key.isEmpty()) {
+                return Result.failure(Exception(context.getString(R.string.network_is_missing_required_certificates)))
+            }
+            if (!isValidCertificateFormat(network)) {
+                return Result.failure(Exception(context.getString(R.string.invalid_certificate_format)))
+            }
+            val eapTLSConnection = createEapTLSConnection(network)
+                ?: return Result.failure(Exception(context.getString(R.string.failed_to_create_eap_tls_connection_configuration)))
+            Result.success(eapTLSConnection.buildSettingsIntent())
+        } catch (e: Exception) {
+            Log.e("MainController", "Error building connection intent: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markNetworkConnected(network: Network): Result<Network> {
+        val updated = network.copy(is_connection_configured = true, is_user_authorized = true)
+        networkRepository.updateNetwork(updated)
+        return Result.success(updated)
     }
     /**
      * Adds a network from URL with full ApiResult support
@@ -454,23 +465,8 @@ class MainController(private val context: Context) {
         return try {
             Log.d("MainController", "Adding network from URL with ApiResult: $url")
             val result = networkRepository.addNetworkFromUrlWithApiResult(url)
-            
-            if (result.isSuccess) {
-                // Get the added network from database to attempt auto-connection
-                val networks = networkRepository.getNetworksFromDatabase()
-                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
-                
-                if (addedNetwork != null) {
-                    try {
-                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
-                        Log.d("MainController", "Successfully added network and attempted auto-connection")
-                    } catch (e: Exception) {
-                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
-                        // Don't fail the whole operation if connection fails
-                    }
-                }
-            }
-            
+
+            // Keep API-result add flow focused on pass download only.
             result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromUrlWithApiResult: ${e.message}")
@@ -493,23 +489,8 @@ class MainController(private val context: Context) {
         return try {
             Log.d("MainController", "Adding network from QR with ApiResult: $qrCode")
             val result = networkRepository.addNetworkFromQRWithApiResult(qrCode)
-            
-            if (result.isSuccess) {
-                // Get the added network from database to attempt auto-connection
-                val networks = networkRepository.getNetworksFromDatabase()
-                val addedNetwork = networks.lastOrNull() // Assuming the last added network is what we want
-                
-                if (addedNetwork != null) {
-                    try {
-                        checkAuthorizedAndConnect(addedNetwork, wifiManager)
-                        Log.d("MainController", "Successfully added network and attempted auto-connection")
-                    } catch (e: Exception) {
-                        Log.w("MainController", "Network added but failed to auto-connect: ${e.message}")
-                        // Don't fail the whole operation if connection fails
-                    }
-                }
-            }
-            
+
+            // Keep API-result add flow focused on pass download only.
             result
         } catch (e: Exception) {
             Log.e("MainController", "Error in addNetworkFromQRWithApiResult: ${e.message}")
@@ -520,6 +501,60 @@ class MainController(private val context: Context) {
                 showTrace = true,
                 fullTrace = "MainController Exception: ${e.javaClass.simpleName}\nMessage: ${e.message}\nStackTrace: ${e.stackTraceToString()}"
             )
+        }
+    }
+
+    /**
+     * Validates network using FIDO2 biometric authentication
+     * @param network Network to validate
+     * @param context Android context for getting Activity
+     * @return Result containing success message or error
+     */
+    suspend fun validateWithFido2(network: Network, context: Context): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d("MainController", "Starting FIDO2 validation for network: ${network.network_common_name}")
+                
+                val startUrl = network.fido2_authenticate_start_url
+                val finishUrl = network.fido2_authenticate_finish_url
+
+                if (startUrl.isEmpty() || finishUrl.isEmpty()) {
+                    throw Exception("FIDO2 URLs not available")
+                }
+
+                // Empty username triggers discoverable mode: the server sends
+                // allowCredentials=[] and Android Credential Manager shows a
+                // passkey picker. The user identity is resolved server-side
+                // from the credential ID in the assertion.
+                //
+                // To switch back to the legacy email mode (server pre-selects
+                // the credential for the user), replace "" with network.user_email.
+                val username = ""
+                Log.d("MainController", "FIDO2 auth: startUrl=$startUrl, mode=${if (username.isBlank()) "discoverable" else "email"}")
+                
+                // Call FIDO2 service to authenticate user
+                val result = fido2Service.authenticateForNetwork(
+                    context,
+                    startUrl,
+                    finishUrl,
+                    username,
+                    network.network_common_name
+                )
+
+                // Persist local authorization state so the app does not ask for FIDO2 again.
+                val updatedNetwork = network.copy(is_user_authorized = true)
+                val updateResult = networkRepository.updateNetwork(updatedNetwork)
+                if (updateResult.isFailure) {
+                    throw Exception(context.getString(R.string.failed_to_update_network))
+                }
+                
+                Log.d("MainController", "FIDO2 validation completed successfully for: ${network.network_common_name}")
+                Result.success(result)
+                
+            } catch (e: Exception) {
+                Log.e("MainController", "Error during FIDO2 validation: ${e.message}")
+                Result.failure(Exception(context.getString(R.string.fido2_validation_failed) + ": ${e.message}"))
+            }
         }
     }
 }

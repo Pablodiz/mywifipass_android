@@ -51,6 +51,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.widget.ImageView
 import com.google.zxing.qrcode.QRCodeWriter
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import kotlinx.serialization.*
 // import androidx.compose.ui.viewinterop.AndroidView
 
@@ -59,6 +62,10 @@ import kotlinx.serialization.*
 
 // Import for waiting x seconds
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import androidx.compose.ui.text.font.FontWeight
 
 // Imports for asking for permissions
 import androidx.activity.result.contract.ActivityResultContracts
@@ -194,13 +201,40 @@ fun QRScannerDialog(
     }
 }
 
+private fun formatNetworkDate(dateStr: String): String {
+    return try {
+        LocalDate.parse(dateStr).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG))
+    } catch (_: Exception) {
+        dateStr
+    }
+}
+
+@Composable
+private fun NetworkInfoRow(label: String, value: String) {
+    if (value.isNotEmpty()) {
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
 @Composable
 fun NetworkDialogEventInfo(network: Network) {
-    Column {
-        InfoText(stringResource(R.string.location), network.location)
-        InfoText(stringResource(R.string.start_date), network.start_date)
-        InfoText(stringResource(R.string.end_date), network.end_date)
-        InfoText(stringResource(R.string.description), network.description)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        NetworkInfoRow(stringResource(R.string.location), network.location)
+        NetworkInfoRow(stringResource(R.string.start_date), formatNetworkDate(network.start_date))
+        NetworkInfoRow(stringResource(R.string.end_date), formatNetworkDate(network.end_date))
+        NetworkInfoRow(stringResource(R.string.description), network.description)
     }
 }
 
@@ -211,29 +245,52 @@ fun QrInfo(network: Network): String {
     return qrData.toJson()
 }
 
+private fun generateQrBitmap(data: String): Bitmap {
+    val bitMatrix = QRCodeWriter().encode(data, BarcodeFormat.QR_CODE, 512, 512, mapOf(EncodeHintType.MARGIN to 1))
+    val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)
+    for (x in 0 until bitMatrix.width) {
+        for (y in 0 until bitMatrix.height) {
+            bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.TRANSPARENT)
+        }
+    }
+    return bitmap
+}
+
 @Composable
 fun QrCode(
     data: String,
     modifier: Modifier = Modifier
 ) {
-    // QR Code generator
+    var showEnlarged by remember { mutableStateOf(false) }
+    val bitmap = remember(data) { generateQrBitmap(data) }
+
     AndroidView(
         factory = { context ->
-            val qrCodeWriter = QRCodeWriter()
-            val hints = mapOf(
-                EncodeHintType.MARGIN to 1
-            )
-            val bitMatrix = qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 200, 200, hints)
-            val bitmap = Bitmap.createBitmap(bitMatrix.width, bitMatrix.height, Bitmap.Config.ARGB_8888)
-            for (x in 0 until bitMatrix.width) {
-                for (y in 0 until bitMatrix.height) {
-                    bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
-                }
-            }
             ImageView(context).apply {
                 setImageBitmap(bitmap)
+                scaleType = ImageView.ScaleType.FIT_CENTER
             }
         },
-        modifier = modifier
+        modifier = modifier.clickable { showEnlarged = true }
     )
+
+    if (showEnlarged) {
+        AlertDialog(
+            onDismissRequest = { showEnlarged = false },
+            confirmButton = {},
+            text = {
+                AndroidView(
+                    factory = { context ->
+                        ImageView(context).apply {
+                            setImageBitmap(bitmap)
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                )
+            }
+        )
+    }
 }

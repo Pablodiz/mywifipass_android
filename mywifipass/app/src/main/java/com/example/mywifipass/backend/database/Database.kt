@@ -36,7 +36,17 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-@Database(entities = [Network::class], version = 2)
+// Migration from version 2 to version 3
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE networks ADD COLUMN requires_fido2_validation INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE networks ADD COLUMN fido2_authenticate_start_url TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN fido2_authenticate_finish_url TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE networks ADD COLUMN fido2_rp_id TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+@Database(entities = [Network::class], version = 3)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }
@@ -66,7 +76,7 @@ class DataSource(context: Context) {
         AppDatabase::class.java,
         "app-database"
     )
-    .addMigrations(MIGRATION_1_2)
+    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
     .build() 
 
     private val NetworkDao = db.networkDao()

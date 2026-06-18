@@ -32,10 +32,14 @@ data class Network(
     val location_name: String,
     val validation_url: String,
     val certificates_url: String,
+    val fido2_authenticate_start_url: String = "",
+    val fido2_authenticate_finish_url: String = "",
+    val fido2_rp_id: String = "",
     var has_downloaded_url: String,
     var check_user_authorized_url: String,
     val certificates_symmetric_key: String,
     var is_user_authorized: Boolean,
+    var requires_fido2_validation: Boolean = false,
 
     @Transient
     var ca_certificate: String = "",
